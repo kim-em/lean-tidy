@@ -60,7 +60,7 @@ meta def global_tidy_tactics : list (tactic string) :=
   force (intros >> skip)                      >> pure "intros",
   force (fsplit)                              >> pure "fsplit", 
   force (dsimp_eq_mpr)                        >> pure "dsimp [eq.mpr] {unfold_reducible := tt}",
-  unfold_projs_target {md := semireducible}   >> pure "unfold_projs_target {md := semireducible}", 
+  unfold_projs_target {md := semireducible}   >> pure "tactic.unfold_projs_target {md := semireducible}", 
   `[simp]                                     >> pure "simp",
   automatic_induction                         >> pure "automatic_induction",
   `[dsimp at * {unfold_reducible := tt}]      >> pure "dsimp at * {unfold_reducible := tt}",

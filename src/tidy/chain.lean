@@ -28,18 +28,20 @@ private meta structure chain_progress { α : Type } :=
   ( results           : list α )
   ( remaining_tactics : list (tactic α) )
   ( hashes            : list string )
+  ( repeats           : nat )
 
 private meta def chain' { α : Type } [ has_to_format α ] ( cfg : chain_cfg ) ( tactics : list (tactic α) ) : chain_progress → tactic (list α)
-| ⟨ 0,      results, _, hashes ⟩ := trace (format!"... chain tactic exceeded iteration limit {cfg.max_steps}") >>
+| ⟨ 0,      results, _, hashes, _ ⟩ := trace (format!"... chain tactic exceeded iteration limit {cfg.max_steps}") >>
                                      trace results.reverse >> 
                                      failed   
-| ⟨ _,      results, [], _ ⟩     := (pure results)
-| ⟨ succ n, results, t :: ts, hashes ⟩ :=
+| ⟨ _,      results, [], _, _ ⟩     := (pure results)
+| ⟨ succ n, results, t :: ts, hashes, repeats ⟩ :=
     if_then_else done
       (pure results)
       (do if cfg.trace_steps then trace format!"trying chain tactic #{tactics.length - ts.length}" else skip,
-          some r ← try_core t | /- tactic t failed, continue down the list -/ (chain' ⟨ succ n, results, ts, hashes ⟩),
+          some r ← try_core t | /- tactic t failed, continue down the list -/ (chain' ⟨ succ n, results, ts, hashes, repeats ⟩),
           h ← hash_target,
+          let
           if hashes.mem h then 
             /- we've run into a loop -/
             do if cfg.fail_on_loop || cfg.trace_on_loop then trace "chain tactic detected looping" else skip,
@@ -47,7 +49,7 @@ private meta def chain' { α : Type } [ has_to_format α ] ( cfg : chain_cfg ) (
                  trace results.reverse >> failed
                else 
                  /- continue down the list -/
-                 (chain' ⟨ succ n, results, ts, hashes ⟩)
+                 (chain' ⟨ succ n, results, ts, hashes, repeats ⟩)
           else 
             do (if cfg.trace_steps then trace format!"succeeded with result: {r}" else skip),  
                 (chain' ⟨ n, r :: results, tactics, h :: hashes ⟩ )
