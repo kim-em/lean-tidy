@@ -12,6 +12,7 @@ open nat
 structure chain_cfg := 
   ( max_steps     : nat  := 500 )
   ( trace_steps   : bool := ff )
+  ( loop_limit    : nat  := 3  )
   ( fail_on_loop  : bool := tt )
   ( trace_on_loop : bool := tt )
 
@@ -41,24 +42,24 @@ private meta def chain' { α : Type } [ has_to_format α ] ( cfg : chain_cfg ) (
       (do if cfg.trace_steps then trace format!"trying chain tactic #{tactics.length - ts.length}" else skip,
           some r ← try_core t | /- tactic t failed, continue down the list -/ (chain' ⟨ succ n, results, ts, hashes, repeats ⟩),
           h ← hash_target,
-          let
-          if hashes.mem h then 
+          let repeat := if hashes.mem h then 1 else 0 in
+          if (repeat = 1) && (repeats ≥ cfg.loop_limit) then 
             /- we've run into a loop -/
-            do if cfg.fail_on_loop || cfg.trace_on_loop then trace "chain tactic detected looping" else skip,
+            do if cfg.trace_on_loop then trace "chain tactic detected looping" else skip,
                if cfg.fail_on_loop then
-                 trace results.reverse >> failed
+                 trace results.reverse >> fail "chain tactic detected looping"
                else 
                  /- continue down the list -/
-                 (chain' ⟨ succ n, results, ts, hashes, repeats ⟩)
+                 (chain' ⟨ succ n, results, ts, hashes, repeats + repeat ⟩)
           else 
             do (if cfg.trace_steps then trace format!"succeeded with result: {r}" else skip),  
-                (chain' ⟨ n, r :: results, tactics, h :: hashes ⟩ )
+                (chain' ⟨ n, r :: results, tactics, h :: hashes, repeats + repeat ⟩ )
       )
 
 meta def chain { α : Type } [ has_to_format α ] 
   ( tactics        : list (tactic α) )
   ( cfg     : chain_cfg := {} )
     : tactic (list α) :=
-do sequence ← chain' cfg tactics ⟨ cfg.max_steps, [], tactics, [] ⟩,
+do sequence ← chain' cfg tactics ⟨ cfg.max_steps, [], tactics, [], 0 ⟩,
    guard (sequence.length ≠ 0) <|> fail "...chain tactic made no progress",
    pure sequence.reverse
