@@ -45,6 +45,8 @@ do ng ← num_goals,
      if p then t else fail "there are multiple goals, and the first goal is not a mere proposition"
    }
 
+-- TODO I'd love to do some profiling here, and find how much time is spent inside each tactic,
+-- also divided up between successful and unsuccessful calls.
 
 meta def global_tidy_tactics : list (tactic string) :=
 [
