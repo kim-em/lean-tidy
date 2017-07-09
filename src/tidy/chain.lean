@@ -38,7 +38,7 @@ private meta def chain' { α : Type } [ has_to_format α ] ( cfg : chain_cfg ) (
     if_then_else done
       (pure results)
       (do if cfg.trace_steps then trace format!"trying chain tactic #{tactics.length - ts.length}" else skip,
-          r ← t | /- tactic t failed, continue down the list -/ (chain' ⟨ succ n, results, ts, hashes ⟩),
+          some r ← try_core t | /- tactic t failed, continue down the list -/ (chain' ⟨ succ n, results, ts, hashes ⟩),
           h ← hash_target,
           if hashes.mem h then 
             /- we've run into a loop -/
