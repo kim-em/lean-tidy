@@ -12,7 +12,7 @@ open nat
 structure chain_cfg := 
   ( max_steps     : nat  := 500 )
   ( trace_steps   : bool := ff )
-  ( fail_on_loop  : bool := ff )
+  ( fail_on_loop  : bool := tt )
   ( trace_on_loop : bool := tt )
 
 meta def hash_target : tactic string :=
