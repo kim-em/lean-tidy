@@ -73,11 +73,23 @@ meta structure tidy_cfg extends chain_cfg :=
 ( run_annotated_tactics : bool                 := tt )
 ( extra_tactics         : list (tactic string) := [] )
 
+-- TODO surely this is in the library
+private def listn : nat → list nat 
+| 0            := []
+| (nat.succ n) := (listn n) ++ [n]
+
+meta def number_tactics { α : Type } ( tactics : list (tactic α) ) : list ( tactic (α × ℕ) ) :=
+tactics.map₂ ( λ t, λ n, (do r ← t, pure (r, n))) (listn tactics.length)
+
+#check tactic_state
+
 meta def tidy ( cfg : tidy_cfg := {} ) : tactic unit :=
 let tidy_tactics := global_tidy_tactics ++ (if cfg.run_annotated_tactics then [ run_tidy_tactics ] else []) ++ cfg.extra_tactics in
-   do results ← chain tidy_tactics cfg.to_chain_cfg,
+let numbered_tactics := number_tactics tidy_tactics in
+   do results ← chain numbered_tactics cfg.to_chain_cfg,
    if cfg.trace_result then
-     trace ("... chain tactic used: " ++ results.to_string)
+     let result_strings := results.map (λ p, p.1) in
+     trace ("... chain tactic used: " ++ result_strings.to_string)
    else
      skip
 

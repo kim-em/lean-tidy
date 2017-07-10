@@ -7,6 +7,8 @@ open smt_tactic
 open lean.parser
 open interactive
 
+-- TODO raise an issue about note and pose remaining the smt_tactic
+
 meta def unfold_coe : tactic unit := dunfold_target [ ``has_coe_to_fun.coe ]
 
 meta def smt_simp   : tactic unit := using_smt $ intros >> try `[dsimp] >> try `[simp]
