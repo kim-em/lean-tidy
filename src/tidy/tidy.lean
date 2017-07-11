@@ -9,6 +9,8 @@ import .smt
 open tactic
 
 private meta def dsimp_eq_mpr : tactic unit := `[dsimp [eq.mpr] {unfold_reducible := tt}]
+meta def dsimp' := `[dsimp {unfold_reducible := tt, md := semireducible}]
+meta def dsimp_all' := `[dsimp at * {unfold_reducible := tt, md := semireducible}]
 
 meta def if_exactly_one_goal { α : Type } ( t : tactic α ) : tactic α :=
 do ng ← num_goals,
@@ -50,21 +52,23 @@ do ng ← num_goals,
 
 meta def global_tidy_tactics : list (tactic string) :=
 [
-  triv                                        >> pure "triv", 
+  -- triv                                        >> pure "triv", 
   force (reflexivity)                         >> pure "refl", 
   if_first_goal_safe assumption               >> pure "assumption",
   -- if_first_goal_safe cc                       >> pure "cc", -- TODO try this?
-  if_first_goal_safe congr_assumptions,      -- TODO are there other aggresssive things we can do?
+  if_first_goal_safe congr_assumptions,       
   `[exact dec_trivial]                        >> pure "exact dec_trivial",
   applicable                                  >> pure "applicable",
   force (intros >> skip)                      >> pure "intros",
   force (fsplit)                              >> pure "fsplit", 
-  force (dsimp_eq_mpr)                        >> pure "dsimp [eq.mpr] {unfold_reducible := tt}",
-  unfold_projs_target {md := semireducible}   >> pure "tactic.unfold_projs_target {md := semireducible}", 
+  dsimp'                                      >> pure "dsimp'",
+  -- force (dsimp_eq_mpr)                        >> pure "dsimp [eq.mpr] {unfold_reducible := tt}",
+  -- unfold_projs_target {md := semireducible}   >> pure "tactic.unfold_projs_target {md := semireducible}", 
   `[simp]                                     >> pure "simp",
   automatic_induction                         >> pure "automatic_induction",
-  `[dsimp at * {unfold_reducible := tt}]      >> pure "dsimp at * {unfold_reducible := tt}",
-  `[unfold_projs at * {md := semireducible}]  >> pure "unfold_projs at * {md := semireducible}",
+  dsimp_all'                                  >> pure "dsimp_all'",
+  -- `[dsimp at * {unfold_reducible := tt}]      >> pure "dsimp at * {unfold_reducible := tt}",
+  -- `[unfold_projs at * {md := semireducible}]  >> pure "unfold_projs at * {md := semireducible}",
   `[simp at *]                                >> pure "simp at *"
 ]
 
