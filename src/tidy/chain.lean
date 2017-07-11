@@ -12,7 +12,7 @@ open nat
 structure chain_cfg := 
   ( max_steps     : nat  := 500 )
   ( trace_steps   : bool := ff )
-  ( loop_limit    : nat  := 3  )
+  ( loop_limit    : nat  := 5  )
   ( fail_on_loop  : bool := tt )
   ( trace_on_loop : bool := tt )
 
