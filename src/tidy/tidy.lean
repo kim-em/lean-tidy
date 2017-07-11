@@ -72,6 +72,8 @@ meta structure tidy_cfg extends chain_cfg :=
 ( trace_result          : bool                 := ff )
 ( run_annotated_tactics : bool                 := tt )
 ( extra_tactics         : list (tactic string) := [] )
+( show_hints            : bool                 := tt )
+( hints                 : list ℕ               := [] )
 
 -- TODO surely this is in the library
 private def listn : nat → list nat 
@@ -81,17 +83,36 @@ private def listn : nat → list nat
 meta def number_tactics { α : Type } ( tactics : list (tactic α) ) : list ( tactic (α × ℕ) ) :=
 tactics.map₂ ( λ t, λ n, (do r ← t, pure (r, n))) (listn tactics.length)
 
-#check tactic_state
+private meta def apply_hints { α : Type } ( tactics : list (tactic α) ) : list ℕ → tactic bool
+| list.nil  := pure tt
+| (n :: ns) := match tactics.nth n with
+               | none := pure ff
+               | some t := if_then_else t (apply_hints ns) (pure ff)
+               end
 
 meta def tidy ( cfg : tidy_cfg := {} ) : tactic unit :=
 let tidy_tactics := global_tidy_tactics ++ (if cfg.run_annotated_tactics then [ run_tidy_tactics ] else []) ++ cfg.extra_tactics in
 let numbered_tactics := number_tactics tidy_tactics in
-   do results ← chain numbered_tactics cfg.to_chain_cfg,
-   if cfg.trace_result then
-     let result_strings := results.map (λ p, p.1) in
-     trace ("... chain tactic used: " ++ result_strings.to_string)
-   else
-     skip
+do
+   /- first apply hints -/
+   r ← apply_hints numbered_tactics cfg.hints,
+   if ¬ r then
+     /- hints were broken ... -/     
+      fail "hints for 'tidy' tactic were invalid!"     
+   else 
+    do
+      (done >> guard (cfg.hints.length > 0)) <|> do
+      results ← chain numbered_tactics cfg.to_chain_cfg,
+      if cfg.show_hints then
+        let hints := results.map (λ p, p.2) in
+        trace ("tidy {hints:=" ++ hints.to_string ++ "}  .")
+      else 
+        skip,
+      if cfg.trace_result then
+        let result_strings := results.map (λ p, p.1) in
+        trace ("... chain tactic used: " ++ result_strings.to_string)
+      else
+        skip
 
 meta def blast ( cfg : tidy_cfg := {} ) : tactic unit := 
 tidy { cfg with extra_tactics := cfg.extra_tactics ++ [ focus1 ( smt_eblast >> done ) >> pure "smt_eblast" ] }

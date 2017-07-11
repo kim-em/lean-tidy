@@ -4,7 +4,7 @@
 
 open tactic
 
-meta def if_then_else { α : Type } ( i : tactic unit ) ( t e : tactic α ) : tactic α :=
+meta def if_then_else { α β : Type } ( i : tactic α ) ( t e : tactic β ) : tactic β :=
 do r ← (i >> pure tt) <|> pure ff,
    if r then do t else do e
    
