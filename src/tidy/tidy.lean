@@ -80,7 +80,7 @@ private def listn : nat → list nat
 | 0            := []
 | (nat.succ n) := (listn n) ++ [n]
 
-meta def number_tactics { α : Type } ( tactics : list (tactic α) ) : list ( tactic (α × ℕ) ) :=
+private meta def number_tactics { α : Type } ( tactics : list (tactic α) ) : list ( tactic (α × ℕ) ) :=
 tactics.map₂ ( λ t, λ n, (do r ← t, pure (r, n))) (listn tactics.length)
 
 private meta def apply_hints { α : Type } ( tactics : list (tactic α) ) : list ℕ → tactic bool
