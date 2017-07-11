@@ -7,7 +7,7 @@ import .if_then_else
 open tactic
 open nat
 
--- FIXME how do we set options? It's annoying to have to pass a configuration everywhere.
+-- FIXME can we set options? It's annoying to have to pass a configuration everywhere.
 
 structure chain_cfg := 
   ( max_steps     : nat  := 500 )
@@ -31,10 +31,17 @@ private meta structure chain_progress { α : Type } :=
   ( hashes            : list string )
   ( repeats           : nat )
 
-private meta def chain' { α : Type } [ has_to_format α ] ( cfg : chain_cfg ) ( tactics : list (tactic α) ) : chain_progress → tactic (list α)
+-- TODO
+-- it would be lovely to pull out all the looping detection code, and implement that by wrapping
+-- tactics in suitable state monads, but I don't think we're reading for that yet!
+private meta def chain'
+  { α : Type } [ has_to_format α ] 
+  ( cfg : chain_cfg ) 
+  ( tactics : list (tactic α) ) 
+    : chain_progress → tactic (list α)
 | ⟨ 0,      results, _, hashes, _ ⟩ := trace (format!"... chain tactic exceeded iteration limit {cfg.max_steps}") >>
-                                     trace results.reverse >> 
-                                     failed   
+                                        trace results.reverse >> 
+                                        failed   
 | ⟨ _,      results, [], _, _ ⟩     := (pure results)
 | ⟨ succ n, results, t :: ts, hashes, repeats ⟩ :=
     if_then_else done
