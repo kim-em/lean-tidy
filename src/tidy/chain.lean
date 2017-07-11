@@ -33,10 +33,10 @@ private meta structure chain_progress { α : Type } :=
 
 -- TODO
 -- it would be lovely to pull out all the looping detection code, and implement that by wrapping
--- tactics in suitable state monads, but I don't think we're reading for that yet!
+-- tactics in suitable state monads, but I don't think we're ready for that yet!
 private meta def chain'
   { α : Type } [ has_to_format α ] 
-  ( cfg : chain_cfg ) 
+  ( cfg : chain_cfg )
   ( tactics : list (tactic α) ) 
     : chain_progress → tactic (list α)
 | ⟨ 0,      results, _, hashes, _ ⟩ := trace (format!"... chain tactic exceeded iteration limit {cfg.max_steps}") >>
