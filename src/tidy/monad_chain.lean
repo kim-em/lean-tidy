@@ -40,64 +40,87 @@ meta instance trivial_tactical_monad : tactical_monad tactic := {
 
 meta def skip2 : tactic ( list unit ) := let tactics := [skip, skip] in chain' tactics ⟨ 0, [], tactics ⟩
 
-structure profiling_state :=
-  ( invocations : nat )
+meta def stateful_tactic (σ : Type) := interaction_monad (tactic_state × σ)
 
-meta def stateful_tactic (β : Type) (α : Type) := β → tactic ((interaction_monad.result tactic_state α) × β)
-
-meta def profiling_tactic := stateful_tactic profiling_state
-
-meta def tactic_pure { α : Type } ( a : α ) : tactic α := pure a
+@[reducible] meta def tactic_state_pure { α : Type } ( a : α ) ( ts : tactic_state ) : tactic_state :=
+begin
+  have p := @pure tactic _ _ a ts,
+  induction p with _ ts' _ _ ts'',
+  exact ts',
+  exact ts''
+end
 
 meta def unreachable {α : Sort u} : α := undefined_core "unreachable"
 
-meta instance profiling_tactical_monad : tactical_monad profiling_tactic := { 
-  pure   := λ { α : Type } ( a : α ) ( s : profiling_state ) ( ts : tactic_state ),
-              match ((tactic_pure a) ts) with
-              | (result.success a ts')         := result.success (result.success a ts', s) ts'
-              | (result.exception msg pos ts') := unreachable
+meta instance stateful_tactic_monad (σ : Type) : monad (stateful_tactic σ) := { 
+  pure   := λ { α : Type } ( a : α ) ( s : tactic_state × σ ), 
+              result.success a (tactic_state_pure a s.1, s.2),
+  bind   := λ { α β : Type } ( t : stateful_tactic σ α ) ( f : α → stateful_tactic σ β ) ( s : tactic_state × σ ), 
+              match (t s) with
+              | result.success a s' := f a s'
+              | result.exception pos msg s' := result.exception pos msg s'
               end,
-  bind   := λ { α β : Type } ( t : profiling_tactic α ) ( f : α → profiling_tactic β ) ( s : profiling_state ) ( ts : tactic_state ),
-              match (t s ts) with
-              | (result.success r ts')         := match r with 
-                                                  | (result.success a ts',         ps') := f a ps' ts'
-                                                  | (result.exception msg pos ts', ps') := result.success (result.exception msg pos ts', ps') ts'
-                                                  end
-              | (result.exception msg pos ts') := unreachable
+  id_map     := begin tidy, generalize (x (fst, snd)) X, intros, induction X, tidy, end,
+  pure_bind  := begin tidy, end,
+  bind_assoc := begin tidy, generalize (x (fst, snd)) X, intros, induction X, tidy, end,            
+}
+
+meta instance stateful_tactic_monad_fail (σ : Type) : monad_fail (stateful_tactic σ) := {
+  stateful_tactic_monad σ with
+  fail   := λ { α : Type } (msg : string) ( s : tactic_state × σ ),
+              match (@tactic.fail α string _ msg) s.1 with
+              | result.success a ts := unreachable
+              | result.exception pos msg ts := result.exception pos msg (ts, s.2)
               end,
-  fail   := λ { α : Type } (msg : string) ( s : profiling_state ), (do @tactic.fail _ string _ msg),
-  orelse := λ { α : Type } ( t : profiling_tactic α ) ( t' : profiling_tactic α ) ( s : profiling_state ) ( ts : tactic_state ),
-              match (t s ts) with
-              | (result.success r ts')         := match r with 
-                                                  | (result.success a ts',         ps') := (result.success r ts')
-                                                  | (result.exception msg pos ts', ps') := t' ps' ts'
-                                                  end
-              | (result.exception msg pos ts') := unreachable
+}
+
+meta instance stateful_tactic_has_orelse (σ : Type) : has_orelse (stateful_tactic σ) := {
+  orelse := λ { α : Type } ( t₁ : (stateful_tactic σ) α ) ( t₂ : (stateful_tactic σ) α ) ( s : tactic_state × σ ), 
+              match (t₁ s) with
+              | result.success a s' := result.success a s'
+              | result.exception pos msg s' := t₂ s'
               end,
-  lift   := λ { α : Type } ( t : tactic α ) ( s : profiling_state ) ( ts : tactic_state ),
-              match (t ts) with
-              | (result.success a ts')         := result.success (result.success a ts', ⟨ s.invocations + 1 ⟩ ) ts'
-              | (result.exception msg pos ts') := result.success (result.exception msg pos ts', ⟨ s.invocations + 1 ⟩) ts'
-              end,
-  id_map     := begin tidy, end,
-  pure_bind  := undefined,
-  bind_assoc := undefined,            
+}
+
+structure profiling_state :=
+  ( invocations : nat )
+
+meta def profiling_tactic := stateful_tactic profiling_state
+
+meta def lift_tactic_to_profiling_tactic { α : Type u } ( t : tactic α ) : profiling_tactic α := 
+λ ( s : tactic_state × profiling_state ), 
+              match (t s.1) with
+              | result.success a s' := result.success a (s', ⟨ s.2.invocations + 1 ⟩ )
+              | result.exception pos msg s' := result.exception pos msg (s', ⟨ s.2.invocations + 1 ⟩ )
+              end
+
+meta instance : tactical_monad profiling_tactic := {
+  stateful_tactic_monad_fail profiling_state with 
+  orelse := (stateful_tactic_has_orelse profiling_state).orelse,
+  lift   := λ { α : Type }, lift_tactic_to_profiling_tactic
 }
 
 meta def empty_profiling_state : profiling_state := ⟨ 0 ⟩ 
 
-meta def profiling { α : Type } ( t : profiling_tactic α ) : tactic (ℕ × α) :=
-do r ← t empty_profiling_state,
-   trace r.2.invocations,
-   match r.1 with 
-   | result.success a ts := pure (r.2.invocations, a)
-   | result.exception msg pos ts := match msg with
-                                    | (some m) := tactic.fail ( m () )
-                                    | none     := tactic.failed
-                                    end
-   end
+meta def profiling
+  { α : Type } ( t : profiling_tactic α )
+  ( success_handler   : profiling_state → tactic unit := λ p, trace format!"success, with {p.invocations} invocations" ) 
+  ( exception_handler : profiling_state → tactic unit := λ p, trace format!"failed, with {p.invocations} invocations" ) 
+    : tactic (α × profiling_state) :=
+λ s, match t (s, empty_profiling_state) with
+     | result.success a ts         :=
+         match success_handler ts.2 ts.1 with
+         | result.success _ _             := result.success (a, ts.2) ts.1
+         | result.exception msg' pos' ts' := result.exception msg' pos' ts'  -- Ugh, an exception in the exception handler!
+         end        
+     | result.exception msg pos ts := 
+         match exception_handler ts.2 ts.1 with
+         | result.success _ _             := result.exception msg pos ts.1
+         | result.exception msg' pos' ts' := result.exception msg' pos' ts'  -- Ugh, an exception in the exception handler!
+         end
+     end 
 
-lemma f : true :=
+lemma profile_test : true :=
 begin
 profiling $ skip >> skip,             -- 2
 profiling $ skip >> skip >> skip,     -- 3
@@ -106,11 +129,57 @@ success_if_fail { profiling $ done }, -- 1
 profiling $ skip <|> done,            -- 1
 profiling $ done <|> skip,            -- 2
 
-profiling $ (skip <|> done) >> skip, -- 2
+profiling $ (skip <|> done) >> skip,  -- 2
 
-profiling $ done <|> done <|> skip, -- 3
+profiling $ done <|> done <|> skip,   -- 3
 
 success_if_fail { profiling $ done <|> done }, -- 2
 
 triv
 end
+
+structure loop_detection_state := 
+  ( past_goals : list string )
+
+meta def loop_detection_tactic := stateful_tactic loop_detection_state
+
+meta def lift_tactic_to_loop_detection_tactic { α : Type u } ( t : tactic α ) : loop_detection_tactic α := 
+λ ( s : tactic_state × loop_detection_state ), 
+              match (t s.1) with
+              | result.success a s'         := match (hash_target s') with
+                                               | result.success hash s'' := if s.2.past_goals.mem hash then
+                                                                              match (@tactic.fail α string _ "detected looping") s'' with -- FIXME this duplicates code above
+                                                                              | result.success a ts := unreachable
+                                                                              | result.exception pos msg ts := result.exception pos msg (ts, s.2)
+                                                                              end
+                                                                            else 
+                                                                              result.success a (s', ⟨ hash :: s.2.past_goals ⟩ )
+                                               | _                       := unreachable
+                                               end
+              | result.exception pos msg s' := result.exception pos msg (s', s.2 )
+              end
+
+meta def detect_looping
+  { α : Type } ( t : loop_detection_tactic α )
+    : tactic α :=
+λ s, match t (s, ⟨ [] ⟩ ) with
+     | result.success a s'          := result.success a s'.1
+     | result.exception pos msg s' := result.exception pos msg (s'.1)
+     end
+
+meta instance : tactical_monad loop_detection_tactic := {
+  stateful_tactic_monad_fail loop_detection_state with 
+  orelse := (stateful_tactic_has_orelse loop_detection_state).orelse,
+  lift   := λ { α : Type }, lift_tactic_to_loop_detection_tactic
+}
+
+
+lemma looping_test : true :=
+begin
+detect_looping $ skip,
+success_if_fail { detect_looping $ skip >> skip },
+
+triv
+end
+
+-- PROJECT: now for a challenge --- how can we use both of the examples above at once?
