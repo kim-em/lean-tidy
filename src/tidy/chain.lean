@@ -17,7 +17,7 @@ structure chain_cfg :=
   ( trace_on_loop : bool := tt )
 
 meta def hash_target : tactic string :=
-(done >> pure "no goals") <|>
+(done >> pure "[no goals]") <|>
 do options ← get_options,
    set_options (options.set_bool `pp.all true),
    t ← read, 
