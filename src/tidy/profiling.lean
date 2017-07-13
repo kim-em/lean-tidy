@@ -9,19 +9,25 @@ open tactic
 
 universe variables u v
 
-structure invocation_count := 
-  ( invocations : ℕ )
-
 meta def exception_in_messages {α : Sort u} : α := undefined_core "exception in profiling messages!"
+
+structure invocation_count := 
+  ( successful_invocations : ℕ )
+  ( failed_invocations     : ℕ )
+
+def invocation_count.record_success ( p : invocation_count ) : invocation_count :=
+⟨ p.successful_invocations + 1, p.failed_invocations ⟩ 
+def invocation_count.record_failure ( p : invocation_count ) : invocation_count :=
+⟨ p.successful_invocations, p.failed_invocations + 1 ⟩ 
 
 meta def profiling
   { σ α : Type } 
   [ underlying_tactic_state σ ]
   ( t : interaction_monad (σ × invocation_count) α ) 
-  ( success_handler   : invocation_count → tactic unit := λ p, trace format!"success, with {p.invocations} invocations" ) 
-  ( exception_handler : invocation_count → tactic unit := λ p, trace format!"failed, with {p.invocations} invocations" ) 
+  ( success_handler   : invocation_count → tactic unit := λ p, trace format!"success, with {p.successful_invocations} successful tactic invocations and {p.failed_invocations} failed tactic invocations" ) 
+  ( exception_handler : invocation_count → tactic unit := λ p, trace format!"failed, with {p.successful_invocations} successful tactic invocations and {p.failed_invocations} failed tactic invocations" ) 
     : interaction_monad σ (α × invocation_count) :=
-λ s, match t (s, ⟨ 0 ⟩) with
+λ s, match t (s, ⟨ 0, 0 ⟩) with
      | result.success a ts         :=
          match success_handler ts.2 ts.1 with
          | result.success _ _             := result.success (a, ts.2) ts.1
@@ -37,7 +43,10 @@ meta def profiling
 meta instance lift_to_profiling_tactic : tactic_lift invocation_count := 
 {
   lift := λ { σ α : Type } [underlying_tactic_state σ] ( t : interaction_monad σ α ) (s : σ × invocation_count),
-            (t s.1).map(λ ts, (ts, ⟨ s.2.invocations + 1 ⟩ ))
+            match (t s.1) with
+            | result.success   a       s' := result.success   a       (s', s.2.record_success) 
+            | result.exception msg pos s' := result.exception msg pos (s', s.2.record_failure)
+            end
 } 
 
 lemma profile_test : true :=
