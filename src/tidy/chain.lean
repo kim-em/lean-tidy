@@ -3,6 +3,7 @@
 -- Authors: Scott Morrison
 
 import .if_then_else
+import .hash_target
 
 open tactic
 open nat
@@ -12,17 +13,9 @@ open nat
 structure chain_cfg := 
   ( max_steps     : nat  := 500 )
   ( trace_steps   : bool := ff )
-  ( loop_limit    : nat  := 5  )
   ( fail_on_loop  : bool := tt )
   ( trace_on_loop : bool := tt )
-
-meta def hash_target : tactic string :=
-(done >> pure "[no goals]") <|>
-do options ← get_options,
-   set_options (options.set_bool `pp.all true),
-   t ← read, 
-   set_options options,
-   pure t.to_format.to_string
+  ( allowed_collisions : nat  := 0 )
 
 private meta structure chain_progress { α : Type } :=
   ( iteration_limit   : nat )
@@ -50,7 +43,7 @@ private meta def chain'
           some r ← try_core t | /- tactic t failed, continue down the list -/ (chain' ⟨ succ n, results, ts, hashes, repeats ⟩),
           h ← hash_target,
           let repeat := if hashes.mem h then 1 else 0 in
-          if (repeat = 1) && (repeats ≥ cfg.loop_limit) then 
+          if (repeat = 1) && (repeats ≥ cfg.allowed_collisions) then 
             /- we've run into a loop -/
             do if cfg.trace_on_loop then trace "chain tactic detected looping" else skip,
                if cfg.fail_on_loop then

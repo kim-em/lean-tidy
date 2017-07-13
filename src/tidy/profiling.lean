@@ -4,13 +4,10 @@
 
 import .tactic_states
 import .if_then_else
-import .tidy
 
 open tactic
 
 universe variables u v
-
---- Profiling:
 
 structure invocation_count := 
   ( invocations : ℕ )
@@ -28,22 +25,19 @@ meta def profiling
      | result.success a ts         :=
          match success_handler ts.2 ts.1 with
          | result.success _ _             := result.success (a, ts.2) ts.1
-         | result.exception msg' pos' ts' := exception_in_messages  -- Ugh, an exception in the exception handler!
+         | result.exception msg' pos' ts' := exception_in_messages
          end        
      | result.exception msg pos ts := 
          match exception_handler ts.2 ts.1 with
          | result.success _ _             := result.exception msg pos ts.1
-         | result.exception msg' pos' ts' := exception_in_messages  -- Ugh, an exception in the exception handler!
+         | result.exception msg' pos' ts' := exception_in_messages
          end
      end 
 
 meta instance lift_to_profiling_tactic : tactic_lift invocation_count := 
 {
   lift := λ { σ α : Type } [underlying_tactic_state σ] ( t : interaction_monad σ α ) (s : σ × invocation_count),
-            match t s.1 with
-            | result.success   a       ts := result.success   a       (ts, ⟨ s.2.invocations + 1 ⟩ )
-            | result.exception msg pos ts := result.exception msg pos (ts, ⟨ s.2.invocations + 1 ⟩ )
-            end
+            (t s.1).map(λ ts, (ts, ⟨ s.2.invocations + 1 ⟩ ))
 } 
 
 lemma profile_test : true :=

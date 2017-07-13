@@ -2,14 +2,15 @@
 -- Released under Apache 2.0 license as described in the file LICENSE.
 -- Authors: Scott Morrison
 
-import .profiling
+import .tactic_states
+import .hash_target
 
 open tactic
 
 universe variables u v
 
-
 structure loop_detection_state := 
+  ( allowed_collisions : nat )
   ( past_goals : list string )
 
 meta def unreachable {α : Sort u} : α := undefined_core "unreachable"
@@ -18,32 +19,34 @@ meta def detect_looping
   { σ α : Type } 
   [ underlying_tactic_state σ ]
   ( t : interaction_monad (σ × loop_detection_state) α ) 
+  ( allowed_collisions : nat := 0 )
     : interaction_monad σ α :=
 λ s, match (hash_target s) with
-     | result.success   hash    s' := match t (s, ⟨ [ hash ] ⟩ ) with
-                                      | result.success a s''         := result.success a s''.1
-                                      | result.exception pos msg s'' := result.exception pos msg (s''.1)
-                                      end
+     | result.success   hash    s' := (t (s, ⟨ allowed_collisions, [ hash ] ⟩ )).map(λ s'', s''.1)
      | result.exception pos msg s' := unreachable
      end
 
-meta instance lift_to_loop_detection_tactic : tactic_lift loop_detection_state := 
-{
-  lift := λ { σ α : Type } [uts : underlying_tactic_state σ] ( t : interaction_monad σ α ) (s : σ × loop_detection_state),
+meta def instrument_for_loop_detection { σ α : Type } [uts : underlying_tactic_state σ] ( t : interaction_monad σ α ) : interaction_monad (σ × loop_detection_state) α :=
+λ (s : σ × loop_detection_state),
             match t s.1 with
             | result.success   a       s' := match (hash_target (@underlying_tactic_state.to_tactic_state _ uts s')) with -- FIXME why doesn't the coercion work? why can't Lean find uts itself?
                                              | result.success hash s'' := if s.2.past_goals.mem hash then
-                                                                            match (@tactic.fail α string _ ("detected looping\n" ++ s.2.past_goals.to_string ++ "\n" ++ hash)) s'' with -- FIXME this duplicates code above
-                                                                            | result.success   a       s''' := unreachable
-                                                                            | result.exception pos msg s''' := result.exception pos msg (s', s.2)
-                                                                            end
+                                                                            if s.2.allowed_collisions > 0 then
+                                                                              result.success a (s', ⟨ s.2.allowed_collisions - 1, s.2.past_goals ⟩ )
+                                                                            else 
+                                                                              match (@tactic.fail α string _ ("detected looping" /-++ "\n" ++ s.2.past_goals.to_string ++ "\n" ++ hash-/)) s'' with -- FIXME this duplicates code above
+                                                                              | result.success   a       s''' := unreachable
+                                                                              | result.exception pos msg s''' := result.exception pos msg (s', s.2)
+                                                                              end
                                                                           else  
-                                                                            result.success a (s', ⟨ hash :: s.2.past_goals ⟩ )
+                                                                            result.success a (s', ⟨ s.2.allowed_collisions, hash :: s.2.past_goals ⟩ )
                                              | _ := unreachable
                                              end
             | result.exception msg pos s' := result.exception msg pos (s', s.2)
             end
-} 
+
+meta instance lift_to_loop_detection_tactic : tactic_lift loop_detection_state := 
+⟨ λ { σ α : Type } [uts : underlying_tactic_state σ], @instrument_for_loop_detection σ α uts ⟩ 
 
 meta def simp := `[simp]
 
@@ -58,23 +61,3 @@ begin
 detect_looping $ simp
 end
 
--- Lean won't chain two coercions together for us, so we provide a shortcut here.
-meta instance tactic_lift_twice_coe (τ τ' : Type) [tactic_lift τ] [tactic_lift τ'] (σ α : Type) [underlying_tactic_state σ] : has_coe (interaction_monad σ α) (interaction_monad ((σ × τ) × τ') α) :=
-⟨ λ t, tactic_lift.lift τ' (tactic_lift.lift τ t) ⟩
-
-lemma looping_and_profiling_at_the_same_time_test_1 : true :=
-begin
-profiling $ (detect_looping $ triv),
-end
-
-lemma looping_and_profiling_at_the_same_time_test_2 : true :=
-begin
-success_if_fail { profiling $ detect_looping $ skip >> skip },
-triv
-end
-
-lemma looping_and_profiling_at_the_same_time_test_3 : 1 = 1 :=
-begin
-success_if_fail { profiling $ detect_looping $ simp >> skip >> skip }, -- failed, with 2 invocations
-simp
-end

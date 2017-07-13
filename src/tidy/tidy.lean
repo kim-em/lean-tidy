@@ -3,7 +3,7 @@
 -- Authors: Scott Morrison
 
 import .force .applicable .congr_assumptions .fsplit .automatic_induction .tidy_tactics
-import .chain
+import .monadic_chain
 import .smt
 
 open tactic
