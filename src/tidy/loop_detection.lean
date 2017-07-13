@@ -66,9 +66,15 @@ lemma looping_and_profiling_at_the_same_time_test_1 : true :=
 begin
 profiling $ (detect_looping $ triv),
 end
+
 lemma looping_and_profiling_at_the_same_time_test_2 : true :=
 begin
 success_if_fail { profiling $ detect_looping $ skip >> skip },
 triv
 end
 
+lemma looping_and_profiling_at_the_same_time_test_3 : 1 = 1 :=
+begin
+success_if_fail { profiling $ detect_looping $ simp >> skip >> skip }, -- failed, with 2 invocations
+simp
+end
