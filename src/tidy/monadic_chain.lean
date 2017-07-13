@@ -10,17 +10,36 @@ open nat tactic
 
 universe variables u
 
-meta def monadic_repeat_at_most_core { σ : Type } { α : Type u } ( t : interaction_monad σ α ) : nat → (list α) → interaction_monad σ (list α)
-| 0        results := pure results
-| (succ n) results := (do r ← t, monadic_repeat_at_most_core n (r :: results)) <|> pure results
+meta def interaction_monad.done {σ : Type} [underlying_tactic_state σ] : interaction_monad σ unit :=
+λ s, (tactic.done (underlying_tactic_state.to_tactic_state s)).map(λ s', s)
 
-meta def monadic_repeat_at_most { σ : Type } { α : Type u } ( limit : nat ) ( t : interaction_monad σ α ) : interaction_monad σ (list α) := monadic_repeat_at_most_core t limit []
+private meta structure chain_progress ( σ α : Type ) :=
+  ( iteration_limit   : nat )
+  ( results           : list α )
+  ( remaining_tactics : list (interaction_monad (tactic_state × σ) α) )
+ 
+private meta def monadic_chain_core' { σ α : Type } ( tactics : list (interaction_monad (tactic_state × σ) α) ) 
+    : chain_progress σ α → interaction_monad (tactic_state × σ) (list α)
+| ⟨ 0     , _      , _       ⟩ := interaction_monad.fail "chain iteration limit exceeded"
+| ⟨ _     , results, []      ⟩ := pure results
+| ⟨ succ n, results, t :: ts ⟩ := if_then_else interaction_monad.done
+                                   (pure results)
+                                   (dependent_if_then_else t 
+                                      (λ result, (monadic_chain_core' ⟨ n, result :: results, tactics ⟩ ))
+                                      (monadic_chain_core' ⟨ succ n, results, ts ⟩)
+)
 
-/-- `first [t_1, ..., t_n]` applies the first tactic that doesn't fail.
-   The tactic fails if all t_i's fail. -/
-meta def monadic_first { σ : Type } { α : Type u } : list (interaction_monad σ α) → interaction_monad σ α
-| []      := monadic_fail "first tactic failed, no more alternatives"
-| (t::ts) := t <|> monadic_first ts
+-- meta def monadic_repeat_at_most_core { σ : Type } { α : Type u } ( t : interaction_monad σ α ) : nat → (list α) → interaction_monad σ (list α)
+-- | 0        results := pure results
+-- | (succ n) results := (do r ← t, monadic_repeat_at_most_core n (r :: results)) <|> pure results
+
+-- meta def monadic_repeat_at_most { σ : Type } { α : Type u } ( limit : nat ) ( t : interaction_monad σ α ) : interaction_monad σ (list α) := monadic_repeat_at_most_core t limit []
+
+-- /-- `first [t_1, ..., t_n]` applies the first tactic that doesn't fail.
+--    The tactic fails if all t_i's fail. -/
+-- meta def monadic_first { σ : Type } { α : Type u } : list (interaction_monad σ α) → interaction_monad σ α
+-- | []      := monadic_fail "first tactic failed, no more alternatives"
+-- | (t::ts) := t <|> monadic_first ts
 
 structure chain_cfg := 
   ( max_steps          : nat  := 500 )
@@ -29,7 +48,7 @@ structure chain_cfg :=
   ( fail_on_loop       : bool := tt )
   
 meta def monadic_chain_core { σ α : Type } [ tactic_lift σ ] ( cfg : chain_cfg ) ( tactics : list (interaction_monad (tactic_state × σ) α) ) : interaction_monad (tactic_state × σ) (list α) :=
-monadic_repeat_at_most cfg.max_steps ( (monadic_first tactics) <|> fail "chain iteration limit exceeded" )
+monadic_chain_core' tactics ⟨ cfg.max_steps, [], tactics ⟩
 
 private meta def monadic_chain_handle_looping
   { σ α : Type } [ tactic_lift σ ] [ has_to_format α ] 
@@ -75,27 +94,27 @@ meta def chain
 
 def chain_test_simp_succeeded : 1 = 1 :=
 begin
-  chain [ simp ]
+  chain [ interactive_simp ]
 end
 
 def chain_test_without_loop_detection_skip_does_nothing : 1 = 1 :=
 begin
-  chain [ skip ] { fail_on_loop := ff } ,
+  success_if_fail { chain [ skip ] { fail_on_loop := ff } }, -- fails because 'chain iteration limit exceeded'
   refl
 end
 
 def chain_test_without_loop_detection_skip_does_nothing' : 1 = 1 :=
 begin
-  chain [ skip, simp ] { fail_on_loop := ff },
+  success_if_fail { chain [ skip, interactive_simp ] { fail_on_loop := ff } }, -- fails because 'chain iteration limit exceeded'
   refl
 end
 
 def chain_test_loop_detection : 1 = 1 :=
 begin
-  chain [ skip, simp ] {}
+  chain [ skip, interactive_simp ] {}
 end
 
 def chain_test_loop_detection' : 1 = 1 :=
 begin
-  chain [ skip, simp ] { allowed_collisions := 5, trace_steps := tt }
+  chain [ skip, interactive_simp ] { allowed_collisions := 5, trace_steps := tt }
 end

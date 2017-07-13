@@ -13,18 +13,27 @@ match r with
 | result.exception msg pos s := result.exception msg pos (f s)
 end
 
-meta def monadic_failed {σ α : Type} : interaction_monad σ α := interaction_monad.failed
-meta def monadic_fail {σ : Type} {α : Type u} {β : Type v} [has_to_format β] (msg : β) : interaction_monad σ α :=
-interaction_monad.fail msg
+-- meta def monadic_failed {σ α : Type} : interaction_monad σ α := interaction_monad.failed
+-- meta def monadic_fail {σ : Type} {α : Type u} {β : Type v} [has_to_format β] (msg : β) : interaction_monad σ α :=
+-- interaction_monad.fail msg
 
-meta instance interaction_monad.alternative (σ : Type): alternative (interaction_monad σ) := {
-  @interaction_monad.monad σ with
-  orelse := λ { α : Type } (t₁ t₂ : interaction_monad σ α) s, 
+-- meta instance interaction_monad.alternative (σ : Type): alternative (interaction_monad σ) := {
+--   @interaction_monad.monad σ with
+--   orelse := λ { α : Type } (t₁ t₂ : interaction_monad σ α) s, 
+--               match (t₁ s) with
+--               | result.success   a       s' := result.success a s'
+--               | result.exception msg pos s' := (t₂ s')
+--               end,
+--   failure := λ { α : Type }, interaction_monad.failed,
+-- }
+meta instance interaction_monad.alternative (σ : Type): alternative (interaction_monad (tactic_state × σ)) := {
+  @interaction_monad.monad (tactic_state × σ) with
+  orelse := λ { α : Type } (t₁ t₂ : interaction_monad (tactic_state × σ) α) s, 
               match (t₁ s) with
               | result.success   a       s' := result.success a s'
-              | result.exception msg pos s' := (t₂ s')
+              | result.exception msg pos s' := (t₂ (s.1, s'.2))    -- we discard the tactic_state from the failed branch, but keep the other state
               end,
-  failure := λ { α : Type }, monadic_failed,
+  failure := λ { α : Type }, interaction_monad.failed,
 }
 
 meta class underlying_tactic_state ( σ : Type ) :=
@@ -70,14 +79,24 @@ meta instance discard_unit_coe (σ α : Type) : has_coe (interaction_monad (σ �
   coe := λ t s, (t (s, unit.star)).map(λ s', s'.1)
 }
 
-meta instance interaction_monad.has_orelse (σ : Type) : has_orelse (interaction_monad σ) := {
-  orelse := λ { α : Type u } (t₁ t₂ : interaction_monad σ α) s, 
-              match (t₁ s) with
-              | result.success   a       s' := result.success a s'
-              | result.exception msg pos s' := match (t₂ s') with
-                                               | result.success   a'        s'' := result.success   a'        s''
-                                               | result.exception msg' pos' s'' := result.exception msg' pos' s''
-                                               end
-              end
-}
+-- meta instance interaction_monad.has_orelse (σ : Type) : has_orelse (interaction_monad σ) := {
+--   orelse := λ { α : Type u } (t₁ t₂ : interaction_monad σ α) s, 
+--               match (t₁ s) with
+--               | result.success   a       s' := result.success a s'
+--               | result.exception msg pos s' := match (t₂ s') with
+--                                                | result.success   a'        s'' := result.success   a'        s''
+--                                                | result.exception msg' pos' s'' := result.exception msg' pos' s''
+--                                                end
+--               end
+-- }
+-- meta instance interaction_monad.has_orelse (σ : Type) : has_orelse (interaction_monad (tactic_state × σ)) := {
+--   orelse := λ { α : Type u } (t₁ t₂ : interaction_monad (tactic_state × σ) α) s, 
+--               match (t₁ s) with
+--               | result.success   a       s' := result.success a s'
+--               | result.exception msg pos s' := match (t₂ (s.1, s'.2)) with
+--                                                | result.success   a'        s'' := result.success   a'        s''
+--                                                | result.exception msg' pos' s'' := result.exception msg' pos' s''
+--                                                end
+--               end
+-- }
 

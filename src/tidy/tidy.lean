@@ -50,25 +50,20 @@ do ng ← num_goals,
 -- TODO I'd love to do some profiling here, and find how much time is spent inside each tactic,
 -- also divided up between successful and unsuccessful calls.
 
+-- TODO does cc help?
 meta def global_tidy_tactics : list (tactic string) :=
 [
-  -- triv                                        >> pure "triv", 
   force (reflexivity)                         >> pure "refl", 
   if_first_goal_safe assumption               >> pure "assumption",
-  -- if_first_goal_safe cc                       >> pure "cc", -- TODO try this?
   if_first_goal_safe congr_assumptions,       
   `[exact dec_trivial]                        >> pure "exact dec_trivial",
   applicable                                  >> pure "applicable",
-  force (intros >> skip)                      >> pure "intros",
+  intro1                                      >> pure "intro1",
   force (fsplit)                              >> pure "fsplit", 
   dsimp'                                      >> pure "dsimp'",
-  -- force (dsimp_eq_mpr)                        >> pure "dsimp [eq.mpr] {unfold_reducible := tt}",
-  -- unfold_projs_target {md := semireducible}   >> pure "tactic.unfold_projs_target {md := semireducible}", 
   `[simp]                                     >> pure "simp",
   automatic_induction                         >> pure "automatic_induction",
   dsimp_all'                                  >> pure "dsimp_all'",
-  -- `[dsimp at * {unfold_reducible := tt}]      >> pure "dsimp at * {unfold_reducible := tt}",
-  -- `[unfold_projs at * {md := semireducible}]  >> pure "unfold_projs at * {md := semireducible}",
   `[simp at *]                                >> pure "simp at *"
 ]
 
@@ -105,21 +100,38 @@ do
       fail "hints for 'tidy' tactic were invalid!"     
    else 
     do
-      (done >> guard (cfg.hints.length > 0)) <|> do
+      (tactic.done >> guard (cfg.hints.length > 0)) <|> do
       results ← chain numbered_tactics cfg.to_chain_cfg,
+      -- hash_target >>= trace,
       if cfg.show_hints then
         let hints := results.map (λ p, p.2) in
-        trace ("tidy {hints:=" ++ hints.to_string ++ "}  .")
+        trace ("tidy {hints:=" ++ hints.to_string ++ "}")
       else 
         skip,
       if cfg.trace_result then
         let result_strings := results.map (λ p, p.1) in
-        trace ("... chain tactic used: " ++ result_strings.to_string)
+        trace ("chain tactic used: " ++ result_strings.to_string)
       else
         skip
 
 meta def blast ( cfg : tidy_cfg := {} ) : tactic unit := 
-tidy { cfg with extra_tactics := cfg.extra_tactics ++ [ focus1 ( smt_eblast >> done ) >> pure "smt_eblast" ] }
+tidy { cfg with extra_tactics := cfg.extra_tactics ++ [ focus1 ( smt_eblast >> tactic.done ) >> pure "smt_eblast" ] }
 
 notation `♮` := by abstract { smt_eblast }
 notation `♯`  := by abstract { blast }
+
+-- meta def interactive_simp := `[simp]
+
+def tidy_test_0 : ∀ x : unit, x = unit.star := 
+begin
+  success_if_fail { chain [ interactive_simp ] },
+  intro1,
+  induction x,
+  refl
+end
+
+
+def tidy_test (a : string): ∀ x : unit, x = unit.star := 
+begin
+  tidy
+end

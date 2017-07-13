@@ -48,7 +48,7 @@ meta def instrument_for_loop_detection { σ α : Type } [uts : underlying_tactic
 meta instance lift_to_loop_detection_tactic : tactic_lift loop_detection_state := 
 ⟨ λ { σ α : Type } [uts : underlying_tactic_state σ], @instrument_for_loop_detection σ α uts ⟩ 
 
-meta def simp := `[simp]
+meta def interactive_simp := `[simp]
 
 lemma looping_test_1 (a : empty): 1 = 1 :=
 begin
@@ -58,6 +58,6 @@ refl
 end
 lemma looping_test_2 (a : empty): 1 = 1 :=
 begin
-detect_looping $ simp
+detect_looping $ interactive_simp
 end
 
