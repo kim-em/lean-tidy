@@ -25,7 +25,7 @@ meta instance tactic_lift_coe (τ : Type) [tactic_lift τ] (σ α : Type) [under
 ⟨ tactic_lift.lift τ ⟩
 
 meta instance interaction_monad.has_orelse (σ : Type) : has_orelse (interaction_monad σ) := {
-  orelse := λ { α : Type } (t₁ t₂ : interaction_monad σ α) s, 
+  orelse := λ { α : Type u } (t₁ t₂ : interaction_monad σ α) s, 
               match (t₁ s) with
               | result.success   a       s' := result.success a s'
               | result.exception msg pos s' := match (t₂ s') with
@@ -34,3 +34,7 @@ meta instance interaction_monad.has_orelse (σ : Type) : has_orelse (interaction
                                                end
               end
 }
+
+meta def failed {σ α : Type} : interaction_monad σ α := interaction_monad.failed
+meta def fail {σ : Type} {α : Type u} {β : Type v} [has_to_format β] (msg : β) : interaction_monad σ α :=
+interaction_monad.fail msg
