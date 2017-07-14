@@ -50,12 +50,18 @@ do ng ← num_goals,
 -- TODO I'd love to do some profiling here, and find how much time is spent inside each tactic,
 -- also divided up between successful and unsuccessful calls.
 
+-- TODO also find tactics which are never used!
+
 -- TODO does cc help?
-meta def global_tidy_tactics : list (tactic string) :=
+meta def unsafe_tidy_tactics : list (tactic string) :=
+[
+  assumption >> pure "assumption",
+  congr_assumptions
+]
+
+meta def safe_tidy_tactics : list (tactic string) :=
 [
   force (reflexivity)                         >> pure "refl", 
-  if_first_goal_safe assumption               >> pure "assumption",
-  if_first_goal_safe congr_assumptions,       
   `[exact dec_trivial]                        >> pure "exact dec_trivial",
   applicable                                  >> pure "applicable",
   intro1                                      >> pure "intro1",
@@ -66,6 +72,25 @@ meta def global_tidy_tactics : list (tactic string) :=
   dsimp_all'                                  >> pure "dsimp_all'",
   `[simp at *]                                >> pure "simp at *"
 ]
+
+private meta def any_later_goals_core { α : Type } (tac : tactic α) : list expr → list expr → list (option α) → bool → tactic (list (option α))
+| []        ac results progress := guard progress >> set_goals ac >> pure results
+| (g :: gs) ac results progress :=
+  do set_goals [g],
+     succeeded ← try_core tac,
+     new_gs    ← get_goals,
+     any_later_goals_core gs (ac ++ new_gs) (succeeded :: results) (succeeded.is_some || progress)
+
+/-- Apply the given tactic to any goal besides the first where it succeeds. The tactic succeeds only if
+   tac succeeds for at least one goal. -/
+meta def any_later_goals { α : Type } (tac : tactic α ) : tactic (list (option α)) :=
+do gs ← get_goals,
+   any_later_goals_core tac gs [] [] ff
+
+meta def global_tidy_tactics :=
+unsafe_tidy_tactics.map(if_first_goal_safe)
+++ safe_tidy_tactics
+++ safe_tidy_tactics.map(λ t, any_later_goals t >>= λ s, pure ("tactic.focus [ " ++ ((((none :: s).map(λ o, option.get_or_else o "skip")).intersperse ", ").foldl append "") ++ "]"))
 
 meta structure tidy_cfg extends chain_cfg :=
 ( trace_result          : bool                 := ff )
