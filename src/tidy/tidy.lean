@@ -2,7 +2,7 @@
 -- Released under Apache 2.0 license as described in the file LICENSE.
 -- Authors: Scott Morrison
 
-import .force .applicable .congr_assumptions .fsplit .automatic_induction .tidy_tactics
+import .force .applicable .congr_assumptions .fsplit .automatic_induction .tidy_attributes
 import .monadic_chain
 import .smt
 
@@ -99,13 +99,8 @@ meta structure tidy_cfg extends chain_cfg :=
 ( show_hints            : bool                 := tt )
 ( hints                 : list ℕ               := [] )
 
--- TODO surely this is in the library
-private def listn : nat → list nat 
-| 0            := []
-| (nat.succ n) := (listn n) ++ [n]
-
 private meta def number_tactics { α : Type } ( tactics : list (tactic α) ) : list ( tactic (α × ℕ) ) :=
-tactics.map₂ ( λ t, λ n, (do r ← t, pure (r, n))) (listn tactics.length)
+tactics.map₂ ( λ t, λ n, (do r ← t, pure (r, n))) (list.range tactics.length)
 
 private meta def apply_hints { α : Type } ( tactics : list (tactic α) ) : list ℕ → tactic bool
 | list.nil  := pure tt
