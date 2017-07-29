@@ -29,9 +29,9 @@ meta def congr_assumptions : tactic string :=
 do t ← target,
    guard (is_equation t),
    l ← local_context,
-   first(l.for(λ h, infer_type h >>= λ t, guard (is_equation t) >> exact_symm h))
-   <|> first(l.for(λ h1, infer_type h1 >>= λ t, guard (is_equation t) >> first (l.for(λ h2, exact_congr_fun_expr h1 h2))))
-   <|> first(l.for(λ h1, infer_type h1 >>= λ t, guard (is_equation t) >> first (l.for(λ h2, exact_congr_arg_expr h2 h1))))
+   first(l.map(λ h, infer_type h >>= λ t, guard (is_equation t) >> exact_symm h))
+   <|> first(l.map(λ h1, infer_type h1 >>= λ t, guard (is_equation t) >> first (l.map(λ h2, exact_congr_fun_expr h1 h2))))
+   <|> first(l.map(λ h1, infer_type h1 >>= λ t, guard (is_equation t) >> first (l.map(λ h2, exact_congr_arg_expr h2 h1))))
 
 lemma test1 (f : nat → nat) (x y : nat) (p : x = y) : f x = f y :=
 begin 

@@ -19,7 +19,7 @@ do e ← mk_const n,
    (eval_expr (tactic unit) e) >>= (λ t, pure ( t >> pure n.to_string ))
 
 meta def names_to_tactics ( n : list name ) : tactic (list (tactic string)) :=
-do n.mfor name_to_tactic
+do n.mmap name_to_tactic
 
 meta def run_tidy_tactics : tactic string :=
 do names ← attribute.get_instances `tidy,

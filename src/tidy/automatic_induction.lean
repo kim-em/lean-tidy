@@ -35,4 +35,4 @@ end
 
 meta def automatic_induction : tactic unit :=
 do l ← local_context,
-   at_least_one (l.reverse.for (λ h, automatic_induction_at h))
+   at_least_one (l.reverse.map(λ h, automatic_induction_at h))
