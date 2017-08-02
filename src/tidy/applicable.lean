@@ -12,11 +12,11 @@ def applicable_attribute : user_attribute := {
 run_cmd attribute.register `applicable_attribute
 
 /- Try to apply one of the given lemas, it succeeds if one of them succeeds. -/
-meta def any_apply : list name → tactic unit
+meta def any_apply : list name → tactic name
 | []      := failed
-| (c::cs) := (mk_const c >>= fapply /->> trace ("applying " ++ to_string c)-/) <|> any_apply cs
+| (c::cs) := (mk_const c >>= fapply/->> trace ("applying " ++ to_string c)-/ >> pure c) <|> any_apply cs
 
-meta def applicable : tactic unit :=
+meta def applicable : tactic name :=
 do cs ← attribute.get_instances `applicable,
    (any_apply cs) <|> fail "no @[applicable] lemmas could be applied"
 

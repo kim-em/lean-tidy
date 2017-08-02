@@ -63,7 +63,7 @@ meta def safe_tidy_tactics : list (tactic string) :=
 [
   force (reflexivity)                         >> pure "refl", 
   `[exact dec_trivial]                        >> pure "exact dec_trivial",
-  applicable                                  >> pure "applicable",
+  applicable                                  >>= λ n, pure ("fapply " ++ n.to_string),
   intro_at_least_one                          >> pure "intros",
   force (fsplit)                              >> pure "fsplit", 
   dsimp'                                      >> pure "dsimp'",
@@ -91,7 +91,7 @@ meta def global_tidy_tactics :=
 unsafe_tidy_tactics.map(if_first_goal_safe)
 ++ safe_tidy_tactics
 -- PROJECT this would be great...
-++ safe_tidy_tactics.map(λ t, any_later_goals t >>= λ s, pure ("tactic.focus [ " ++ ((((none :: s).map(λ o, option.get_or_else o "skip")).intersperse ", ").foldl append "") ++ "]"))
+-- ++ safe_tidy_tactics.map(λ t, any_later_goals t >>= λ s, pure ("tactic.focus [ " ++ ((((none :: s).map(λ o, option.get_or_else o "skip")).intersperse ", ").foldl append "") ++ "]"))
 
 meta structure tidy_cfg extends chain_cfg :=
 ( trace_result          : bool                 := ff )
