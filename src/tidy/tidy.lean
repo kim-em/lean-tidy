@@ -2,7 +2,7 @@
 -- Released under Apache 2.0 license as described in the file LICENSE.
 -- Authors: Scott Morrison
 
-import .force .applicable .congr_assumptions .fsplit .automatic_induction .tidy_attributes
+import .force .applicable .congr_assumptions .fsplit .automatic_induction .tidy_attributes .intro_at_least_one
 import .monadic_chain
 import .smt
 
@@ -64,7 +64,7 @@ meta def safe_tidy_tactics : list (tactic string) :=
   force (reflexivity)                         >> pure "refl", 
   `[exact dec_trivial]                        >> pure "exact dec_trivial",
   applicable                                  >> pure "applicable",
-  intro1                                      >> pure "intro1",
+  intro_at_least_one                          >> pure "intros",
   force (fsplit)                              >> pure "fsplit", 
   dsimp'                                      >> pure "dsimp'",
   `[simp]                                     >> pure "simp",
@@ -97,7 +97,7 @@ meta structure tidy_cfg extends chain_cfg :=
 ( trace_result          : bool                 := ff )
 ( run_annotated_tactics : bool                 := tt )
 ( extra_tactics         : list (tactic string) := [] )
-( show_hints            : bool                 := tt )
+( show_hints            : bool                 := ff )
 ( hints                 : list ℕ               := [] )
 
 private meta def number_tactics { α : Type } ( tactics : list (tactic α) ) : list ( tactic (α × ℕ) ) :=
