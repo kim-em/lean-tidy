@@ -6,7 +6,7 @@ import .at_least_one
 
 open tactic
 
-def tidy_attribute : user_attribute := {
+meta def tidy_attribute : user_attribute := {
   name := `tidy,
   descr := "A tactic that should be called by tidy."
 }
