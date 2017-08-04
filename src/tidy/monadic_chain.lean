@@ -5,13 +5,14 @@
 import .if_then_else
 import .tactic_states
 import .loop_detection
+import .recover
 
 open nat tactic
 
 universe variables u
 
 meta def interaction_monad.done {σ : Type} [underlying_tactic_state σ] : interaction_monad σ unit :=
-λ s, (tactic.done (underlying_tactic_state.to_tactic_state s)).map(λ s', s)
+λ s, (done_no_metavariables (underlying_tactic_state.to_tactic_state s)).map(λ s', s)
 
 private meta structure chain_progress ( σ α : Type ) :=
   ( iteration_limit   : nat )
