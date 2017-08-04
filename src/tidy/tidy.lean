@@ -90,8 +90,9 @@ do gs ← get_goals,
 meta def global_tidy_tactics :=
 unsafe_tidy_tactics.map(if_first_goal_safe)
 ++ safe_tidy_tactics
--- PROJECT this would be great...
-++ safe_tidy_tactics.map(λ t, any_later_goals t >>= λ s, pure ("tactic.focus [ " ++ ((((none :: s).map(λ o, option.get_or_else o "skip")).intersperse ", ").foldl append "") ++ "]"))
+
+meta def safe_tactics_on_later_goals :=
+safe_tidy_tactics.map(λ t, any_later_goals t >>= λ s, pure ("tactic.focus [ " ++ ((((none :: s).map(λ o, option.get_or_else o "skip")).intersperse ", ").foldl append "") ++ "]"))
 
 meta structure tidy_cfg extends chain_cfg :=
 ( trace_result          : bool                 := ff )
@@ -99,6 +100,7 @@ meta structure tidy_cfg extends chain_cfg :=
 ( extra_tactics         : list (tactic string) := [] )
 ( show_hints            : bool                 := ff )
 ( hints                 : list ℕ               := [] )
+( later_goals           : bool                 := tt )
 
 private meta def number_tactics { α : Type } ( tactics : list (tactic α) ) : list ( tactic (α × ℕ) ) :=
 tactics.map₂ ( λ t, λ n, (do r ← t, pure (r, n))) (list.range tactics.length)
@@ -111,7 +113,10 @@ private meta def apply_hints { α : Type } ( tactics : list (tactic α) ) : list
                end
 
 meta def tidy ( cfg : tidy_cfg := {} ) : tactic unit :=
-let tidy_tactics := global_tidy_tactics ++ (if cfg.run_annotated_tactics then [ run_tidy_tactics ] else []) ++ cfg.extra_tactics in
+let tidy_tactics := global_tidy_tactics
+                     ++ (if cfg.later_goals then safe_tactics_on_later_goals else []) 
+                     ++ (if cfg.run_annotated_tactics then [ run_tidy_tactics ] else []) 
+                     ++ cfg.extra_tactics in
 let numbered_tactics := number_tactics tidy_tactics in
 do
    /- first apply hints -/
