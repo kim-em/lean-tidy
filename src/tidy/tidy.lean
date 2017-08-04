@@ -70,8 +70,7 @@ meta def safe_tidy_tactics : list (tactic string) :=
   `[simp]                                     >> pure "simp",
   automatic_induction                         >> pure "automatic_induction",
   dsimp_all'                                  >> pure "dsimp_all'",
-  `[simp at *]                                >> pure "simp at *",
-  recover                                     >> pure "recover"
+  `[simp at *]                                >> pure "simp at *"
 ]
 
 private meta def any_later_goals_core { α : Type } (tac : tactic α) : list expr → list expr → list (option α) → bool → tactic (list (option α))
