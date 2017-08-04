@@ -120,15 +120,16 @@ let tidy_tactics := global_tidy_tactics
 let numbered_tactics := number_tactics tidy_tactics in
 do
    /- first apply hints -/
-   r ← apply_hints numbered_tactics cfg.hints,
-   if ¬ r then
-     /- hints were broken ... -/     
-      fail "hints for 'tidy' tactic were invalid!"     
-   else 
+   if ¬ cfg.hints.empty then
+     do r ← apply_hints numbered_tactics cfg.hints,
+      if ¬ r then
+        /- hints were broken ... -/     
+          trace "hints for 'tidy' tactic were invalid!"     
+      else
+          skip
+   else
     do
-      (tactic.done >> guard (cfg.hints.length > 0)) <|> do
       results ← chain numbered_tactics cfg.to_chain_cfg,
-      -- hash_target >>= trace,
       if cfg.show_hints then
         let hints := results.map (λ p, p.2) in
         trace ("tidy {hints:=" ++ hints.to_string ++ "}")
