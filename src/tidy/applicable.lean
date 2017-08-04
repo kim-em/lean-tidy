@@ -4,7 +4,7 @@
 
 open tactic
 
-def applicable_attribute : user_attribute := {
+meta def applicable_attribute : user_attribute := {
   name := `applicable,
   descr := "A lemma that should be applied to a goal whenever possible."
 }
