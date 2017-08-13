@@ -16,27 +16,6 @@ meta def if_exactly_one_goal { α : Type } ( t : tactic α ) : tactic α :=
 do ng ← num_goals,
    if ng = 1 then t else fail "there is not exactly one goal"
 
-private meta def propositional_goals_core { α : Type } (tac : tactic α) : list expr → list expr →  (list (option α)) → bool → tactic (list (option α))
-| []        ac results progress := guard progress >> set_goals ac >> pure results
-| (g :: gs) ac results progress :=
-  do t ← infer_type g,
-     p ← is_prop t,
-     if p then do {
-        set_goals [g],
-        succeeded ← try_core tac,
-        new_gs    ← get_goals,
-        propositional_goals_core gs (ac ++ new_gs) (succeeded :: results ) (succeeded.is_some || progress)
-     } else do {
-       propositional_goals_core gs (ac ++ [ g ]) (none :: results) progress
-     }
-
-/-- Apply the given tactic to any propositional goal where it succeeds. The tactic succeeds only if
-   tac succeeds for at least one goal. -/
-meta def propositional_goals { α : Type } ( t : tactic α ) : tactic (list (option α)) :=
-do gs ← get_goals,
-   results ← propositional_goals_core t gs [] [] ff,
-   pure results.reverse
-
 meta def build_focus_string ( s : list ( option string ) ) : tactic string := 
 pure ("focus " ++ (s.map(λ x, option.get_or_else x "skip")).to_string)
 
@@ -112,6 +91,16 @@ private meta def apply_hints { α : Type } ( tactics : list (tactic α) ) : list
                | some t := if_then_else t (apply_hints ns) (pure ff)
                end
 
+def filter {α : Type u} (p : α → Prop) [decidable_pred p] : option α → option α
+| none     := none
+| (some a) := if p a then some a else none
+
+meta def find_unnecessary_hint {α} (goals : list expr ) (tactics : list (tactic α)) (hints: list ℕ) : option ℕ :=
+(list.range hints.length).find(λ i )
+
+meta def optimise_hints {α} (goals : list expr ) (tactics : list (tactic α)) : list ℕ → list ℕ
+| hints := hints
+
 meta def tidy ( cfg : tidy_cfg := {} ) : tactic unit :=
 let tidy_tactics := global_tidy_tactics
                      ++ (if cfg.later_goals then safe_tactics_on_later_goals else []) 
@@ -129,10 +118,12 @@ do
           skip
    else
     do
+      original_goals ← get_goals,
       results ← chain numbered_tactics cfg.to_chain_cfg,
       if cfg.show_hints then
         let hints := results.map (λ p, p.2) in
-        trace ("tidy {hints:=" ++ hints.to_string ++ "}")
+        let optimised_hints := optimise_hints original_goals numbered_tactics hints in
+        trace ("tidy {hints:=" ++ optimised_hints.to_string ++ "}")
       else 
         skip,
       if cfg.trace_result then
