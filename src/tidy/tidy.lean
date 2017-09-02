@@ -94,59 +94,6 @@ private meta def apply_hints { α : Type } ( tactics : list (tactic α) ) : list
                | none := pure ff
                | some t := if_then_else t (apply_hints ns) (pure ff)
                end
-
--- What a pain that we have to do this inside the tactic monad.
-meta def check_tactic_list_completes (goals : list expr) (tactics : list (tactic unit)) : tactic unit :=
-do
-  actual_goals ← get_goals,
-  set_goals goals,
-  tactics.foldl (λ s t, s >> t) tactic.skip,
-  r ← if_then_else tactic.done (pure tt) (pure ff),
-  set_goals actual_goals,
-  guard r
-
-lemma test : 0 = 0 :=
-begin
-  success_if_fail { get_goals >>= (λ g, check_tactic_list_completes g []) },
-  get_goals >>= (λ g, check_tactic_list_completes [] []),
-  simp
-end
-
-meta def find_index_tactic_succeeds {α : Type} (f : α → tactic unit) : list α → tactic (option ℕ)
-| []     := none
-| (h::t) := do
-              if_then_else 
-                (f h) 
-                (pure (some 0)) 
-                (do 
-                   r ← find_index_tactic_succeeds t,
-                   pure (match r with | none := none | some r := some (r + 1) end)
-                )
-
-def option.map {α β : Type u} (f : α → β) : option α → option β
-| (some x) := some (f x)
-| none     := none 
-
-meta def find_unnecessary_hint {α} (goals : list expr) (tactics : list (tactic α)) (hints: list ℕ) : tactic (option ℕ) :=
-find_index_tactic_succeeds
- (λ i, check_tactic_list_completes goals ((hints.remove_nth i).map(λ k, ((tactics.nth k).map(λ t : tactic α, t >> skip)).get_or_else(skip))))
- (list.range hints.length)
-
-meta def remove_unnecessary_hint {α} (goals : list expr ) (tactics : list (tactic α)) (hints: list ℕ) : tactic (option (list ℕ)) :=
-do o ← find_unnecessary_hint goals tactics hints,
-   match o with
-   | none     := pure none
-   | (some i) := pure (some (hints.remove_nth i))
-   end
-
-meta def optimise_hints {α} (goals : list expr) (tactics : list (tactic α)) : list ℕ → tactic (list ℕ)
-| hints := do
-             o ← remove_unnecessary_hint goals tactics hints,
-             match o with
-             | none     := (pure hints)
-             | (some r) := (optimise_hints r)
-             end
-
 meta def tidy ( cfg : tidy_cfg := {} ) : tactic unit :=
 let tidy_tactics := global_tidy_tactics
                      ++ (if cfg.later_goals then safe_tactics_on_later_goals else []) 
@@ -168,9 +115,7 @@ do
       results ← chain numbered_tactics cfg.to_chain_cfg,
       if cfg.show_hints then
         let hints := results.map (λ p, p.2) in
-        do optimised_hints ← optimise_hints original_goals numbered_tactics hints,
-          trace ("tidy {hints:=" ++ optimised_hints.to_string ++ "}")
-        -- trace ("tidy {hints:=" ++ hints.to_string ++ "}")
+        trace ("tidy {hints:=" ++ hints.to_string ++ "}")
       else 
         skip,
       if cfg.trace_result then
