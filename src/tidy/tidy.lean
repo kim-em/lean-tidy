@@ -10,6 +10,8 @@ import data.list
 
 open tactic
 
+universe variable u
+
 private meta def dsimp_eq_mpr : tactic unit := `[dsimp [eq.mpr] {unfold_reducible := tt}]
 meta def dsimp' := `[dsimp {unfold_reducible := tt, md := semireducible}]
 meta def dsimp_all' := `[dsimp at * {unfold_reducible := tt, md := semireducible}]
@@ -121,9 +123,13 @@ meta def find_index_tactic_succeeds {α : Type} (f : α → tactic unit) : list 
                    pure (match r with | none := none | some r := some (r + 1) end)
                 )
 
-meta def find_unnecessary_hint {α} (goals : list expr ) (tactics : list (tactic α)) (hints: list ℕ) : tactic (option ℕ) :=
+def option.map {α β : Type u} (f : α → β) : option α → option β
+| (some x) := some (f x)
+| none     := none 
+
+meta def find_unnecessary_hint {α} (goals : list expr) (tactics : list (tactic α)) (hints: list ℕ) : tactic (option ℕ) :=
 find_index_tactic_succeeds
- (λ i, skip)      -- FIXME implement this
+ (λ i, check_tactic_list_completes goals ((hints.remove_nth i).map(λ k, ((tactics.nth k).map(λ t : tactic α, t >> skip)).get_or_else(skip))))
  (list.range hints.length)
 
 meta def remove_unnecessary_hint {α} (goals : list expr ) (tactics : list (tactic α)) (hints: list ℕ) : tactic (option (list ℕ)) :=
@@ -131,6 +137,7 @@ do o ← find_unnecessary_hint goals tactics hints,
    match o with
    | none     := pure none
    | (some i) := pure (some (hints.remove_nth i))
+   end
 
 meta def optimise_hints {α} (goals : list expr) (tactics : list (tactic α)) : list ℕ → tactic (list ℕ)
 | hints := do
@@ -161,8 +168,9 @@ do
       results ← chain numbered_tactics cfg.to_chain_cfg,
       if cfg.show_hints then
         let hints := results.map (λ p, p.2) in
-        let optimised_hints := optimise_hints original_goals numbered_tactics hints in
-        trace ("tidy {hints:=" ++ optimised_hints.to_string ++ "}")
+        do optimised_hints ← optimise_hints original_goals numbered_tactics hints,
+          trace ("tidy {hints:=" ++ optimised_hints.to_string ++ "}")
+        -- trace ("tidy {hints:=" ++ hints.to_string ++ "}")
       else 
         skip,
       if cfg.trace_result then
@@ -190,5 +198,5 @@ end
 
 def tidy_test (a : string): ∀ x : unit, x = unit.star := 
 begin
-  tidy
+  tidy {show_hints := tt}
 end
