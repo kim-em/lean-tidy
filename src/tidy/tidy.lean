@@ -12,6 +12,10 @@ open tactic
 
 universe variable u
 
+attribute [reducible] cast
+attribute [reducible] lift_t coe_t coe_b has_coe_to_fun.coe
+attribute [ematch] subtype.property
+
 private meta def dsimp_eq_mpr : tactic unit := `[dsimp [eq.mpr] {unfold_reducible := tt}]
 meta def dsimp' := `[dsimp {unfold_reducible := tt, md := semireducible}]
 meta def dsimp_all' := `[dsimp at * {unfold_reducible := tt, md := semireducible}]
@@ -39,7 +43,8 @@ do ng ← num_goals,
 meta def unsafe_tidy_tactics : list (tactic string) :=
 [
   assumption >> pure "assumption",
-  congr_assumptions
+  congr_assumptions,
+  `[simp only [id_locked_eq]]                 >> pure "simp only [id_locked_eq]"
 ]
 
 meta def safe_tidy_tactics : list (tactic string) :=
