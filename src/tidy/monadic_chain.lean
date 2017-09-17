@@ -48,11 +48,11 @@ structure chain_cfg :=
   ( allowed_collisions : nat  := 0 )
   ( fail_on_loop       : bool := tt )
   
-meta def monadic_chain_core { σ α : Type } [ tactic_lift σ ] ( cfg : chain_cfg ) ( tactics : list (interaction_monad (tactic_state × σ) α) ) : interaction_monad (tactic_state × σ) (list α) :=
+meta def monadic_chain_core { σ α : Type } ( cfg : chain_cfg ) ( tactics : list (interaction_monad (tactic_state × σ) α) ) : interaction_monad (tactic_state × σ) (list α) :=
 monadic_chain_core' tactics ⟨ cfg.max_steps, [], tactics ⟩
 
 private meta def monadic_chain_handle_looping
-  { σ α : Type } [ tactic_lift σ ] [ has_to_format α ] 
+  { σ α : Type } [ has_to_format α ] 
   ( cfg : chain_cfg ) 
   ( tactics : list (interaction_monad (tactic_state × σ) α) ) 
     : interaction_monad (tactic_state × σ) (list α) :=
@@ -62,7 +62,7 @@ if cfg.fail_on_loop then
 else
   monadic_chain_core cfg tactics
 
-meta def trace_output { σ α : Type } [ tactic_lift σ ] [ has_to_format α ] ( t : interaction_monad (tactic_state × σ ) α ) : interaction_monad (tactic_state × σ ) α :=
+meta def trace_output { σ α : Type } [ tactic_lift σ ] [ has_to_format α ] ( t : interaction_monad (tactic_state × σ) α ) : interaction_monad (tactic_state × σ) α :=
 do r ← t,
    trace format!"succeeded with result: {r}",
    pure r
