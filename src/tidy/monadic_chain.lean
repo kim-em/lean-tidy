@@ -40,7 +40,7 @@ meta def monadic_chain_core { σ α : Type } ( cfg : chain_cfg ) ( tactics : lis
 monadic_chain_core' tactics ⟨ cfg.max_steps, [], tactics ⟩
 
 private meta def monadic_chain_handle_looping
-  { σ α : Type } [ tactic_lift σ ] [ has_to_format α ] 
+  { σ α : Type } [ has_to_format α ] 
   ( cfg : chain_cfg ) 
   ( tactics : list (interaction_monad (tactic_state × σ) α) ) 
     : interaction_monad (tactic_state × σ) (list α) :=
@@ -50,13 +50,16 @@ if cfg.fail_on_loop then
 else
   monadic_chain_core cfg tactics
 
+meta def interaction_monad.trace {σ : Type} [underlying_tactic_state σ] {α : Type u} [has_to_tactic_format α] (a : α) : interaction_monad σ unit :=
+λ s, (trace a (underlying_tactic_state.to_tactic_state s)).map(λ s', s)
+
 meta def trace_output { σ α : Type } [ has_to_format α ] ( t : interaction_monad (tactic_state × σ) α ) : interaction_monad (tactic_state × σ) α :=
 do r ← t,
-   trace format!"succeeded with result: {r}",
+   interaction_monad.trace format!"succeeded with result: {r}",
    pure r
 
 private meta def monadic_chain_handle_trace
-  { σ α : Type } [ tactic_lift σ ] [ has_to_format α ] 
+  { σ α : Type } [ has_to_format α ] 
   ( cfg : chain_cfg ) 
   ( tactics : list (interaction_monad (tactic_state × σ) α) ) 
     : interaction_monad (tactic_state × σ) (list α) :=
@@ -65,25 +68,21 @@ if cfg.trace_steps then
 else 
   monadic_chain_handle_looping cfg tactics
 
-set_option trace.class_instances true
-
 meta def monadic_chain
-  { σ α : Type } [ tactic_lift σ ] [ has_to_format α ] 
+  { σ α : Type } [ has_to_format α ] 
   ( tactics : list (interaction_monad (tactic_state × σ) α) ) 
   ( cfg : chain_cfg := {} ) 
     : interaction_monad (tactic_state × σ) (list α) :=
 do sequence ← monadic_chain_handle_trace cfg tactics,
-   guard (sequence.length > 0) <|> fail "chain tactic made no progress",
+   guard (sequence.length > 0) <|> interaction_monad.fail "chain tactic made no progress",
    pure sequence.reverse
-
-set_option trace.class_instances false
 
 meta def chain
   { α : Type } [ has_to_format α ] 
   ( tactics : list (tactic α) ) 
   ( cfg : chain_cfg := {} ) 
     : tactic (list α) :=
-@monadic_chain unit _ _ _ (tactics.map(λ t, t)) cfg
+@monadic_chain unit _ _ (tactics.map(λ t, unit_lift t)) cfg
 
 def chain_test_simp_succeeded : 1 = 1 :=
 begin

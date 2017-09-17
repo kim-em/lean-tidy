@@ -82,10 +82,12 @@ meta def unpack_states {σ τ ρ α : Type}: interaction_monad (σ × (τ × ρ)
 -- meta instance tactic_lift_twice_coe (τ τ' : Type) [tactic_lift τ] [tactic_lift τ'] (α : Type) : has_coe (interaction_monad tactic_state α) (interaction_monad ((tactic_state × τ) × τ') α) :=
 -- ⟨ λ t, tactic_lift.lift τ' (tactic_lift.lift τ t) ⟩
 
-meta instance : tactic_lift unit := {
-  lift := λ { σ α : Type } [underlying_tactic_state σ] ( t : interaction_monad σ α ),
-            λ s, (t s.1).map(λ s, (s, unit.star))
-}
+-- meta instance : tactic_lift unit := {
+--   lift := λ { σ α : Type } [underlying_tactic_state σ] ( t : interaction_monad σ α ),
+--             λ s, (t s.1).map(λ s, (s, unit.star))
+-- }
+
+meta def unit_lift { α : Type } ( t : tactic α ) : interaction_monad (tactic_state × unit) α := λ s, (t s.1).map(λ s, (s, unit.star))
 
 meta instance discard_unit_coe (σ α : Type) : has_coe (interaction_monad (σ × unit) α) (interaction_monad σ α) := {
   coe := λ t s, (t (s, unit.star)).map(λ s', s'.1)

@@ -111,7 +111,7 @@ do
      do r ← apply_hints numbered_tactics cfg.hints,
       if ¬ r then
         /- hints were broken ... -/     
-          trace "hints for 'tidy' tactic were invalid!"     
+          interaction_monad.trace "hints for 'tidy' tactic were invalid!"     
       else
           skip
    else
@@ -120,12 +120,12 @@ do
       results ← chain numbered_tactics cfg.to_chain_cfg,
       if cfg.show_hints then
         let hints := results.map (λ p, p.2) in
-        trace ("tidy {hints:=" ++ hints.to_string ++ "}")
+        interaction_monad.trace ("tidy {hints:=" ++ hints.to_string ++ "}")
       else 
         skip,
       if cfg.trace_result then
         let result_strings := results.map (λ p, p.1) in
-        trace ("chain tactic used: " ++ result_strings.to_string)
+        interaction_monad.trace ("chain tactic used: " ++ result_strings.to_string)
       else
         skip
 

@@ -24,8 +24,8 @@ meta def profiling
   { σ α : Type } 
   [ underlying_tactic_state σ ]
   ( t : interaction_monad (σ × invocation_count) α ) 
-  ( success_handler   : invocation_count → tactic unit := λ p, trace format!"success, with {p.successful_invocations} successful tactic invocations and {p.failed_invocations} failed tactic invocations" ) 
-  ( exception_handler : invocation_count → tactic unit := λ p, trace format!"failed, with {p.successful_invocations} successful tactic invocations and {p.failed_invocations} failed tactic invocations" ) 
+  ( success_handler   : invocation_count → tactic unit := λ p, tactic.trace format!"success, with {p.successful_invocations} successful tactic invocations and {p.failed_invocations} failed tactic invocations" ) 
+  ( exception_handler : invocation_count → tactic unit := λ p, tactic.trace format!"failed, with {p.successful_invocations} successful tactic invocations and {p.failed_invocations} failed tactic invocations" ) 
     : interaction_monad σ (α × invocation_count) :=
 λ s, match t (s, ⟨ 0, 0 ⟩) with
      | result.success a ts         :=
@@ -40,14 +40,16 @@ meta def profiling
          end
      end 
 
-meta instance lift_to_profiling_tactic : tactic_lift invocation_count := 
-{
-  lift := λ { σ α : Type } [underlying_tactic_state σ] ( t : interaction_monad σ α ) (s : σ × invocation_count),
+meta def instrument_for_profiling { σ α : Type } [uts : underlying_tactic_state σ] ( t : interaction_monad σ α ) : interaction_monad (σ × invocation_count) α :=
+ λ (s : σ × invocation_count),
             match (t s.1) with
             | result.success   a       s' := result.success   a       (s', s.2.record_success) 
             | result.exception msg pos s' := result.exception msg pos (s', s.2.record_failure)
             end
-} 
+
+
+meta instance profiling_tactic_coercion { α : Type } : has_coe (interaction_monad tactic_state α) (interaction_monad (tactic_state × invocation_count) α) :=
+⟨ instrument_for_profiling ⟩ 
 
 lemma profile_test : true :=
 begin
