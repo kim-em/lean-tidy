@@ -59,8 +59,11 @@ meta def instrument_for_loop_detection { σ α : Type } [uts : underlying_tactic
      lift_ignore_first (loop_detector hash),
      pure a
 
-meta instance lift_to_loop_detection_tactic : tactic_lift loop_detection_state :=
-⟨ λ { σ α : Type } [uts : underlying_tactic_state σ], @instrument_for_loop_detection σ α uts ⟩
+meta instance instrument_for_loop_detection_coercion { σ α : Type } [uts : underlying_tactic_state σ] : has_coe (interaction_monad σ α) (interaction_monad (σ × loop_detection_state) α) :=
+⟨ instrument_for_loop_detection ⟩ 
+
+-- meta instance lift_to_loop_detection_tactic : tactic_lift loop_detection_state :=
+-- ⟨ λ { σ α : Type } [uts : underlying_tactic_state σ], @instrument_for_loop_detection σ α uts ⟩
 
 meta def interactive_simp := `[simp]
 

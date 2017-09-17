@@ -30,25 +30,13 @@ private meta def monadic_chain_core' { σ α : Type } ( tactics : list (interact
                                       (monadic_chain_core' ⟨ succ n, results, ts ⟩)
 )
 
--- meta def monadic_repeat_at_most_core { σ : Type } { α : Type u } ( t : interaction_monad σ α ) : nat → (list α) → interaction_monad σ (list α)
--- | 0        results := pure results
--- | (succ n) results := (do r ← t, monadic_repeat_at_most_core n (r :: results)) <|> pure results
-
--- meta def monadic_repeat_at_most { σ : Type } { α : Type u } ( limit : nat ) ( t : interaction_monad σ α ) : interaction_monad σ (list α) := monadic_repeat_at_most_core t limit []
-
--- /-- `first [t_1, ..., t_n]` applies the first tactic that doesn't fail.
---    The tactic fails if all t_i's fail. -/
--- meta def monadic_first { σ : Type } { α : Type u } : list (interaction_monad σ α) → interaction_monad σ α
--- | []      := monadic_fail "first tactic failed, no more alternatives"
--- | (t::ts) := t <|> monadic_first ts
-
 structure chain_cfg := 
   ( max_steps          : nat  := 500 )
   ( trace_steps        : bool := ff )
   ( allowed_collisions : nat  := 0 )
   ( fail_on_loop       : bool := tt )
   
-meta def monadic_chain_core { σ α : Type } [ tactic_lift σ ] ( cfg : chain_cfg ) ( tactics : list (interaction_monad (tactic_state × σ) α) ) : interaction_monad (tactic_state × σ) (list α) :=
+meta def monadic_chain_core { σ α : Type } ( cfg : chain_cfg ) ( tactics : list (interaction_monad (tactic_state × σ) α) ) : interaction_monad (tactic_state × σ) (list α) :=
 monadic_chain_core' tactics ⟨ cfg.max_steps, [], tactics ⟩
 
 private meta def monadic_chain_handle_looping
@@ -62,7 +50,7 @@ if cfg.fail_on_loop then
 else
   monadic_chain_core cfg tactics
 
-meta def trace_output { σ α : Type } [ tactic_lift σ ] [ has_to_format α ] ( t : interaction_monad (tactic_state × σ ) α ) : interaction_monad (tactic_state × σ ) α :=
+meta def trace_output { σ α : Type } [ has_to_format α ] ( t : interaction_monad (tactic_state × σ) α ) : interaction_monad (tactic_state × σ) α :=
 do r ← t,
    trace format!"succeeded with result: {r}",
    pure r
@@ -77,6 +65,8 @@ if cfg.trace_steps then
 else 
   monadic_chain_handle_looping cfg tactics
 
+set_option trace.class_instances true
+
 meta def monadic_chain
   { σ α : Type } [ tactic_lift σ ] [ has_to_format α ] 
   ( tactics : list (interaction_monad (tactic_state × σ) α) ) 
@@ -85,6 +75,8 @@ meta def monadic_chain
 do sequence ← monadic_chain_handle_trace cfg tactics,
    guard (sequence.length > 0) <|> fail "chain tactic made no progress",
    pure sequence.reverse
+
+set_option trace.class_instances false
 
 meta def chain
   { α : Type } [ has_to_format α ] 
