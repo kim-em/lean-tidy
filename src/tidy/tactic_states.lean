@@ -13,19 +13,6 @@ match r with
 | result.exception msg pos s := result.exception msg pos (f s)
 end
 
--- meta def monadic_failed {σ α : Type} : interaction_monad σ α := interaction_monad.failed
--- meta def monadic_fail {σ : Type} {α : Type u} {β : Type v} [has_to_format β] (msg : β) : interaction_monad σ α :=
--- interaction_monad.fail msg
-
--- meta instance interaction_monad.alternative (σ : Type): alternative (interaction_monad σ) := {
---   @interaction_monad.monad σ with
---   orelse := λ { α : Type } (t₁ t₂ : interaction_monad σ α) s, 
---               match (t₁ s) with
---               | result.success   a       s' := result.success a s'
---               | result.exception msg pos s' := (t₂ s')
---               end,
---   failure := λ { α : Type }, interaction_monad.failed,
--- }
 meta instance interaction_monad.alternative (σ : Type): alternative (interaction_monad (tactic_state × σ)) := {
   @interaction_monad.monad (tactic_state × σ) with
   orelse := λ { α : Type } (t₁ t₂ : interaction_monad (tactic_state × σ) α) s, 
@@ -48,69 +35,14 @@ meta instance trivial_underlying_tactic_state : underlying_tactic_state tactic_s
 meta instance product_underlying_tactic_state ( σ τ : Type ) [underlying_tactic_state σ]: underlying_tactic_state (σ × τ) :=
 { to_tactic_state := λ p, underlying_tactic_state.to_tactic_state p.1 }
 
-meta class tactic_lift ( τ : Type ) :=
-  ( lift : Π { σ α : Type } [underlying_tactic_state σ], interaction_monad σ α → interaction_monad (σ × τ) α )
-
 meta def pack_states {σ τ ρ α : Type}: interaction_monad ((σ × τ) × ρ) α → interaction_monad (σ × (τ × ρ)) α :=
 λ t s, (t ((s.1, s.2.1), s.2.2)).map(λ s', (s'.1.1, (s'.1.2, s'.2)))
 
 meta def unpack_states {σ τ ρ α : Type}: interaction_monad (σ × (τ × ρ)) α → interaction_monad ((σ × τ) × ρ) α :=
 λ t s, (t (s.1.1, (s.1.2, s.2))).map(λ s', ((s'.1, s'.2.1), s'.2.2))
 
--- meta instance pack_states_coe {σ τ ρ α : Type} : has_coe (interaction_monad ((σ × τ) × ρ) α) (interaction_monad (σ × (τ × ρ)) α) :=
--- ⟨ pack_states ⟩ 
--- meta instance unpack_states_coe {σ τ ρ α : Type} : has_coe (interaction_monad (σ × (τ × ρ)) α) (interaction_monad ((σ × τ) × ρ) α) :=
--- ⟨ unpack_states ⟩ 
-
--- TODO define coercions for unpack_states, and possibly for pack_states too?
-
--- meta instance tactic_lift_product ( τ τ' : Type ) [tactic_lift τ] [tactic_lift τ'] : tactic_lift (τ × τ') := {
---   lift := λ { σ α } [uts : underlying_tactic_state σ] t, pack_states (@tactic_lift.lift τ' _ _ _ (@product_underlying_tactic_state _ _ uts) (@tactic_lift.lift τ _ _ _ uts t))
--- }
-
--- Unfortunately post 7b18d5828d046fb87c94d3a32e80bb5854a0133d we can't use this anymore, as it results in instance resolution going crazy.
--- meta instance tactic_lift_coe (τ : Type) [tactic_lift τ] (σ α : Type) [underlying_tactic_state σ] : has_coe (interaction_monad σ α) (interaction_monad (σ × τ) α) :=
--- ⟨ tactic_lift.lift τ ⟩
-
--- Lean won't chain two coercions together for us, so we provide a shortcut here.
--- meta instance tactic_lift_twice_coe (τ τ' : Type) [tactic_lift τ] [tactic_lift τ'] (σ α : Type) [underlying_tactic_state σ] : has_coe (interaction_monad σ α) (interaction_monad ((σ × τ) × τ') α) :=
--- ⟨ λ t, tactic_lift.lift τ' (tactic_lift.lift τ t) ⟩
-
--- meta instance tactic_lift_coe (τ : Type) [tactic_lift τ] (α : Type) : has_coe (interaction_monad tactic_state α) (interaction_monad (tactic_state × τ) α) :=
--- ⟨ tactic_lift.lift τ ⟩
-
--- meta instance tactic_lift_twice_coe (τ τ' : Type) [tactic_lift τ] [tactic_lift τ'] (α : Type) : has_coe (interaction_monad tactic_state α) (interaction_monad ((tactic_state × τ) × τ') α) :=
--- ⟨ λ t, tactic_lift.lift τ' (tactic_lift.lift τ t) ⟩
-
--- meta instance : tactic_lift unit := {
---   lift := λ { σ α : Type } [underlying_tactic_state σ] ( t : interaction_monad σ α ),
---             λ s, (t s.1).map(λ s, (s, unit.star))
--- }
-
 meta def unit_lift { α : Type } ( t : tactic α ) : interaction_monad (tactic_state × unit) α := λ s, (t s.1).map(λ s, (s, unit.star))
 
 meta instance discard_unit_coe (σ α : Type) : has_coe (interaction_monad (σ × unit) α) (interaction_monad σ α) := {
   coe := λ t s, (t (s, unit.star)).map(λ s', s'.1)
 }
-
--- meta instance interaction_monad.has_orelse (σ : Type) : has_orelse (interaction_monad σ) := {
---   orelse := λ { α : Type u } (t₁ t₂ : interaction_monad σ α) s, 
---               match (t₁ s) with
---               | result.success   a       s' := result.success a s'
---               | result.exception msg pos s' := match (t₂ s') with
---                                                | result.success   a'        s'' := result.success   a'        s''
---                                                | result.exception msg' pos' s'' := result.exception msg' pos' s''
---                                                end
---               end
--- }
--- meta instance interaction_monad.has_orelse (σ : Type) : has_orelse (interaction_monad (tactic_state × σ)) := {
---   orelse := λ { α : Type u } (t₁ t₂ : interaction_monad (tactic_state × σ) α) s, 
---               match (t₁ s) with
---               | result.success   a       s' := result.success a s'
---               | result.exception msg pos s' := match (t₂ (s.1, s'.2)) with
---                                                | result.success   a'        s'' := result.success   a'        s''
---                                                | result.exception msg' pos' s'' := result.exception msg' pos' s''
---                                                end
---               end
--- }
-
