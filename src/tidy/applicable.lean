@@ -14,6 +14,7 @@ meta def semiapplicable_attribute : user_attribute := {
 }
 
 run_cmd attribute.register `applicable_attribute
+run_cmd attribute.register `semiapplicable_attribute
 
 /- Try to apply one of the given lemmas, it succeeds if one of them succeeds. -/
 meta def any_apply : list name → tactic name
