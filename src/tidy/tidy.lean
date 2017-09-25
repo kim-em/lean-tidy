@@ -51,6 +51,7 @@ meta def safe_tidy_tactics : list (tactic string) :=
 [
   force (reflexivity)                         >> pure "refl", 
   `[exact dec_trivial]                        >> pure "exact dec_trivial",
+  semiapplicable                              >>= λ n, pure ("fapply " ++ n.to_string),
   applicable                                  >>= λ n, pure ("fapply " ++ n.to_string),
   intro_at_least_one                          >> pure "intros",
   force (fsplit)                              >> pure "fsplit", 
