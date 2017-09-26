@@ -100,6 +100,7 @@ private meta def apply_hints { α : Type } ( tactics : list (tactic α) ) : list
                | none := pure ff
                | some t := if_then_else t (apply_hints ns) (pure ff)
                end
+
 meta def tidy ( cfg : tidy_cfg := {} ) : tactic unit :=
 let tidy_tactics := global_tidy_tactics
                      ++ (if cfg.later_goals then safe_tactics_on_later_goals else []) 
@@ -108,18 +109,22 @@ let tidy_tactics := global_tidy_tactics
 let numbered_tactics := number_tactics tidy_tactics in
 do
    /- first apply hints -/
-   if ¬ cfg.hints.empty then
-     do r ← apply_hints numbered_tactics cfg.hints,
-      if ¬ r then
-        /- hints were broken ... -/     
-          interaction_monad.trace "hints for 'tidy' tactic were invalid!"     
-      else
-          skip
-   else
+   continue ← (if ¬ cfg.hints.empty then
+                  do 
+                     r ← apply_hints numbered_tactics cfg.hints,
+                     if ¬ r then
+                      /- hints were broken ... -/     
+                        do
+                          interaction_monad.trace "hints for 'tidy' tactic were invalid!",
+                          interaction_monad.fail "hints for 'tidy' tactic were invalid!" -- this will be trapped a moment later
+                     else
+                        pure ff
+                else
+                  pure tt) <|> pure tt,
+   if continue then               
     do
-      original_goals ← get_goals,
       results ← chain numbered_tactics cfg.to_chain_cfg,
-      if cfg.show_hints then
+      if cfg.show_hints ∨ ¬ cfg.hints.empty then
         let hints := results.map (λ p, p.2) in
         interaction_monad.trace ("tidy {hints:=" ++ hints.to_string ++ "}")
       else 
@@ -129,6 +134,8 @@ do
         interaction_monad.trace ("chain tactic used: " ++ result_strings.to_string)
       else
         skip
+   else
+     skip
 
 meta def blast ( cfg : tidy_cfg := {} ) : tactic unit := 
 tidy { cfg with extra_tactics := cfg.extra_tactics ++ [ focus1 ( smt_eblast >> tactic.done ) >> pure "smt_eblast" ] }
@@ -150,4 +157,8 @@ end
 def tidy_test (a : string): ∀ x : unit, x = unit.star := 
 begin
   tidy {show_hints := tt}
+end
+def tidy_test_2 (a : string): ∀ x : unit, x = unit.star := 
+begin
+  tidy {hints := [7,5]}
 end
