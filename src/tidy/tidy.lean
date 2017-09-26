@@ -143,22 +143,3 @@ tidy { cfg with extra_tactics := cfg.extra_tactics ++ [ focus1 ( smt_eblast >> t
 notation `♮` := by abstract { smt_eblast }
 notation `♯`  := by abstract { blast }
 
--- meta def interactive_simp := `[simp]
-
-def tidy_test_0 : ∀ x : unit, x = unit.star := 
-begin
-  success_if_fail { chain [ interactive_simp ] },
-  intro1,
-  induction x,
-  refl
-end
-
-
-def tidy_test (a : string): ∀ x : unit, x = unit.star := 
-begin
-  tidy {show_hints := tt}
-end
-def tidy_test_2 (a : string): ∀ x : unit, x = unit.star := 
-begin
-  tidy {hints := [7,5]}
-end

@@ -51,20 +51,4 @@ meta def instrument_for_profiling { σ α : Type } [uts : underlying_tactic_stat
 meta instance profiling_tactic_coercion { α : Type } : has_coe (interaction_monad tactic_state α) (interaction_monad (tactic_state × invocation_count) α) :=
 ⟨ instrument_for_profiling ⟩ 
 
-lemma profile_test : true :=
-begin
-profiling $ skip >> skip,             -- 2
-profiling $ skip >> skip >> skip,     -- 3
-success_if_fail { profiling $ done }, -- 1
 
-profiling $ skip <|> done,            -- 1
-profiling $ done <|> skip,            -- 2
-
-profiling $ (skip <|> done) >> skip,  -- 2
-
-profiling $ done <|> done <|> skip,   -- 3
-
-success_if_fail { profiling $ done <|> done }, -- 2
-
-triv
-end
