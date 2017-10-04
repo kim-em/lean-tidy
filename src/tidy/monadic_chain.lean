@@ -30,29 +30,17 @@ private meta def monadic_chain_core' { σ α : Type } ( tactics : list (interact
                                       (monadic_chain_core' ⟨ succ n, results, ts ⟩)
 )
 
--- meta def monadic_repeat_at_most_core { σ : Type } { α : Type u } ( t : interaction_monad σ α ) : nat → (list α) → interaction_monad σ (list α)
--- | 0        results := pure results
--- | (succ n) results := (do r ← t, monadic_repeat_at_most_core n (r :: results)) <|> pure results
-
--- meta def monadic_repeat_at_most { σ : Type } { α : Type u } ( limit : nat ) ( t : interaction_monad σ α ) : interaction_monad σ (list α) := monadic_repeat_at_most_core t limit []
-
--- /-- `first [t_1, ..., t_n]` applies the first tactic that doesn't fail.
---    The tactic fails if all t_i's fail. -/
--- meta def monadic_first { σ : Type } { α : Type u } : list (interaction_monad σ α) → interaction_monad σ α
--- | []      := monadic_fail "first tactic failed, no more alternatives"
--- | (t::ts) := t <|> monadic_first ts
-
 structure chain_cfg := 
   ( max_steps          : nat  := 500 )
   ( trace_steps        : bool := ff )
   ( allowed_collisions : nat  := 0 )
   ( fail_on_loop       : bool := tt )
   
-meta def monadic_chain_core { σ α : Type } [ tactic_lift σ ] ( cfg : chain_cfg ) ( tactics : list (interaction_monad (tactic_state × σ) α) ) : interaction_monad (tactic_state × σ) (list α) :=
+meta def monadic_chain_core { σ α : Type } ( cfg : chain_cfg ) ( tactics : list (interaction_monad (tactic_state × σ) α) ) : interaction_monad (tactic_state × σ) (list α) :=
 monadic_chain_core' tactics ⟨ cfg.max_steps, [], tactics ⟩
 
 private meta def monadic_chain_handle_looping
-  { σ α : Type } [ tactic_lift σ ] [ has_to_format α ] 
+  { σ α : Type } [ has_to_format α ] 
   ( cfg : chain_cfg ) 
   ( tactics : list (interaction_monad (tactic_state × σ) α) ) 
     : interaction_monad (tactic_state × σ) (list α) :=
@@ -62,13 +50,16 @@ if cfg.fail_on_loop then
 else
   monadic_chain_core cfg tactics
 
-meta def trace_output { σ α : Type } [ tactic_lift σ ] [ has_to_format α ] ( t : interaction_monad (tactic_state × σ ) α ) : interaction_monad (tactic_state × σ ) α :=
+meta def interaction_monad.trace {σ : Type} [underlying_tactic_state σ] {α : Type u} [has_to_tactic_format α] (a : α) : interaction_monad σ unit :=
+λ s, (trace a (underlying_tactic_state.to_tactic_state s)).map(λ s', s)
+
+meta def trace_output { σ α : Type } [ has_to_format α ] ( t : interaction_monad (tactic_state × σ) α ) : interaction_monad (tactic_state × σ) α :=
 do r ← t,
-   trace format!"succeeded with result: {r}",
+   interaction_monad.trace format!"succeeded with result: {r}",
    pure r
 
 private meta def monadic_chain_handle_trace
-  { σ α : Type } [ tactic_lift σ ] [ has_to_format α ] 
+  { σ α : Type } [ has_to_format α ] 
   ( cfg : chain_cfg ) 
   ( tactics : list (interaction_monad (tactic_state × σ) α) ) 
     : interaction_monad (tactic_state × σ) (list α) :=
@@ -78,12 +69,12 @@ else
   monadic_chain_handle_looping cfg tactics
 
 meta def monadic_chain
-  { σ α : Type } [ tactic_lift σ ] [ has_to_format α ] 
+  { σ α : Type } [ has_to_format α ] 
   ( tactics : list (interaction_monad (tactic_state × σ) α) ) 
   ( cfg : chain_cfg := {} ) 
     : interaction_monad (tactic_state × σ) (list α) :=
 do sequence ← monadic_chain_handle_trace cfg tactics,
-   guard (sequence.length > 0) <|> fail "chain tactic made no progress",
+   guard (sequence.length > 0) <|> interaction_monad.fail "chain tactic made no progress",
    pure sequence.reverse
 
 meta def chain
@@ -91,31 +82,5 @@ meta def chain
   ( tactics : list (tactic α) ) 
   ( cfg : chain_cfg := {} ) 
     : tactic (list α) :=
-@monadic_chain unit _ _ _ (tactics.map(λ t, t)) cfg
+@monadic_chain unit _ _ (tactics.map(λ t, unit_lift t)) cfg
 
-def chain_test_simp_succeeded : 1 = 1 :=
-begin
-  chain [ interactive_simp ]
-end
-
-def chain_test_without_loop_detection_skip_does_nothing : 1 = 1 :=
-begin
-  success_if_fail { chain [ skip ] { fail_on_loop := ff } }, -- fails because 'chain iteration limit exceeded'
-  refl
-end
-
-def chain_test_without_loop_detection_skip_does_nothing' : 1 = 1 :=
-begin
-  success_if_fail { chain [ skip, interactive_simp ] { fail_on_loop := ff } }, -- fails because 'chain iteration limit exceeded'
-  refl
-end
-
-def chain_test_loop_detection : 1 = 1 :=
-begin
-  chain [ skip, interactive_simp ] {}
-end
-
-def chain_test_loop_detection' : 1 = 1 :=
-begin
-  chain [ skip, interactive_simp ] { allowed_collisions := 5, trace_steps := tt }
-end

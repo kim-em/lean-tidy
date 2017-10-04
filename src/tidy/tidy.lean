@@ -51,6 +51,7 @@ meta def safe_tidy_tactics : list (tactic string) :=
 [
   force (reflexivity)                         >> pure "refl", 
   `[exact dec_trivial]                        >> pure "exact dec_trivial",
+  semiapplicable                              >>= λ n, pure ("fapply " ++ n.to_string),
   applicable                                  >>= λ n, pure ("fapply " ++ n.to_string),
   intro_at_least_one                          >> pure "intros",
   force (fsplit)                              >> pure "fsplit", 
@@ -99,6 +100,7 @@ private meta def apply_hints { α : Type } ( tactics : list (tactic α) ) : list
                | none := pure ff
                | some t := if_then_else t (apply_hints ns) (pure ff)
                end
+
 meta def tidy ( cfg : tidy_cfg := {} ) : tactic unit :=
 let tidy_tactics := global_tidy_tactics
                      ++ (if cfg.later_goals then safe_tactics_on_later_goals else []) 
@@ -107,27 +109,33 @@ let tidy_tactics := global_tidy_tactics
 let numbered_tactics := number_tactics tidy_tactics in
 do
    /- first apply hints -/
-   if ¬ cfg.hints.empty then
-     do r ← apply_hints numbered_tactics cfg.hints,
-      if ¬ r then
-        /- hints were broken ... -/     
-          trace "hints for 'tidy' tactic were invalid!"     
-      else
-          skip
-   else
+   continue ← (if ¬ cfg.hints.empty then
+                  do 
+                     r ← apply_hints numbered_tactics cfg.hints,
+                     if ¬ r then
+                      /- hints were broken ... -/     
+                        do
+                          interaction_monad.trace "hints for 'tidy' tactic were invalid!",
+                          interaction_monad.fail "hints for 'tidy' tactic were invalid!" -- this will be trapped a moment later
+                     else
+                        pure ff
+                else
+                  pure tt) <|> pure tt,
+   if continue then               
     do
-      original_goals ← get_goals,
       results ← chain numbered_tactics cfg.to_chain_cfg,
-      if cfg.show_hints then
+      if cfg.show_hints ∨ ¬ cfg.hints.empty then
         let hints := results.map (λ p, p.2) in
-        trace ("tidy {hints:=" ++ hints.to_string ++ "}")
+        interaction_monad.trace ("tidy {hints:=" ++ hints.to_string ++ "}")
       else 
         skip,
       if cfg.trace_result then
         let result_strings := results.map (λ p, p.1) in
-        trace ("chain tactic used: " ++ result_strings.to_string)
+        interaction_monad.trace ("chain tactic used: " ++ result_strings.to_string)
       else
         skip
+   else
+     skip
 
 meta def blast ( cfg : tidy_cfg := {} ) : tactic unit := 
 tidy { cfg with extra_tactics := cfg.extra_tactics ++ [ focus1 ( smt_eblast >> tactic.done ) >> pure "smt_eblast" ] }
@@ -135,18 +143,3 @@ tidy { cfg with extra_tactics := cfg.extra_tactics ++ [ focus1 ( smt_eblast >> t
 notation `♮` := by abstract { smt_eblast }
 notation `♯`  := by abstract { blast }
 
--- meta def interactive_simp := `[simp]
-
-def tidy_test_0 : ∀ x : unit, x = unit.star := 
-begin
-  success_if_fail { chain [ interactive_simp ] },
-  intro1,
-  induction x,
-  refl
-end
-
-
-def tidy_test (a : string): ∀ x : unit, x = unit.star := 
-begin
-  tidy {show_hints := tt}
-end
