@@ -70,7 +70,7 @@ meta instance tactic_lift_coe (τ : Type) [tactic_lift τ] (σ α : Type) [under
 meta instance tactic_lift_twice_coe (τ τ' : Type) [tactic_lift τ] [tactic_lift τ'] (σ α : Type) [underlying_tactic_state σ] : has_coe (interaction_monad σ α) (interaction_monad ((σ × τ) × τ') α) :=
 ⟨ λ t, tactic_lift.lift τ' (tactic_lift.lift τ t) ⟩
 
-meta instance : tactic_lift unit := {
+meta instance tactic_lift_unit : tactic_lift unit := {
   lift := λ { σ α : Type } [underlying_tactic_state σ] ( t : interaction_monad σ α ),
             λ s, (t s.1).map(λ s, (s, unit.star))
 }
