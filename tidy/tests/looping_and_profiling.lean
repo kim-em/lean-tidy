@@ -10,6 +10,8 @@ open tactic
 meta instance loop_detecting_and_profiling_coercion { α : Type } : has_coe (interaction_monad tactic_state α) (interaction_monad ((tactic_state × invocation_count) × loop_detection_state) α) :=
 ⟨ instrument_for_loop_detection ∘ profiling_tactic_coercion.coe ⟩ 
 
+-- TODO can we have some way to run tests, without producing output in leanpkg?
+
 -- lemma looping_and_profiling_at_the_same_time_test_1 : true :=
 -- begin
 -- profiling $ (detect_looping $ triv),
