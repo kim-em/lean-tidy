@@ -1,4 +1,4 @@
-import ..monadic_chain
+import ..tidy.monadic_chain
 
 open tactic
 

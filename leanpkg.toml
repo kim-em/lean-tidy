@@ -2,7 +2,7 @@
 name = "lean-tidy"
 version = "0.1"
 lean_version = "master"
-path = "."
+path = "tidy"
 
 [dependencies]
 mathlib = {git = "https://github.com/leanprover/mathlib", rev = "7191e39163e5d2338b85cf8d71848e55dd6b07ad"}
