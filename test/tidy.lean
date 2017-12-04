@@ -1,4 +1,4 @@
-import ..tidy.tidy
+import tidy.tidy
 
 open tactic
 

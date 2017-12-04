@@ -2,8 +2,8 @@
 -- Released under Apache 2.0 license as described in the file LICENSE.
 -- Authors: Scott Morrison
 
-import ..tidy.loop_detection
-import ..tidy.profiling
+import tidy.loop_detection
+import tidy.profiling
 
 open tactic
 

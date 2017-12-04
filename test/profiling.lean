@@ -1,4 +1,4 @@
-import ..tidy.profiling
+import tidy.profiling
 
 open tactic
 
