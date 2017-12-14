@@ -12,7 +12,6 @@ meta def new_names ( e : expr ) : tactic (list name) :=
     n2 ← get_unused_name e.local_pp_name (some 2),
     pure [ n1, n2 ] 
 
--- TODO better automatic naming of introduced hypotheses
 meta def automatic_induction_at (h : expr) : tactic unit :=
 do t ← infer_type h,
 match t with

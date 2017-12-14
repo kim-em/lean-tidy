@@ -16,8 +16,7 @@ attribute [reducible] cast
 attribute [reducible] lift_t coe_t coe_b has_coe_to_fun.coe
 attribute [ematch] subtype.property
 
-private meta def dsimp_eq_mpr : tactic unit := `[dsimp [eq.mpr] {unfold_reducible := tt}]
-meta def dsimp' := `[dsimp {unfold_reducible := tt, md := semireducible}]
+meta def dsimp' := `[dsimp [eq.mpr] {unfold_reducible := tt, md := semireducible}]
 meta def dsimp_all' := `[dsimp at * {unfold_reducible := tt, md := semireducible}]
 
 meta def if_exactly_one_goal { α : Type } ( t : tactic α ) : tactic α :=
