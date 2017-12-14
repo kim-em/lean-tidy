@@ -17,3 +17,7 @@ def tidy_test_2 (a : string): ∀ x : unit, x = unit.star :=
 begin
   tidy {hints := [7,4]}
 end
+def tidy_test_3 (a : string): ∀ x : unit, x = unit.star := 
+begin
+  tidy {trace_steps:=tt}
+end
