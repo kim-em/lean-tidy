@@ -24,7 +24,7 @@ env:
 
 install:
   - git clone https://github.com/leanprover/lean.git ../lean
-  - cd ../lean && mkdir -p build/release && cd build/release && cmake ../../src && make
+  - cd ../lean && mkdir -p build/release && cd build/release && cmake -DCMAKE_CXX_COMPILER=$CMAKE_CXX_COMPILER ../../src && make
   - export PATH=../lean/bin:$PATH
 
 script:
