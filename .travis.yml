@@ -1,4 +1,22 @@
-language: generic
+language: cpp
+sudo: true
+cache: apt
+dist: trusty
+addons:
+  apt:
+    sources: &apt_sources
+      - ubuntu-toolchain-r-test
+      - sourceline: 'ppa:kalakris/cmake' # cmake 2.8 for precise
+      - sourceline: 'ppa:adrozdoff/cmake' # cmake 3 for trusty
+      - sourceline: 'ppa:h-rayflood/llvm'
+      - sourceline: ppa:hvr/z3   # z3 for the smt interface package
+    packages: &default_packages
+      - cmake
+      - libgmp-dev
+      - libgoogle-perftools-dev
+      - g++-4.9
+      - clang-3.4
+
 
 install:
   - git clone https://github.com/leanprover/lean.git ../lean
