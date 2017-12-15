@@ -1,3 +1,5 @@
+# this first block is copied from https://github.com/leanprover/lean/blob/master/.travis.yml
+
 language: cpp
 sudo: true
 cache: apt
@@ -20,7 +22,7 @@ addons:
 
 install:
   - git clone https://github.com/leanprover/lean.git ../lean
-  - cd ../lean && mkdir -p build/release && cd build/release && cmake -DCMAKE_BUILD_TYPE=RELEASE -G Ninja ../../src && ninja
+  - cd ../lean && mkdir -p build/release && cd build/release && cmake ../../src && make
   - export PATH=../lean/bin:$PATH
 
 script:
