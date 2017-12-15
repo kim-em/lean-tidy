@@ -1,8 +1,9 @@
 language: generic
 
 install:
-  - curl https://leanprover.github.io/lean-nightly/build/lean-nightly-linux.tar.gz | tar xz -C ..
-  - export PATH=../lean-nightly-linux/bin:$PATH
+  - git clone git@github.com:leanprover/lean.git ..
+  - cd ../lean && mkdir -p build/release && cd build/release && cmake -DCMAKE_BUILD_TYPE=RELEASE -G Ninja ../../src && ninja
+  - export PATH=../lean/bin:$PATH
 
 script:
   - leanpkg test
