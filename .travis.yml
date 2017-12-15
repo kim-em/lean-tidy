@@ -3,7 +3,6 @@
 language: cpp
 sudo: true
 cache: apt
-dist: trusty
 addons:
   apt:
     sources: &apt_sources
@@ -19,6 +18,9 @@ addons:
       - g++-4.9
       - clang-3.4
 
+dist: precise
+env:
+       CMAKE_CXX_COMPILER=g++-4.9
 
 install:
   - git clone https://github.com/leanprover/lean.git ../lean
