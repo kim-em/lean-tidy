@@ -1,7 +1,7 @@
 language: generic
 
 install:
-  - git clone git@github.com:leanprover/lean.git ..
+  - git clone git@github.com:leanprover/lean.git ../lean
   - cd ../lean && mkdir -p build/release && cd build/release && cmake -DCMAKE_BUILD_TYPE=RELEASE -G Ninja ../../src && ninja
   - export PATH=../lean/bin:$PATH
 
