@@ -28,8 +28,8 @@ meta def any_apply_no_new_goals : list name → tactic name
                  t ← mk_const c,
                  r ← seq (fapply t >> skip) assumption,
                  n' ← num_goals,
-                 guard (n = n + 1),
-                 pure c) <|> any_apply cs
+                 guard (n = n' + 1),
+                 pure c) <|> any_apply_no_new_goals cs
 
 meta def applicable : tactic name :=
 do cs ← attribute.get_instances `applicable,
