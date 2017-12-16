@@ -16,8 +16,8 @@ do time_before ← time_in_nanos,
    time_after ← time_in_nanos,
    pure (r, time_after - time_before)
 
-lemma f : 1 = 1 := 
-begin
-(time_tactic skip) >>= trace,
-simp     
-end
+-- lemma f : 1 = 1 := 
+-- begin
+-- (time_tactic skip) >>= trace,
+-- simp     
+-- end
