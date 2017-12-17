@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/semorrison/lean-tidy.svg?branch=master)](https://travis-ci.org/semorrison/lean-tidy)
+
 A library of tactics for lean. These are used in the category theory library.
 
 Highlights include `chain` and `tidy`.
