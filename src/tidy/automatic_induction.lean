@@ -23,12 +23,10 @@ match t with
 | `(ulift _)   := induction h >> skip
 | `(plift _)   := induction h >> skip
 | `(eq _ _)    := induction h >> skip
-| `(prod _ _)  := do names ← new_names h,
-                      induction h >> skip
-| `(sigma _)   := do names ← new_names h,
-                      induction h >> skip
-| `(subtype _) := do names ← new_names h,
-                      induction h names >> skip
+| `(prod _ _)  := induction h >> skip
+| `(and _ _)   := induction h >> skip
+| `(sigma _)   := induction h >> skip
+| `(subtype _) := induction h >> skip
 | _              := failed
 end
 
