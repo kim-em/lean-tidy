@@ -27,7 +27,7 @@ meta def build_focus_string ( s : list ( option string ) ) : tactic string :=
 pure ("focus " ++ (s.map(λ x, option.get_or_else x "skip")).to_string)
 
 meta def if_first_goal_safe { α : Type } ( t : tactic α ) : tactic α :=
-do ng ← num_goals,
+do ng ← num_goals, -- TODO it might be more robust to count the metavariables in the result
    if ng = 1 then t else do {
      p ← target >>= is_prop,
      if p then t else fail "there are multiple goals, and the first goal is not a mere proposition"
@@ -45,6 +45,7 @@ meta def unsafe_tidy_tactics : list (tactic string) :=
   congr_assumptions,
   `[simp only [id_locked_eq]]                 >> pure "simp only [id_locked_eq]"
 ]
+-- TODO how about 'unsafe_applicable', which only acts on safe goals
 
 meta def safe_tidy_tactics : list (tactic string) :=
 [
@@ -80,7 +81,7 @@ unsafe_tidy_tactics.map(if_first_goal_safe)
 ++ safe_tidy_tactics
 
 meta def safe_tactics_on_later_goals :=
-safe_tidy_tactics.map(λ t, any_later_goals t >>= λ s, pure ("tactic.focus [ " ++ ((((none :: s).map(λ o, option.get_or_else o "skip")).intersperse ", ").foldl append "") ++ "]"))
+safe_tidy_tactics.map(λ t, any_later_goals t >>= λ s, pure ("tactic.focus [ " ++ ((((none :: s).map(λ o, option.get_or_else (option.map (λ m, "`[" ++ m ++ "]") o) "tactic.skip")).intersperse ", ").foldl append "") ++ "]"))
 
 meta structure tidy_cfg extends chain_cfg :=
 ( trace_result          : bool                 := ff )

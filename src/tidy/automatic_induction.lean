@@ -6,12 +6,6 @@ import .at_least_one
 
 open tactic
 
-meta def new_names ( e : expr ) : tactic (list name) :=
-  do 
-    n1 ← get_unused_name e.local_pp_name (some 1), 
-    n2 ← get_unused_name e.local_pp_name (some 2),
-    pure [ n1, n2 ] 
-
 meta def automatic_induction_at (h : expr) : tactic unit :=
 do t ← infer_type h,
 match t with

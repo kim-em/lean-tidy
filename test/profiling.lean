@@ -2,6 +2,7 @@ import tidy.profiling
 
 open tactic
 
+-- TODO It would be nice to have 'begin[profiling]'
 lemma profile_test : true :=
 begin
 profiling $ skip >> skip,             -- 2
