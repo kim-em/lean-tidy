@@ -6,4 +6,4 @@ open tactic
 
 meta def fsplit : tactic unit :=
 do [c] ← target >>= get_constructors_for | tactic.fail "fsplit tactic failed, target is not an inductive datatype with only one constructor",
-   mk_const c >>= fapply >> skip
+   mk_const c >>= λ e, apply e {new_goals := new_goals.all, auto_param := ff} >> skip
