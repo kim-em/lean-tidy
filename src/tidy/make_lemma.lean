@@ -1,3 +1,7 @@
+-- Copyright (c) 2017 Scott Morrison. All rights reserved.
+-- Released under Apache 2.0 license as described in the file LICENSE.
+-- Authors: Scott Morrison
+
 import data.buffer.parser
 
 open lean.parser tactic interactive parser
@@ -7,9 +11,6 @@ open lean.parser tactic interactive parser
 
 structure foo := 
   ( X : ℕ . skip )
-
-#check foo.X
-#print foo.X
 
 meta def make_lemma (d : declaration) (new_name : name) : tactic unit :=
 do (levels, type, value, reducibility, trusted) ← pure (match d.to_definition with
@@ -22,7 +23,7 @@ do (levels, type, value, reducibility, trusted) ← pure (match d.to_definition 
 --   new_value ← mk_app ``cast [pr, value],
   updateex_env $ λ env, env.add (declaration.defn new_name levels new_type value reducibility trusted),
   field_lemma_attr.set new_name () tt,
-  (set_basic_attribute `simp new_name) <|> skip
+  (set_basic_attribute `simp new_name tt) <|> skip
 
 @[user_command] meta def make_lemma_cmd (meta_info : decl_meta_info)
   (_ : parse $ tk "make_lemma") : lean.parser unit :=
@@ -32,10 +33,3 @@ do old ← ident,
   do {
     make_lemma d (old ++ "lemma")
   }.
-
--- example : 1+ 1 =2 := by simp
-
-make_lemma foo.X 
-
-#check foo.X.lemma
-#print foo.X.lemma
