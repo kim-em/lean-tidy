@@ -4,11 +4,11 @@
 
 open tactic
 
-meta def if_then_else { α β : Type } { m : Type → Type } [monad m] [has_orelse m] ( i : m α ) ( t e : m β ) : m β :=
+def if_then_else { α β : Type } { m : Type → Type } [monad m] [has_orelse m] ( i : m α ) ( t e : m β ) : m β :=
 do r ← (i >> pure tt) <|> pure ff,
    if r then do t else do e
 
-meta def dependent_if_then_else { α β : Type } { m : Type → Type } [monad m] [has_orelse m] ( i : m α ) ( t : α → m β ) ( e : m β ) : m β :=
+def dependent_if_then_else { α β : Type } { m : Type → Type } [monad m] [has_orelse m] ( i : m α ) ( t : α → m β ) ( e : m β ) : m β :=
 do r ← i >>= (λ x, pure (some x)) <|> pure none,  
    match r with
    | some a := t a
