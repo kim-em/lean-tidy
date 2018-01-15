@@ -21,7 +21,8 @@ do (levels, type, value, reducibility, trusted) ← pure (match d.to_definition 
   new_type ← (s.dsimplify [] type) <|> pure (type),
 --   new_value ← mk_app ``cast [pr, value],
   updateex_env $ λ env, env.add (declaration.defn new_name levels new_type value reducibility trusted),
-  field_lemma_attr.set new_name () tt
+  field_lemma_attr.set new_name () tt,
+  (set_basic_attribute `simp new_name) <|> skip
 
 @[user_command] meta def make_lemma_cmd (meta_info : decl_meta_info)
   (_ : parse $ tk "make_lemma") : lean.parser unit :=
@@ -29,13 +30,12 @@ do old ← ident,
   d ← (do old ← resolve_constant old, get_decl old) <|>
     fail ("declaration " ++ to_string old ++ " not found"),
   do {
-    tk "←" <|> tk "<-",
-    aliases ← many ident,
-    ↑(aliases.mmap' $ λ al, make_lemma d al) }
+    make_lemma d (old ++ "lemma")
+  }.
 
-example : 1+ 1 =2 := by simp
+-- example : 1+ 1 =2 := by simp
 
-make_lemma foo.X ← fooX
+make_lemma foo.X 
 
-#check fooX
-#print fooX
+#check foo.X.lemma
+#print foo.X.lemma
