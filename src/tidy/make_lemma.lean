@@ -30,11 +30,12 @@ end
 
 @[user_command] meta def make_lemma_cmd (meta_info : decl_meta_info)
   (_ : parse $ tk "make_lemma") : lean.parser unit :=
-do old ← ident,
-  d ← (do old ← resolve_constant old, get_decl old) <|>
-    fail ("declaration " ++ to_string old ++ " not found"),
+do from_lemma ← ident,
+   from_lemma_fully_qualified ← resolve_constant from_lemma,
+  d ← get_decl from_lemma_fully_qualified <|>
+    fail ("declaration " ++ to_string from_lemma ++ " not found"),
   do {
-    make_lemma d (name_lemma old)
+    make_lemma d (name_lemma from_lemma_fully_qualified)
   }.
 
 -- structure foo := 
