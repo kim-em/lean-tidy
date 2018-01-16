@@ -9,9 +9,6 @@ open lean.parser tactic interactive parser
 @[user_attribute] meta def field_lemma_attr : user_attribute :=
 { name := `field_lemma, descr := "This definition was automatically generated from a structure field by `make_lemma`." }
 
-structure foo := 
-  ( X : ℕ . skip )
-
 meta def make_lemma (d : declaration) (new_name : name) : tactic unit :=
 do (levels, type, value, reducibility, trusted) ← pure (match d.to_definition with
   | declaration.defn name levels type value reducibility trusted :=
@@ -25,11 +22,24 @@ do (levels, type, value, reducibility, trusted) ← pure (match d.to_definition 
   field_lemma_attr.set new_name () tt,
   (set_basic_attribute `simp new_name tt) <|> skip
 
+private meta def name_lemma (n : name) :=
+match n.components.reverse with
+| last :: most := mk_str_name n.get_prefix (last.to_string ++ "_lemma")
+| nil          := undefined
+end
+
 @[user_command] meta def make_lemma_cmd (meta_info : decl_meta_info)
   (_ : parse $ tk "make_lemma") : lean.parser unit :=
 do old ← ident,
   d ← (do old ← resolve_constant old, get_decl old) <|>
     fail ("declaration " ++ to_string old ++ " not found"),
   do {
-    make_lemma d (old ++ "lemma")
+    make_lemma d (name_lemma old)
   }.
+
+-- structure foo := 
+--   ( X : ℕ . skip )
+
+-- make_lemma foo.X
+
+-- #check foo.X_lemma
