@@ -59,7 +59,9 @@ meta def safe_tidy_tactics : list (tactic string) :=
   `[simp]                                     >> pure "simp",
   automatic_induction                         >> pure "automatic_induction",
   dsimp_all'                                  >> pure "dsimp_all'",
-  `[simp at *]                                >> pure "simp at *"
+  `[simp at *]                                >> pure "simp at *",
+  run_tidy_tactics,
+  focus1 ( smt_eblast >> tactic.done )        >> pure "smt_eblast"
 ]
 
 private meta def any_later_goals_core { α : Type } (tac : tactic α) : list expr → list expr → list (option α) → bool → tactic (list (option α))
@@ -85,8 +87,6 @@ safe_tidy_tactics.map(λ t, any_later_goals t >>= λ s, pure ("tactic.focus [ " 
 
 meta structure tidy_cfg extends chain_cfg :=
 ( trace_result          : bool                 := ff )
-( run_annotated_tactics : bool                 := tt )
-( extra_tactics         : list (tactic string) := [] )
 ( show_hints            : bool                 := ff )
 ( hints                 : list ℕ               := [] )
 ( later_goals           : bool                 := tt )
@@ -103,9 +103,7 @@ private meta def apply_hints { α : Type } ( tactics : list (tactic α) ) : list
 
 meta def tidy ( cfg : tidy_cfg := {} ) : tactic unit :=
 let tidy_tactics := global_tidy_tactics
-                     ++ (if cfg.later_goals then safe_tactics_on_later_goals else []) 
-                     ++ (if cfg.run_annotated_tactics then [ run_tidy_tactics ] else []) 
-                     ++ cfg.extra_tactics in
+                     ++ (if cfg.later_goals then safe_tactics_on_later_goals else []) in
 let numbered_tactics := number_tactics tidy_tactics in
 do
    /- first apply hints -/
@@ -137,9 +135,5 @@ do
    else
      skip
 
-meta def blast ( cfg : tidy_cfg := {} ) : tactic unit := 
-tidy { cfg with extra_tactics := cfg.extra_tactics ++ [ focus1 ( smt_eblast >> tactic.done ) >> pure "smt_eblast" ] }
-
-notation `♮` := by abstract { smt_eblast }
-notation `♯`  := by abstract { blast }
+notation `♯`  := by abstract { tidy }
 
