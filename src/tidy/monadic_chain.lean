@@ -20,11 +20,11 @@ private meta structure chain_progress ( σ α : Type ) :=
   ( remaining_tactics : list (interaction_monad (tactic_state × σ) α) )
  
 private meta def monadic_chain_core' { σ α : Type } ( tactics : list (interaction_monad (tactic_state × σ) α) ) 
-    : chain_progress σ α → interaction_monad (tactic_state × σ) (list α)
-| ⟨ 0     , _      , _       ⟩ := interaction_monad.fail "chain iteration limit exceeded"
-| ⟨ _     , results, []      ⟩ := pure results
+    : chain_progress σ α → interaction_monad (tactic_state × σ) (list α × bool)
+| ⟨ 0     , results, _       ⟩ := pure (results, ff) -- we've exceeded max_steps
+| ⟨ _     , results, []      ⟩ := pure (results, tt)
 | ⟨ succ n, results, t :: ts ⟩ := if_then_else interaction_monad.done
-                                   (pure results)
+                                   (pure (results, tt))
                                    (dependent_if_then_else t 
                                       (λ result, (monadic_chain_core' ⟨ n, result :: results, tactics ⟩ ))
                                       (monadic_chain_core' ⟨ succ n, results, ts ⟩)
@@ -32,12 +32,22 @@ private meta def monadic_chain_core' { σ α : Type } ( tactics : list (interact
 
 structure chain_cfg := 
   ( max_steps          : nat  := 500 )
+  ( fail_on_max_steps  : bool := ff )
   ( trace_steps        : bool := ff )
   ( allowed_collisions : nat  := 0 )
   ( fail_on_loop       : bool := tt )
-  
+
+meta def interaction_monad.trace {σ : Type} [underlying_tactic_state σ] {α : Type u} [has_to_tactic_format α] (a : α) : interaction_monad σ unit :=
+λ s, (trace a (underlying_tactic_state.to_tactic_state s)).map(λ s', s)
+
 meta def monadic_chain_core { σ α : Type } ( cfg : chain_cfg ) ( tactics : list (interaction_monad (tactic_state × σ) α) ) : interaction_monad (tactic_state × σ) (list α) :=
-monadic_chain_core' tactics ⟨ cfg.max_steps, [], tactics ⟩
+do
+  (results, completed) ← monadic_chain_core' tactics ⟨ cfg.max_steps, [], tactics ⟩,
+  guard completed <|> (if cfg.fail_on_max_steps then
+                         interaction_monad.fail "chain iteration limit exceeded"
+                       else 
+                         interaction_monad.trace "chain iteration limit exceeded"),
+  pure results
 
 private meta def monadic_chain_handle_looping
   { σ α : Type } [ has_to_format α ] 
@@ -49,9 +59,6 @@ if cfg.fail_on_loop then
   detect_looping (unpack_states (monadic_chain_core cfg instrumented_tactics)) cfg.allowed_collisions
 else
   monadic_chain_core cfg tactics
-
-meta def interaction_monad.trace {σ : Type} [underlying_tactic_state σ] {α : Type u} [has_to_tactic_format α] (a : α) : interaction_monad σ unit :=
-λ s, (trace a (underlying_tactic_state.to_tactic_state s)).map(λ s', s)
 
 meta def trace_output { σ α : Type } [ has_to_format α ] ( t : interaction_monad (tactic_state × σ) α ) : interaction_monad (tactic_state × σ) α :=
 do r ← t,
