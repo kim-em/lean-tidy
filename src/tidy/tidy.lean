@@ -135,5 +135,6 @@ do
    else
      skip
 
+notation `♮`  := by abstract { smt_eblast }
 notation `♯`  := by abstract { tidy }
 
