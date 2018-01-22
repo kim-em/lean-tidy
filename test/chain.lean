@@ -9,13 +9,13 @@ end
 
 def chain_test_without_loop_detection_skip_does_nothing : 1 = 1 :=
 begin
-  success_if_fail { chain [ skip ] { fail_on_loop := ff } }, -- fails because 'chain iteration limit exceeded'
+  success_if_fail { chain [ skip ] { fail_on_loop := ff, fail_on_max_steps := tt } }, -- fails because 'chain iteration limit exceeded'
   refl
 end
 
 def chain_test_without_loop_detection_skip_does_nothing' : 1 = 1 :=
 begin
-  success_if_fail { chain [ skip, interactive_simp ] { fail_on_loop := ff } }, -- fails because 'chain iteration limit exceeded'
+  success_if_fail { chain [ skip, interactive_simp ] { fail_on_loop := ff, fail_on_max_steps := tt } }, -- fails because 'chain iteration limit exceeded'
   refl
 end
 

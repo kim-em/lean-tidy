@@ -23,6 +23,6 @@ end
 
 lemma looping_and_profiling_at_the_same_time_test_3 : 1 = 1 :=
 begin
-success_if_fail { profiling $ detect_looping $ interactive_simp >> skip >> skip }, -- failed, with 2 invocations
+success_if_fail { profiling $ detect_looping $ interactive_simp >> skip >> skip }, -- failed, with 2 successful invocations
 simp
 end
