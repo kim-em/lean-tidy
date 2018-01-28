@@ -23,8 +23,6 @@ private meta structure chain_progress ( σ α : Type ) :=
   ( remaining_tactics : list (interaction_monad (tactic_state × σ) α) )
   ( timing_data       : list (ℕ × ℕ) )
  
-#check list.nth
-
 private def update_timing_data (success : bool) (time : ℕ) (index : ℕ) (timing_data : list (ℕ × ℕ)) : list (ℕ × ℕ) :=
 let t := (timing_data.nth index).get_or_else (0, 0) in
 timing_data.update_nth index (if success then (t.1 + time, t.2) else (t.1, t.2 + time))
