@@ -47,7 +47,7 @@ structure chain_cfg :=
   ( trace_steps        : bool := ff )
   ( allowed_collisions : nat  := 0 )
   ( fail_on_loop       : bool := tt )
-  ( trace_timing       : bool := tt )
+  ( trace_timing       : bool := ff )
 
 meta def interaction_monad.trace {σ : Type} [underlying_tactic_state σ] {α : Type u} [has_to_tactic_format α] (a : α) : interaction_monad σ unit :=
 λ s, (trace a (underlying_tactic_state.to_tactic_state s)).map(λ s', s)
@@ -56,7 +56,7 @@ meta def monadic_chain_core { σ α : Type } ( cfg : chain_cfg ) ( tactics : lis
 do
   (results, completed, timing) ← monadic_chain_core' tactics ⟨ cfg.max_steps, [], tactics, list.repeat (0, 0) tactics.length ⟩,
   if cfg.trace_timing then
-    interaction_monad.trace timing.to_string
+    interaction_monad.trace ("tactic invocation times (success/failure): " ++ timing.reverse.to_string)
   else
     interaction_monad.skip,
   guard completed <|> (if cfg.fail_on_max_steps then
