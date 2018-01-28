@@ -46,7 +46,7 @@ begin
   congr_assumptions
 end
 lemma test4 (x: nat) (f g : nat → nat) (p : (λ (x : nat), f (g x)) = id) : f(g x) = x :=
-begin
+begin 
   congr_assumptions
   -- cc can't do this one!
 end

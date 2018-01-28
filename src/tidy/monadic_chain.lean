@@ -6,6 +6,7 @@ import .if_then_else
 import .tactic_states
 import .loop_detection
 import .recover
+import .timing
 
 open nat tactic
 
@@ -13,21 +14,31 @@ universe variables u
 
 meta def interaction_monad.done {σ : Type} [underlying_tactic_state σ] : interaction_monad σ unit :=
 λ s, (done_no_metavariables (underlying_tactic_state.to_tactic_state s)).map(λ s', s)
+meta def interaction_monad.skip {σ : Type} [underlying_tactic_state σ] : interaction_monad σ unit :=
+interaction_monad.result.success ()
 
 private meta structure chain_progress ( σ α : Type ) :=
   ( iteration_limit   : nat )
   ( results           : list α )
   ( remaining_tactics : list (interaction_monad (tactic_state × σ) α) )
+  ( timing_data       : list (ℕ × ℕ) )
  
+#check list.nth
+
+private def update_timing_data (success : bool) (time : ℕ) (index : ℕ) (timing_data : list (ℕ × ℕ)) : list (ℕ × ℕ) :=
+let t := (timing_data.nth index).get_or_else (0, 0) in
+timing_data.update_nth index (if success then (t.1 + time, t.2) else (t.1, t.2 + time))
+
 private meta def monadic_chain_core' { σ α : Type } ( tactics : list (interaction_monad (tactic_state × σ) α) ) 
-    : chain_progress σ α → interaction_monad (tactic_state × σ) (list α × bool)
-| ⟨ 0     , results, _       ⟩ := pure (results, ff) -- we've exceeded max_steps
-| ⟨ _     , results, []      ⟩ := pure (results, tt)
-| ⟨ succ n, results, t :: ts ⟩ := if_then_else interaction_monad.done
-                                   (pure (results, tt))
-                                   (dependent_if_then_else t 
-                                      (λ result, (monadic_chain_core' ⟨ n, result :: results, tactics ⟩ ))
-                                      (monadic_chain_core' ⟨ succ n, results, ts ⟩)
+    : chain_progress σ α → interaction_monad (tactic_state × σ) (list α × bool × list (ℕ × ℕ))
+| ⟨ 0     , results, _      , timing ⟩ := pure (results, ff, timing) -- we've exceeded max_steps
+| ⟨ _     , results, []     , timing ⟩ := pure (results, tt, timing)
+| ⟨ succ n, results, t :: ts, timing ⟩ := if_then_else interaction_monad.done
+                                          (pure (results, tt, timing))
+                                          (let time_before := systemtime in
+                                          (dependent_if_then_else t 
+                                              (λ result, (monadic_chain_core' ⟨ n, result :: results, tactics, update_timing_data tt (systemtime - time_before) ts.length timing ⟩ ))
+                                              (monadic_chain_core' ⟨ succ n, results, ts, update_timing_data ff (systemtime - time_before) ts.length timing ⟩))
 )
 
 structure chain_cfg := 
@@ -36,13 +47,18 @@ structure chain_cfg :=
   ( trace_steps        : bool := ff )
   ( allowed_collisions : nat  := 0 )
   ( fail_on_loop       : bool := tt )
+  ( trace_timing       : bool := tt )
 
 meta def interaction_monad.trace {σ : Type} [underlying_tactic_state σ] {α : Type u} [has_to_tactic_format α] (a : α) : interaction_monad σ unit :=
 λ s, (trace a (underlying_tactic_state.to_tactic_state s)).map(λ s', s)
 
 meta def monadic_chain_core { σ α : Type } ( cfg : chain_cfg ) ( tactics : list (interaction_monad (tactic_state × σ) α) ) : interaction_monad (tactic_state × σ) (list α) :=
 do
-  (results, completed) ← monadic_chain_core' tactics ⟨ cfg.max_steps, [], tactics ⟩,
+  (results, completed, timing) ← monadic_chain_core' tactics ⟨ cfg.max_steps, [], tactics, list.repeat (0, 0) tactics.length ⟩,
+  if cfg.trace_timing then
+    interaction_monad.trace timing.to_string
+  else
+    interaction_monad.skip,
   guard completed <|> (if cfg.fail_on_max_steps then
                          interaction_monad.fail "chain iteration limit exceeded"
                        else 

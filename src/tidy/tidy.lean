@@ -5,6 +5,7 @@
 import .force .applicable .congr_assumptions .fsplit .automatic_induction .tidy_attributes .intro_at_least_one
 import .monadic_chain
 import .smt
+import .timing
 
 import data.list
 
@@ -18,13 +19,6 @@ attribute [ematch] subtype.property
 
 meta def dsimp' := `[dsimp [eq.mpr] {unfold_reducible := tt, md := semireducible}]
 meta def dsimp_all' := `[dsimp at * {unfold_reducible := tt, md := semireducible}]
-
-meta def if_exactly_one_goal { α : Type } ( t : tactic α ) : tactic α :=
-do ng ← num_goals,
-   if ng = 1 then t else fail "there is not exactly one goal"
-
-meta def build_focus_string ( s : list ( option string ) ) : tactic string := 
-pure ("focus " ++ (s.map(λ x, option.get_or_else x "skip")).to_string)
 
 meta def if_first_goal_safe { α : Type } ( t : tactic α ) : tactic α :=
 do ng ← num_goals, -- TODO it might be more robust to count the metavariables in the result
@@ -86,10 +80,10 @@ meta def safe_tactics_on_later_goals :=
 safe_tidy_tactics.map(λ t, any_later_goals t >>= λ s, pure ("tactic.focus [ " ++ ((((none :: s).map(λ o, option.get_or_else (option.map (λ m, "`[" ++ m ++ "]") o) "tactic.skip")).intersperse ", ").foldl append "") ++ "]"))
 
 meta structure tidy_cfg extends chain_cfg :=
-( trace_result          : bool                 := ff )
-( show_hints            : bool                 := ff )
-( hints                 : list ℕ               := [] )
-( later_goals           : bool                 := tt )
+( trace_result : bool    := ff )
+( show_hints   : bool    := ff )
+( hints        : list ℕ  := [] )
+( later_goals  : bool    := tt )
 
 private meta def number_tactics { α : Type } ( tactics : list (tactic α) ) : list ( tactic (α × ℕ) ) :=
 tactics.map₂ ( λ t, λ n, (do r ← t, pure (r, n))) (list.range tactics.length)
@@ -126,14 +120,14 @@ do
         let hints := results.map (λ p, p.2) in
         interaction_monad.trace ("tidy {hints:=" ++ hints.to_string ++ "}")
       else 
-        skip,
+        tactic.skip,
       if cfg.trace_result then
         let result_strings := results.map (λ p, p.1) in
         interaction_monad.trace ("chain tactic used: " ++ result_strings.to_string)
       else
-        skip
+        tactic.skip
    else
-     skip
+     tactic.skip
 
 notation `♮`  := by abstract { smt_eblast }
 notation `♯`  := by abstract { tidy }
