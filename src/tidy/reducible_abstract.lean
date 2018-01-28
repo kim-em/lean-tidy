@@ -2,7 +2,11 @@
 -- Released under Apache 2.0 license as described in the file LICENSE.
 -- Authors: Scott Morrison
 
-open tactic
+open interactive
+open lean.parser
+local postfix `?`:9001 := optional
+
+namespace tactic
 
 private meta def mk_aux_decl_name : option name → tactic name
 | none          := new_aux_decl_name
@@ -29,3 +33,12 @@ do fail_if_no_goals,
    else
      tactic.skip,
    exact e
+
+namespace interactive
+
+meta def reducible_abstract (id : parse ident?) (tac : itactic) : tactic unit :=
+tactic.reducible_abstract tac id
+
+end interactive
+
+end tactic

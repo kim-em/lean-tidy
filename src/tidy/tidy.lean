@@ -132,3 +132,4 @@ do
 notation `♮` := by reducible_abstract { smt_eblast }
 notation `♯`  := by reducible_abstract { tidy }
 
+example : 1 = 1 := ♯ 
