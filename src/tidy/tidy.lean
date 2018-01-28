@@ -5,6 +5,7 @@
 import .force .applicable .congr_assumptions .fsplit .automatic_induction .tidy_attributes .intro_at_least_one
 import .monadic_chain
 import .smt
+import .reducible_abstract
 
 import data.list
 
@@ -128,6 +129,6 @@ do
    else
      tactic.skip
 
-notation `♮`  := by abstract { smt_eblast }
-notation `♯`  := by abstract { tidy }
+notation `♮` := by reducible_abstract { smt_eblast }
+notation `♯`  := by reducible_abstract { tidy }
 
