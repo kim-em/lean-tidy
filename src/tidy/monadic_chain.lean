@@ -14,8 +14,6 @@ universe variables u
 
 meta def interaction_monad.done {σ : Type} [underlying_tactic_state σ] : interaction_monad σ unit :=
 λ s, (done_no_metavariables (underlying_tactic_state.to_tactic_state s)).map(λ s', s)
-meta def interaction_monad.skip {σ : Type} [underlying_tactic_state σ] : interaction_monad σ unit :=
-interaction_monad.result.success ()
 
 private meta structure chain_progress ( σ α : Type ) :=
   ( iteration_limit   : nat )
@@ -56,7 +54,7 @@ do
   if cfg.trace_timing then
     interaction_monad.trace ("tactic invocation times (success/failure): " ++ timing.reverse.to_string)
   else
-    interaction_monad.skip,
+    result.success (),
   guard completed <|> (if cfg.fail_on_max_steps then
                          interaction_monad.fail "chain iteration limit exceeded"
                        else 
