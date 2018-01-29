@@ -17,10 +17,9 @@ do (levels, type, value, reducibility, trusted) ← pure (match d.to_definition 
   end),
   (s, u) ← mk_simp_set ff [] [],
   new_type ← (s.dsimplify [] type) <|> pure (type),
---   new_value ← mk_app ``cast [pr, value],
   updateex_env $ λ env, env.add (declaration.defn new_name levels new_type value reducibility trusted),
-  field_lemma_attr.set new_name () tt,
-  (set_basic_attribute `simp new_name tt) <|> skip
+  field_lemma_attr.set new_name () tt--,
+  -- (set_basic_attribute `simp new_name tt) <|> skip
 
 private meta def name_lemma (n : name) :=
 match n.components.reverse with
