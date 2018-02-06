@@ -7,7 +7,8 @@ import .at_least_one
 open tactic
 
 meta def automatic_induction_at (h : expr) : tactic unit :=
-do t ← infer_type h,
+do t' ← infer_type h,
+   t ← whnf t',
 match t with
 | `(unit)      := induction h >> skip
 | `(punit)     := induction h >> skip
