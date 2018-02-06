@@ -51,8 +51,8 @@ meta def safe_tidy_tactics : list (tactic string) :=
   force (fsplit)                              >> pure "fsplit", 
   dsimp'                                      >> pure "dsimp'",
   `[simp]                                     >> pure "simp",
-  automatic_induction                         >> pure "automatic_induction",
   dsimp_all'                                  >> pure "dsimp_all'",
+  automatic_induction                         >> pure "automatic_induction",
   `[simp at *]                                >> pure "simp at *",
   run_tidy_tactics,
   focus1 ( smt_eblast >> tactic.done )        >> pure "smt_eblast"
