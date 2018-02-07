@@ -20,6 +20,12 @@ attribute [ematch] subtype.property
 meta def dsimp' := `[dsimp [eq.mpr] {unfold_reducible := tt, md := semireducible}]
 meta def dsimp_all' := `[dsimp at * {unfold_reducible := tt, md := semireducible}]
 
+-- FIXME: see as https://github.com/leanprover/lean/issues/1915
+meta def simp_at_each : tactic unit :=
+do l ← tactic.local_context,
+  (s, u) ← tactic.mk_simp_set ff [] [],
+  tactic.interactive.simp_core_aux {} tactic.failed s u l ff
+
 meta def if_first_goal_safe { α : Type } ( t : tactic α ) : tactic α :=
 do ng ← num_goals, -- TODO it might be more robust to count the metavariables in the result
    if ng = 1 then t else do {
@@ -52,8 +58,8 @@ meta def safe_tidy_tactics : list (tactic string) :=
   dsimp'                                      >> pure "dsimp'",
   `[simp]                                     >> pure "simp",
   dsimp_all'                                  >> pure "dsimp_all'",
+  simp_at_each                                >> pure "simp_at_each",
   automatic_induction                         >> pure "automatic_induction",
-  `[simp at *]                                >> pure "simp at *",
   run_tidy_tactics,
   focus1 ( smt_eblast >> tactic.done )        >> pure "smt_eblast"
 ]
