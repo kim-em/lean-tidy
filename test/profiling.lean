@@ -2,6 +2,8 @@ import tidy.profiling
 
 open tactic
 
+namespace tidy.test
+
 -- TODO It would be nice to have 'begin[profiling]'
 lemma profile_test : true :=
 begin
@@ -20,3 +22,6 @@ success_if_fail { profiling $ done <|> done }, -- 2
 
 triv
 end
+
+end tidy.test
+

@@ -2,6 +2,8 @@ import tidy.tidy
 
 open tactic
 
+namespace tidy.test
+
 def tidy_test_0 : ∀ x : unit, x = unit.star := 
 begin
   success_if_fail { chain [ interactive_simp ] },
@@ -21,3 +23,5 @@ def tidy_test_3 (a : string): ∀ x : unit, x = unit.star :=
 begin
   tidy {trace_steps:=tt}
 end
+
+end tidy.test
