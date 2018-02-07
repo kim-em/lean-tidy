@@ -6,49 +6,27 @@ import .at_least_one
 
 open tactic
 
+inductive {u} pempty : Type u
 
 meta def induction_at (e :expr) := tactic.interactive.induction (none, to_pexpr e) none [] none
-
--- definition foo (f : ite (_0 = _0) punit pempty) : punit.star = f := begin
--- induction f,
--- refl,
--- end
-
-meta def induction_only : tactic unit :=
-do l ← local_context,
-   match l with 
-   | [e] := do t ← infer_type e,
-               t ← whnf t,
-               match t with
-               | `(punit) := induction' e
-               | _ := skip
-               end
-   | _   := failed
-   end
-
-definition foo' (f : ite (_0 = _0) punit pempty) : punit.star = f :=
-begin
-induction_only,
-refl
-end
-
 
 meta def automatic_induction_at (h : expr) : tactic unit :=
 do t' ← infer_type h,
    t ← whnf t',
 match t with
-| `(unit)      := induction h >> skip
-| `(punit)     := induction h >> skip
-| `(false)     := induction h >> skip
-| `(empty)     := induction h >> skip
-| `(fin nat.zero) := induction h >> `[cases is_lt]
-| `(ulift _)   := induction h >> skip
-| `(plift _)   := induction h >> skip
-| `(eq _ _)    := induction h >> skip
-| `(prod _ _)  := induction h >> skip
-| `(and _ _)   := induction h >> skip
-| `(sigma _)   := induction h >> skip
-| `(subtype _) := induction h >> skip
+| `(unit)      := induction_at h
+| `(punit)     := induction_at h
+| `(false)     := induction_at h
+| `(empty)     := induction_at h
+| `(pempty)    := induction_at h
+| `(ulift _)   := induction_at h
+| `(plift _)   := induction_at h
+| `(eq _ _)    := induction_at h
+| `(prod _ _)  := induction_at h
+| `(and _ _)   := induction_at h
+| `(sigma _)   := induction_at h
+| `(subtype _) := induction_at h
+| `(fin nat.zero) := induction_at h >> `[cases is_lt]
 | _              := failed
 end
 
