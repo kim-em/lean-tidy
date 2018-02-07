@@ -6,6 +6,7 @@ import .force .applicable .congr_assumptions .fsplit .automatic_induction .tidy_
 import .monadic_chain
 import .smt
 import .reducible_abstract
+import .simp_at_each
 
 import data.list
 
@@ -20,11 +21,6 @@ attribute [ematch] subtype.property
 meta def dsimp' := `[dsimp [eq.mpr] {unfold_reducible := tt, md := semireducible}]
 meta def dsimp_all' := `[dsimp at * {unfold_reducible := tt, md := semireducible}]
 
--- FIXME: see as https://github.com/leanprover/lean/issues/1915
-meta def simp_at_each : tactic unit :=
-do l ← tactic.local_context,
-  (s, u) ← tactic.mk_simp_set ff [] [],
-  tactic.interactive.simp_core_aux {} tactic.failed s u l ff
 
 meta def if_first_goal_safe { α : Type } ( t : tactic α ) : tactic α :=
 do ng ← num_goals, -- TODO it might be more robust to count the metavariables in the result
