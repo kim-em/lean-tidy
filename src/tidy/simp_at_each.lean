@@ -5,6 +5,8 @@
 -- all of this is just copypasta from interactive.lean, with the exception of the line
 -- change_core new_h_type (some h) <|>
 
+-- FIXME make a PR?
+
 open tactic
 open interactive
 open interactive.types
