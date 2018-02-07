@@ -6,6 +6,33 @@ import .at_least_one
 
 open tactic
 
+
+meta def induction_at (e :expr) := tactic.interactive.induction (none, to_pexpr e) none [] none
+
+-- definition foo (f : ite (_0 = _0) punit pempty) : punit.star = f := begin
+-- induction f,
+-- refl,
+-- end
+
+meta def induction_only : tactic unit :=
+do l ← local_context,
+   match l with 
+   | [e] := do t ← infer_type e,
+               t ← whnf t,
+               match t with
+               | `(punit) := induction' e
+               | _ := skip
+               end
+   | _   := failed
+   end
+
+definition foo' (f : ite (_0 = _0) punit pempty) : punit.star = f :=
+begin
+induction_only,
+refl
+end
+
+
 meta def automatic_induction_at (h : expr) : tactic unit :=
 do t' ← infer_type h,
    t ← whnf t',
