@@ -25,7 +25,7 @@ do time_before ← time_in_micros,
    time_after ← time_in_micros,
    pure (r, (time_after - time_before))
 
-lemma f : 1 = 1 := 
+private lemma f : 1 = 1 := 
 begin
 (time_tactic skip) >>= trace,
 simp     
