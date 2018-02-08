@@ -35,16 +35,11 @@ do ng ← num_goals, -- TODO it might be more robust to count the metavariables 
 -- TODO also find tactics which are never used!
 
 -- TODO does cc help?
-meta def unsafe_tidy_tactics : list (tactic string) :=
+meta def tidy_tactics : list (tactic string) :=
 [
-  assumption >> pure "assumption",
-  congr_assumptions,
-  `[simp only [id_locked_eq]]                 >> pure "simp only [id_locked_eq]"
-]
--- TODO how about 'unsafe_applicable', which only acts on safe goals
-
-meta def safe_tidy_tactics : list (tactic string) :=
-[
+  terminal_goal >> assumption >> pure "assumption",
+  terminal_goal >> congr_assumptions,
+  terminal_goal >> `[simp only [id_locked_eq]]                 >> pure "simp only [id_locked_eq]",
   force (reflexivity)                         >> pure "refl", 
   `[exact dec_trivial]                        >> pure "exact dec_trivial",
   semiapplicable                              >>= λ n, pure ("fapply " ++ n.to_string),
@@ -74,12 +69,8 @@ meta def any_later_goals { α : Type } (tac : tactic α ) : tactic (list (option
 do gs ← get_goals,
    any_later_goals_core tac gs [] [] ff
 
-meta def global_tidy_tactics :=
-unsafe_tidy_tactics.map(if_first_goal_safe)
-++ safe_tidy_tactics
-
-meta def safe_tactics_on_later_goals :=
-safe_tidy_tactics.map(λ t, any_later_goals t >>= λ s, pure ("tactic.focus [ " ++ ((((none :: s).map(λ o, option.get_or_else (option.map (λ m, "`[" ++ m ++ "]") o) "tactic.skip")).intersperse ", ").foldl append "") ++ "]"))
+meta def tactics_on_later_goals :=
+tidy_tactics.map(λ t, any_later_goals t >>= λ s, pure ("tactic.focus [ " ++ ((((none :: s).map(λ o, option.get_or_else (option.map (λ m, "`[" ++ m ++ "]") o) "tactic.skip")).intersperse ", ").foldl append "") ++ "]"))
 
 meta structure tidy_cfg extends chain_cfg :=
 ( trace_result : bool    := ff )
@@ -98,8 +89,8 @@ private meta def apply_hints { α : Type } ( tactics : list (tactic α) ) : list
                end
 
 meta def tidy ( cfg : tidy_cfg := {} ) : tactic unit :=
-let tidy_tactics := global_tidy_tactics
-                     ++ (if cfg.later_goals then safe_tactics_on_later_goals else []) in
+let tidy_tactics := tidy_tactics
+                     ++ (if cfg.later_goals then tactics_on_later_goals else []) in
 let numbered_tactics := number_tactics tidy_tactics in
 do
    /- first apply hints -/
