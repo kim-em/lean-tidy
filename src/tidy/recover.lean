@@ -14,15 +14,11 @@ do r ← result,
 
 meta def terminal_goal : tactic unit :=
   do goals ← get_goals,
-     current_goal ← pure goals.head,
+     let current_goal := goals.head,
      other_goals ← metavariables,
-     other_goals ← pure (other_goals.erase current_goal),
-     types ← other_goals.mmap $ λ g, infer_type g,
-     depends_on ← types.mmap $ λ t, (do
-                                       d ← kdepends_on t current_goal,
-                                       guard ¬ d <|> fail ("This is not a terminal goal; " ++ t.to_string ++ " depends on it."),
-                                       skip),
-     skip
+     let other_goals := other_goals.erase current_goal,
+     other_goals.mmap' $ λ g, (do t ← infer_type g, d ← kdepends_on t current_goal,
+                                  monad.whenb d $ pp t >>= λ s, fail ("This is not a terminal goal: " ++ s.to_string ++ " depends on it."))
 
 meta def done_no_metavariables : tactic unit :=
 do done,
