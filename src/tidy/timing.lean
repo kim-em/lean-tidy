@@ -25,11 +25,6 @@ do time_before ← time_in_micros,
    time_after ← time_in_micros,
    pure (r, (time_after - time_before))
 
-private lemma f : 1 = 1 := 
-begin
-(time_tactic skip) >>= trace,
-simp     
-end
 
 -- the following patch adds a builtin `systemtime`
 
