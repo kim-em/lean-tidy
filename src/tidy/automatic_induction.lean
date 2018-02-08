@@ -8,6 +8,7 @@ open tactic
 
 inductive {u} pempty : Type u
 
+-- FIXME this is somehow too aggressive?
 -- meta def induction_at (e :expr) := tactic.interactive.induction (none, to_pexpr e) none [] none
 
 meta def automatic_induction_at (h : expr) : tactic unit :=
