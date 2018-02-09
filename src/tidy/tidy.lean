@@ -110,7 +110,7 @@ do
    if continue then               
     do
       results ← chain numbered_tactics cfg.to_chain_cfg,
-      tactic.interactive.resetI, -- reset the typeclass inference cache, since `dsimp at *` may have spoiled it: https://github.com/leanprover/lean/issues/1920
+      try tactic.interactive.resetI, -- reset the typeclass inference cache, since `dsimp at *` may have spoiled it: https://github.com/leanprover/lean/issues/1920
       if cfg.show_hints ∨ ¬ cfg.hints.empty then
         let hints := results.map (λ p, p.2) in
         interaction_monad.trace ("tidy {hints:=" ++ hints.to_string ++ "}")
