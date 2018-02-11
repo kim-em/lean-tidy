@@ -51,7 +51,8 @@ def add_new_untraversed_vertex (g : partial_graph α β γ) (data : vertex_data 
   ..g
 }
 
-@[simp] lemma update_nth_empty {β} (l : list β) (n : ℕ) (a : β) : l.update_nth n a = [] ↔ l = [] :=
+-- TODO mathlib
+@[simp] lemma update_nth_eq_nil {β} (l : list β) (n : ℕ) (a : β) : l.update_nth n a = [] ↔ l = [] :=
 begin
 split,
 {
@@ -135,6 +136,7 @@ untraversed_neighbours := (v.untraversed_neighbours.remove_all [n]).map(λ m, if
 ..v
 }
 
+-- TODO mathlib
 @[simp] lemma append_eq_nil {β} (p q : list β) : (p ++ q) = [] ↔ p = [] ∧ q = [] :=
 begin
 split,
