@@ -264,103 +264,107 @@ do table ← rs.enum.mmap $ λ e,
         pure (pp, (target, e.1, n, proof)))),
    pure (flatten table) 
 
-meta def rewrite_search (rs : list expr) (start : expr) := 
-do pp ← pp start,
-   let pp := pp.to_string,
-breadth_first_search_γic (all_rewrites rs) pp (expr, 0, 0, sorry)
-
-meta def ppexpr := expr × string × ℕ 
-
-meta def to_ppexpr (e : expr) : tactic ppexpr :=
-do pp ← pp e,
-   let pp := pp.to_string,
-   pure ⟨ e, pp, pp.to_nat ⟩ -- to_nat is not a good hash function!
-
-meta structure rewrite_chain (source : ppexpr) (target : ppexpr)  :=
-(chain : list (expr × ℕ))
-(proof : expr)
-
-meta def compose_rewrite_chain {e1 e2 e3 : ppexpr} (c1 : rewrite_chain e1 e2) (c2 : rewrite_chain e2 e3) : rewrite_chain e1 e3 :=
-{
-  chain := c1.chain ++ c2.chain,
-  proof := sorry
-}
-
-
-meta def all_rewrites' (rs: list expr) (source : ppexpr): tactic (list (Σ target : ppexpr, (rewrite_chain source target))) :=
-do table ← rs.mmap $ λ e,
-   (do results ← (list_while (λ n, do v ← tactic.rewrite e source.1 {occs := occurrences.pos [n+1]}, pure (n, v)) (λ n x, tt)),
-      results.mmap (λ result, do
-        let (n, new_t, prf, _) := result,
-        trace ((e, n), new_t),
-        new_t ← to_ppexpr new_t,
-        pure (⟨ new_t, { chain := [(e, n)], proof := prf }⟩ : Σ target : ppexpr, rewrite_chain source target))),
-   pure (flatten table)  
-
-meta def all_rewrites (rs : list expr) {source target : ppexpr} (chain : rewrite_chain source target) : tactic (list (Σ target' : ppexpr, (rewrite_chain source target'))) :=
-do one_step ← all_rewrites' rs target,
-   pure (one_step.map $ λ c, ⟨ c.1, compose_rewrite_chain chain c.2 ⟩)
-
-meta structure rewrite_search_state (source : ppexpr) :=
-(chains : hash_map ppexpr (λ target : ppexpr, (rewrite_chain source target)))
-(unsearched : list ppexpr)
-
-meta def empty_search_state (source : ppexpr) : tactic (rewrite_search_state source) :=
-{
-  chains := hash_map.of_list [⟨ source, ({ chain := [], proof := sorry } : rewrite_chain source source) ⟩] (λ e, e.2.2),
-  unsearched := [source]
-}
-
-meta def all_rewrites_at (rs : list expr) {source} (state : rewrite_search_state source) (target : ppexpr) : tactic (rewrite_search_state source) :=
-match state.chains.find target with
-| none     := pure state
-| (some c) := do results ← all_rewrites rs c,
-                 let new_results := (results.filter $ λ p, ¬ state.chains.contains p.1),
-                 pure {
-                  chains := hash_map.insert_all new_results state.chains,
-                  unsearched := (state.unsearched.erase target) ++ new_results.map (λ p, p.1)
-                }
-end
-
-meta def all_rewrites_at_choice (rs : list expr) {source} (state : rewrite_search_state source) (choice : list ppexpr → tactic (option ppexpr)) : tactic (rewrite_search_state source) :=
-do some target ← choice (state.unsearched) | pure state,
-   all_rewrites_at rs state target
-
-meta def breadth_first_rewrite_search' (rs : list expr) (source : ppexpr) : ℕ → tactic (rewrite_search_state source)
-| 0       := empty_search_state source
-| (n + 1) := do previous ← breadth_first_rewrite_search' n,
-                if previous.unsearched.empty then
-                  pure previous
-                else
-                  all_rewrites_at_choice rs previous (λ l, pure (l.head))
-
-meta def breadth_first_rewrite_search (rs : list expr) (source : expr) : tactic (rewrite_search_state source) :=
-breadth_first_rewrite_search' rs source 10
-
-meta def rw_search (rs: parse rw_rules) (e : tactic expr := target): tactic unit :=
-do rs ← rs.rules.mmap $ λ r, to_expr' r.rule,
-   t ← e,
-   breadth_first_rewrite_search rs t,
-   skip
-
-meta def rw_results (rs: parse rw_rules) (e : tactic expr := target): tactic (Σ source : expr, (list (Σ target : expr, (rewrite_chain source target)))) :=
-do rs ← rs.rules.mmap $ λ r, to_expr' r.rule,
-   t ← e,
-   result ← all_rewrites' rs t,
-   pure ⟨ t, result ⟩
-
 end interactive
 end tactic
 
-open tactic.interactive
+-- meta def rewrite_search (rs : list expr) (start : expr) := 
+-- do pp ← pp start,
+--    let pp := pp.to_string,
+-- breadth_first_search_γic (all_rewrites rs) pp (expr, 0, 0, sorry)
 
-private lemma foo : [0] = [1] := sorry
-private lemma bar : [2] = [1] := sorry
+-- meta def ppexpr := expr × string × ℕ 
 
-private lemma qux : [[0],[0]] = [[2],[2]] :=
-begin
-rw_search [foo,bar],
-rw_results [foo,bar],
-rw [foo] {occs := occurrences.pos [1]},
-rw ← bar,
-end
+-- meta def to_ppexpr (e : expr) : tactic ppexpr :=
+-- do pp ← pp e,
+--    let pp := pp.to_string,
+--    pure ⟨ e, pp, pp.to_nat ⟩ -- to_nat is not a good hash function!
+
+-- meta structure rewrite_chain (source : ppexpr) (target : ppexpr)  :=
+-- (chain : list (expr × ℕ))
+-- (proof : expr)
+
+-- meta def compose_rewrite_chain {e1 e2 e3 : ppexpr} (c1 : rewrite_chain e1 e2) (c2 : rewrite_chain e2 e3) : rewrite_chain e1 e3 :=
+-- {
+--   chain := c1.chain ++ c2.chain,
+--   proof := sorry
+-- }
+
+
+-- meta def all_rewrites' (rs: list expr) (source : ppexpr): tactic (list (Σ target : ppexpr, (rewrite_chain source target))) :=
+-- do table ← rs.mmap $ λ e,
+--    (do results ← (list_while (λ n, do v ← tactic.rewrite e source.1 {occs := occurrences.pos [n+1]}, pure (n, v)) (λ n x, tt)),
+--       results.mmap (λ result, do
+--         let (n, new_t, prf, _) := result,
+--         trace ((e, n), new_t),
+--         new_t ← to_ppexpr new_t,
+--         pure (⟨ new_t, { chain := [(e, n)], proof := prf }⟩ : Σ target : ppexpr, rewrite_chain source target))),
+--    pure (flatten table)  
+
+-- meta def all_rewrites (rs : list expr) {source target : ppexpr} (chain : rewrite_chain source target) : tactic (list (Σ target' : ppexpr, (rewrite_chain source target'))) :=
+-- do one_step ← all_rewrites' rs target,
+--    pure (one_step.map $ λ c, ⟨ c.1, compose_rewrite_chain chain c.2 ⟩)
+
+-- meta structure rewrite_search_state (source : ppexpr) :=
+-- (chains : hash_map ppexpr (λ target : ppexpr, (rewrite_chain source target)))
+-- (unsearched : list ppexpr)
+
+-- meta def empty_search_state (source : ppexpr) : tactic (rewrite_search_state source) :=
+-- {
+--   chains := hash_map.of_list [⟨ source, ({ chain := [], proof := sorry } : rewrite_chain source source) ⟩] (λ e, e.2.2),
+--   unsearched := [source]
+-- }
+
+-- meta def all_rewrites_at (rs : list expr) {source} (state : rewrite_search_state source) (target : ppexpr) : tactic (rewrite_search_state source) :=
+-- match state.chains.find target with
+-- | none     := pure state
+-- | (some c) := do results ← all_rewrites rs c,
+--                  let new_results := (results.filter $ λ p, ¬ state.chains.contains p.1),
+--                  pure {
+--                   chains := hash_map.insert_all new_results state.chains,
+--                   unsearched := (state.unsearched.erase target) ++ new_results.map (λ p, p.1)
+--                 }
+-- end
+
+-- meta def all_rewrites_at_choice (rs : list expr) {source} (state : rewrite_search_state source) (choice : list ppexpr → tactic (option ppexpr)) : tactic (rewrite_search_state source) :=
+-- do some target ← choice (state.unsearched) | pure state,
+--    all_rewrites_at rs state target
+
+-- meta def breadth_first_rewrite_search' (rs : list expr) (source : ppexpr) : ℕ → tactic (rewrite_search_state source)
+-- | 0       := empty_search_state source
+-- | (n + 1) := do previous ← breadth_first_rewrite_search' n,
+--                 if previous.unsearched.empty then
+--                   pure previous
+--                 else
+--                   all_rewrites_at_choice rs previous (λ l, pure (l.head))
+
+-- meta def breadth_first_rewrite_search (rs : list expr) (source : expr) : tactic (rewrite_search_state source) :=
+-- breadth_first_rewrite_search' rs source 10
+
+-- meta def rw_search (rs: parse rw_rules) (e : tactic expr := target): tactic unit :=
+-- do rs ← rs.rules.mmap $ λ r, to_expr' r.rule,
+--    t ← e,
+--    breadth_first_rewrite_search rs t,
+--    skip
+
+-- meta def rw_results (rs: parse rw_rules) (e : tactic expr := target): tactic (Σ source : expr, (list (Σ target : expr, (rewrite_chain source target)))) :=
+-- do rs ← rs.rules.mmap $ λ r, to_expr' r.rule,
+--    t ← e,
+--    result ← all_rewrites' rs t,
+--    pure ⟨ t, result ⟩
+
+-- end interactive
+-- end tactic
+
+-- open tactic.interactive
+
+-- private lemma foo : [0] = [1] := sorry
+-- private lemma bar : [2] = [1] := sorry
+
+-- private lemma qux : [[0],[0]] = [[2],[2]] :=
+-- begin
+-- rw_search [foo,bar],
+-- rw_results [foo,bar],
+-- rw [foo] {occs := occurrences.pos [1]},
+-- rw ← bar,
+-- end
+
