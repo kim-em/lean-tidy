@@ -1,61 +1,105 @@
 import data.list
+import data.hash_map
 
 open lean
 open lean.parser
 
-universes u
+universes t u v w
 
-structure untraversed_vertex_data (α : Type u) :=
-(label : α)
+/-
+A `partial_graph` represents a partial traversal of a graph, along with a tentative shortest path tree.
+Each vertex of the graph is labelled by an `β`.
+We also record along with each vertex its parent (this may be revised later, as more of the graph is traversed)
+as an index into the prefix-immutable list of traversed vertices.
+Along with the parent we record some 'descent_data' of some arbitrary type `γ`,
+which we think of as recording how the vertex was generated from its parent (which also may be revised).
+At each vertex we record the (current) depth to the root. We use this to decide whether to update parentage data when
+the vertex is rediscovered.
+-/
+
+structure vertex_data (α : Type t) (β : Type u) (γ : Type v) :=
+(compare_on : α)
+(data : β)
+(descent_data : γ)
+
+structure untraversed_vertex_data (α : Type t) (β : Type u) (γ : Type v) :=
+(data : vertex_data α β γ)
 (parent : ℕ)
 (depth : ℕ)
 
-structure traversed_vertex_data (α : Type u) extends untraversed_vertex_data α :=
-(traversed_neighbours : list ℕ)   -- these are indices into traversed_nodes
-(untraversed_neighbours : list ℕ) -- these are indices into untraversed_nodes, which does change!
+structure traversed_vertex_data (α : Type t) (β : Type u) (γ : Type v) extends untraversed_vertex_data α β γ :=
+(traversed_neighbours : list ℕ)   -- these are indices into traversed_vertices
+(untraversed_neighbours : list ℕ) -- these are indices into untraversed_vertices, which does change!
 
-structure partial_graph (α : Type u) :=
-(traversed_vertices : list (traversed_vertex_data α))    -- we only ever append to this list, so indices are stable 
-(untraversed_vertices : list (untraversed_vertex_data α))
+structure partial_graph (α : Type t) (β : Type u) (γ : Type v) :=
+(traversed_vertices : list (traversed_vertex_data α β γ))    -- we only ever append to this list, so indices are stable 
+(untraversed_vertices : list (untraversed_vertex_data α β γ))
 (nonempty : traversed_vertices ≠ [])
 
-variable {α : Type u}
+attribute [simp] partial_graph.nonempty
 
-def partial_graph.current_vertex (g : partial_graph α) := g.traversed_vertices.length
-def partial_graph.current_vertex_data (g : partial_graph α) : traversed_vertex_data α := g.traversed_vertices.last g.nonempty
+variable {α : Type u}
+variable {β : Type u}
+variable {γ : Type v}
+
+def partial_graph.current_vertex (g : partial_graph α β γ) := g.traversed_vertices.length
+def partial_graph.current_vertex_data (g : partial_graph α β γ) := g.traversed_vertices.last g.nonempty
 
 -- we're only ever adding vertices which are neighbours of the last traversed vertex
-def add_new_untraversed_vertex (g : partial_graph α) (a : α) := {
-  untraversed_vertices := g.untraversed_vertices ++ [⟨ a, g.traversed_vertices.length - 1, g.current_vertex_data.depth + 1⟩]
+def add_new_untraversed_vertex (g : partial_graph α β γ) (data : vertex_data α β γ) := {
+  untraversed_vertices := g.untraversed_vertices ++ [⟨ data, g.traversed_vertices.length - 1, g.current_vertex_data.depth + 1⟩]
   ..g
 }
 
-def update_traversed_vertex (g : partial_graph α) (just_traversed : ℕ) (n : ℕ) :=
-match g.traversed_vertices.nth n with
+@[simp] lemma update_nth_empty {β} (l : list β) (n : ℕ) (a : β) : l.update_nth n a = [] ↔ l = [] :=
+begin
+split,
+{
+  induction l,
+  unfold list.update_nth,
+  intros, assumption,
+  induction n,
+  unfold list.update_nth,
+  intros,
+  contradiction,
+  unfold list.update_nth,
+  intros,
+  contradiction
+},
+{
+  intros,
+  rw a_1,
+  unfold list.update_nth,
+}
+end
+
+def update_traversed_vertex (g : partial_graph α β γ) (just_traversed : ℕ) (previously_traversed : ℕ) (descent_data : γ) :=
+match g.traversed_vertices.nth previously_traversed with
 | none := g
 | (some d) := let new_traversed_neighbours := d.traversed_neighbours ++ [g.current_vertex] in
               let new_untraversed_neighbours := d.untraversed_neighbours.erase just_traversed in
               if d.depth > g.current_vertex_data.depth + 1 then
                 {
-                  traversed_vertices := g.traversed_vertices.update_nth n {
+                  traversed_vertices := g.traversed_vertices.update_nth previously_traversed {
+                                                                            data := { descent_data := descent_data, .. d.data },
                                                                             traversed_neighbours := new_traversed_neighbours,
                                                                             untraversed_neighbours := new_untraversed_neighbours,
                                                                             parent := g.current_vertex, 
-                                                                            depth := g.current_vertex_data.depth + 1, 
-                                                                          .. d},
-                  nonempty := sorry,
+                                                                            depth := g.current_vertex_data.depth + 1
+                                                                          },
+                  nonempty := by simp,
                 .. g }
               else 
                 {
-                  traversed_vertices := g.traversed_vertices.update_nth n {
+                  traversed_vertices := g.traversed_vertices.update_nth previously_traversed {
                                                                             traversed_neighbours := new_traversed_neighbours,
                                                                             untraversed_neighbours := new_untraversed_neighbours,
                                                                           .. d},
-                  nonempty := sorry,
+                  nonempty := by simp,
                 .. g }
 end
 
-def update_untraversed_vertex (g : partial_graph α) (n : ℕ) :=
+def update_untraversed_vertex (g : partial_graph α β γ) (n : ℕ) :=
 match g.untraversed_vertices.nth n with
 | none := g
 | (some d) := if d.depth > g.current_vertex_data.depth + 1 then
@@ -64,34 +108,34 @@ match g.untraversed_vertices.nth n with
                 g
 end
 
-def add_traversed_neighbour_to_current_vertex (g : partial_graph α) (n : ℕ) :=
+def add_traversed_neighbour_to_current_vertex (g : partial_graph α β γ) (n : ℕ) :=
 match g.traversed_vertices.nth n with
 | none := g
 | (some d) := {
   traversed_vertices := g.traversed_vertices.update_nth g.current_vertex { traversed_neighbours := d.traversed_neighbours ++ [n], ..d },
-  nonempty := sorry,
+  nonempty := by simp,
   .. g
 }
 end
 
-def add_untraversed_neighbour_to_current_vertex (g : partial_graph α) (n : ℕ) :=
+def add_untraversed_neighbour_to_current_vertex (g : partial_graph α β γ) (n : ℕ) :=
 match g.traversed_vertices.nth n with
 | none := g
 | (some d) := {
   traversed_vertices := g.traversed_vertices.update_nth g.current_vertex { untraversed_neighbours := d.untraversed_neighbours ++ [n], ..d },
-  nonempty := sorry,
+  nonempty := by simp,
   .. g
 }
 end
 
-def mark_vertex_traversed_1 (n : ℕ) (k : ℕ) (v : traversed_vertex_data α) : traversed_vertex_data α :=
+def mark_vertex_traversed_1 (n : ℕ) (k : ℕ) (v : traversed_vertex_data α β γ) : traversed_vertex_data α β γ :=
 {
 traversed_neighbours   := if n ∈ v.untraversed_neighbours then v.traversed_neighbours ++ [k] else v.traversed_neighbours,
 untraversed_neighbours := (v.untraversed_neighbours.remove_all [n]).map(λ m, if m > n then m-1 else m),
 ..v
 }
 
-@[simp] lemma append_eq_nil {α} (p q : list α) : (p ++ q) = [] ↔ p = [] ∧ q = [] :=
+@[simp] lemma append_eq_nil {β} (p q : list β) : (p ++ q) = [] ↔ p = [] ∧ q = [] :=
 begin
 split,
 {
@@ -108,7 +152,7 @@ split,
 }
 end
 
-def mark_vertex_traversed_2 (n : ℕ) (g : partial_graph α) : partial_graph α :=
+def mark_vertex_traversed_2 (n : ℕ) (g : partial_graph α β γ) : partial_graph α β γ :=
 match g.untraversed_vertices.nth n with
 | none := g
 | (some d) := {
@@ -119,45 +163,72 @@ match g.untraversed_vertices.nth n with
 end
 
 /- We've just marked a vertex as traversed, and need to add edges. -/
-def process_neighbour [decidable_eq α] (just_traversed : ℕ) (g : partial_graph α) (a : α) : partial_graph α :=
-match (g.traversed_vertices.map(λ d : traversed_vertex_data α, d.label)).indexes_of a with
+def process_neighbour [decidable_eq α] (just_traversed : ℕ) (g : partial_graph α β γ) (vertex : vertex_data α β γ) : partial_graph α β γ:=
+match (g.traversed_vertices.map(λ d : traversed_vertex_data α β γ, d.data.compare_on)).indexes_of (vertex.compare_on) with
 | (n :: _) := -- `a` has already been traversed
-              add_traversed_neighbour_to_current_vertex (update_traversed_vertex g just_traversed n) n
+              add_traversed_neighbour_to_current_vertex (update_traversed_vertex g just_traversed n vertex.descent_data) n
 | [] := -- `a` has not already been traversed
-        match (g.untraversed_vertices.map(λ d : untraversed_vertex_data α, d.label)).indexes_of a with
+        match (g.untraversed_vertices.map(λ d : untraversed_vertex_data α β γ, d.data.compare_on)).indexes_of (vertex.compare_on) with
         | (n :: _) := -- `a` has already been listed as untraversed
                       add_untraversed_neighbour_to_current_vertex (update_untraversed_vertex g n) n
         | [] := -- we've never seen `a` before!
-                add_untraversed_neighbour_to_current_vertex (add_new_untraversed_vertex g a) g.untraversed_vertices.length
+                add_untraversed_neighbour_to_current_vertex (add_new_untraversed_vertex g vertex) g.untraversed_vertices.length
         end
 end
 
-def traverse [decidable_eq α] (neighbours : α → list α) (n : ℕ) (g : partial_graph α) : partial_graph α :=
+variable {m : Type max u v → Type max u v}
+
+def traverse [decidable_eq α] [monad m] (neighbours : β → m (list (vertex_data α β γ))) (n : ℕ) (g : partial_graph α β γ) : m (partial_graph α β γ) :=
 match g.untraversed_vertices.nth n with
-| none := g
-| (some d) := --let ns := (neighbours d.label).map (λ n, (n, g.traversed_vertices.find_indexes (λ d, d.label = n), g.untraversed_vertices.find_indexes (λ d, d.label = n))) in
-              let g' := mark_vertex_traversed_2 n g in
-              (neighbours d.label).foldl (process_neighbour n) g'
+| none := pure g
+| (some d) := let g' := mark_vertex_traversed_2 n g in
+              do ns ← neighbours d.data.data,
+                 pure (ns.foldl (process_neighbour n) g')
 end              
 
-def partial_graph.root [decidable_eq α] (neighbours : α → list α) (a : α) : partial_graph α := 
-let ns := (neighbours a).erase a in
-{
-  traversed_vertices := [{ label := a, parent := 0, depth := 0, traversed_neighbours := [], untraversed_neighbours := list.range ns.length}],
-  untraversed_vertices := ns.map(λ n, { label := n, parent := 0, depth := 1 }),
-  nonempty := by simp
-}
+def partial_graph.root [decidable_eq α] [monad m] (neighbours : β → m (list (vertex_data α β γ))) (vertex : vertex_data α β γ) : m (partial_graph α β γ) := 
+do
+ ns ← neighbours vertex.data,
+ let ns := ns.filter (λ p, p.compare_on ≠ vertex.compare_on),
+  pure {
+    traversed_vertices := [{ data := vertex, parent := 0, depth := 0, traversed_neighbours := [], untraversed_neighbours := list.range ns.length}],
+    untraversed_vertices := ns.map(λ n, { data := n, parent := 0, depth := 1 }),
+    nonempty := by simp
+  }
 
-def breadth_first_search [decidable_eq α] (neighbours : α → list α) (a : α) : ℕ → partial_graph α
-| 0 := partial_graph.root neighbours a
-| (n+1) := traverse neighbours 0 (breadth_first_search n)
+def breadth_first_search_monadic [decidable_eq α] [monad m] (neighbours : β → m (list (vertex_data α β γ))) (vertex : vertex_data α β γ) : ℕ → m (partial_graph α β γ)
+| 0 := partial_graph.root neighbours vertex
+| (n+1) := do previous ← breadth_first_search_monadic n,
+              traverse neighbours 0 previous
 
-#eval (breadth_first_search (λ p : ℕ × ℕ, [(p.1+1,p.2),(p.1,p.2+1)]) (0,0) 15).traversed_vertices.map(λ v : traversed_vertex_data (ℕ × ℕ), v.label)
-#eval (breadth_first_search (λ p : ℕ × ℕ, [(p.1+1,p.2),(p.1,p.2+1)]) (0,0) 15).untraversed_vertices.map(λ v : untraversed_vertex_data (ℕ × ℕ), v.label)
+
+def depth_first_search_monadic [decidable_eq α] [monad m] (neighbours : β → m (list (vertex_data α β γ))) (vertex : vertex_data α β γ) : ℕ → m (partial_graph α β γ)
+| 0 := partial_graph.root neighbours vertex
+| (n+1) := do previous ← depth_first_search_monadic n,
+              traverse neighbours (previous.untraversed_vertices.length - 1) previous
+
+instance id_monad : monad id := 
+begin
+refine {
+  bind := λ _ _ a f, f a,
+  map := λ _ _ f, f,
+  pure := λ _ a, a,
+  ..
+},
+intros, refl, intros, refl, intros, refl
+end
+
+def breadth_first_search [decidable_eq β] (neighbours : β → list β) (a : β) : ℕ → partial_graph β β ℕ := @breadth_first_search_monadic β β ℕ id _ _ (λ x, (neighbours x).enum.map(λ p, ⟨ p.2, p.2, p.1 ⟩)) ⟨ a, a, 0 ⟩
+def depth_first_search [decidable_eq β] (neighbours : β → list β) (a : β) : ℕ → partial_graph β β ℕ := @depth_first_search_monadic β β ℕ id _ _ (λ x, (neighbours x).enum.map(λ p, ⟨ p.2, p.2, p.1 ⟩)) ⟨ a, a, 0 ⟩
+
+#eval (breadth_first_search (λ p : ℕ × ℕ, [(p.1+1,p.2),(p.1,p.2+1)]) (0,0) 15).traversed_vertices.map(λ v : traversed_vertex_data (ℕ × ℕ) (ℕ × ℕ) ℕ, v.data.data)
+#eval (breadth_first_search (λ p : ℕ × ℕ, [(p.1+1,p.2),(p.1,p.2+1)]) (0,0) 15).untraversed_vertices.map(λ v : untraversed_vertex_data (ℕ × ℕ) (ℕ × ℕ) ℕ, v.data.data)
+
+#eval (depth_first_search (λ p : ℕ × ℕ, [(p.1+1,p.2),(p.1,p.2+1)]) (0,0) 15).traversed_vertices.map(λ v : traversed_vertex_data (ℕ × ℕ) (ℕ × ℕ) ℕ, v.data.data)
 
 -- knights' moves
-#eval (breadth_first_search (λ p : ℤ × ℤ, [(p.1+2,p.2+1),(p.1+2,p.2-1),(p.1-2,p.2+1),(p.1-2,p.2-1),(p.1+1,p.2+2),(p.1+1,p.2-2),(p.1-1,p.2+2),(p.1-1,p.2-2)]) (0,0) 100).traversed_vertices.map(λ v : traversed_vertex_data (ℤ × ℤ), (v.label, v.depth))
-
+#eval (breadth_first_search (λ p : ℤ × ℤ, [(p.1+2,p.2+1),(p.1+2,p.2-1),(p.1-2,p.2+1),(p.1-2,p.2-1),(p.1+1,p.2+2),(p.1+1,p.2-2),(p.1-1,p.2+2),(p.1-1,p.2-2)]) (0,0) 20).traversed_vertices.map(λ v : traversed_vertex_data (ℤ × ℤ) (ℤ × ℤ) ℕ, (v.data.data, v.data.descent_data))
+#eval (depth_first_search (λ p : ℤ × ℤ, [(p.1+2,p.2+1),(p.1+2,p.2-1),(p.1-2,p.2+1),(p.1-2,p.2-1),(p.1+1,p.2+2),(p.1+1,p.2-2),(p.1-1,p.2+2),(p.1-1,p.2-2)]) (0,0) 20).traversed_vertices.map(λ v : traversed_vertex_data (ℤ × ℤ) (ℤ × ℤ) ℕ, (v.data.data, v.data.descent_data))
 
 namespace tactic
 
@@ -165,15 +236,35 @@ namespace interactive
 open interactive interactive.types expr
 
 
-private meta def list_while' {α} (f : ℕ → tactic α) (P : ℕ → α → bool) : ℕ → α → bool → list α → tactic (list α)
+private meta def list_while' {β} (f : ℕ → tactic β) (P : ℕ → β → bool) : ℕ → β → bool → list β → tactic (list β)
 | _ _ ff t := pure t
 | n a tt t := (do g ← f (n+1), list_while' (n+1) g (P (n+1) g) (a :: t)) <|> pure (a :: t)
 
-meta def list_while {α} (f : ℕ → tactic α) (P : ℕ → α → bool) : tactic (list α) :=
+meta def list_while {β} (f : ℕ → tactic β) (P : ℕ → β → bool) : tactic (list β) :=
 do 
   g ← f 0,
   r ← (list_while' f P 0 g (P 0 g) []),
   pure r.reverse
+
+def flatten {β} : list (list β) → list β
+| [] := []
+| (h :: t) := h ++ (flatten t)
+
+meta def all_rewrites (rs: list expr) (source : expr) : tactic (list (string × (expr × ℕ × ℕ × expr))) :=
+do table ← rs.enum.mmap $ λ e,
+   (do results ← (list_while (λ n, do v ← tactic.rewrite e.2 source {occs := occurrences.pos [n+1]}, pure (n, v)) (λ n x, tt)),
+      results.mmap (λ result, do
+        let (n, target, proof, _) := result,
+        trace ((e, n), target),
+        pp ← pp target,
+        let pp := pp.to_string,
+        pure (pp, (target, e.1, n, proof)))),
+   pure (flatten table) 
+
+meta def rewrite_search (rs : list expr) (start : expr) := 
+do pp ← pp start,
+   let pp := pp.to_string,
+breadth_first_search_γic (all_rewrites rs) pp (expr, 0, 0, sorry)
 
 meta def ppexpr := expr × string × ℕ 
 
@@ -192,9 +283,6 @@ meta def compose_rewrite_chain {e1 e2 e3 : ppexpr} (c1 : rewrite_chain e1 e2) (c
   proof := sorry
 }
 
-def flatten {α} : list (list α) → list α
-| [] := []
-| (h :: t) := h ++ (flatten t)
 
 meta def all_rewrites' (rs: list expr) (source : ppexpr): tactic (list (Σ target : ppexpr, (rewrite_chain source target))) :=
 do table ← rs.mmap $ λ e,
