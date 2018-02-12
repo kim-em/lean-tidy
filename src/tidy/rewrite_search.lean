@@ -51,26 +51,26 @@ def add_new_untraversed_vertex (g : partial_graph α β γ) (data : vertex_data 
   ..g
 }
 
+
 -- TODO mathlib
 @[simp] lemma update_nth_eq_nil {β} (l : list β) (n : ℕ) (a : β) : l.update_nth n a = [] ↔ l = [] :=
 begin
 split,
+show list.update_nth l n a = list.nil → l = list.nil, 
 {
   induction l,
-  unfold list.update_nth,
-  intros, assumption,
-  induction n,
-  unfold list.update_nth,
-  intros,
-  contradiction,
-  unfold list.update_nth,
-  intros,
-  contradiction
+  case list.nil {
+    intros,
+    assumption
+  },
+  case list.cons {
+    induction n,
+    all_goals { contradiction }
+  }
 },
+-- show l = list.nil → list.update_nth l n a = list.nil,
 {
-  intros,
-  rw a_1,
-  unfold list.update_nth,
+  intros, simp *, refl
 }
 end
 
@@ -140,16 +140,17 @@ untraversed_neighbours := (v.untraversed_neighbours.remove_all [n]).map(λ m, if
 @[simp] lemma append_eq_nil {β} (p q : list β) : (p ++ q) = [] ↔ p = [] ∧ q = [] :=
 begin
 split,
+show (p ++ q) = [] → p = [] ∧ q = [],
 {
-  intros,
+  intro h,
   split,
-  apply list.eq_nil_of_prefix_nil, rw ← a, simp, 
-  apply list.eq_nil_of_suffix_nil, rw ← a, simp,
+  apply list.eq_nil_of_prefix_nil, rw ← h, simp, 
+  apply list.eq_nil_of_suffix_nil, rw ← h, simp,
 },
+show p = [] ∧ q = [] → p ++ q = [],
 {
-  intros,
-  induction a,
-  rw [a_left, a_right],
+  intros h,
+  rw [h.left, h.right],
   refl,
 }
 end
@@ -220,6 +221,8 @@ refine {
 intros, refl, intros, refl, intros, refl
 end
 
+
+
 def breadth_first_search [decidable_eq β] (neighbours : β → list β) (a : β) : ℕ → partial_graph β β ℕ := @breadth_first_search_monadic β β ℕ id _ _ (λ x, (neighbours x).enum.map(λ p, ⟨ p.2, p.2, p.1 ⟩)) ⟨ a, a, 0 ⟩
 def depth_first_search [decidable_eq β] (neighbours : β → list β) (a : β) : ℕ → partial_graph β β ℕ := @depth_first_search_monadic β β ℕ id _ _ (λ x, (neighbours x).enum.map(λ p, ⟨ p.2, p.2, p.1 ⟩)) ⟨ a, a, 0 ⟩
 
@@ -244,33 +247,54 @@ private meta def list_while' {β} (f : ℕ → tactic β) (P : ℕ → β → bo
 | n a tt t := (do g ← f (n+1), list_while' (n+1) g (P (n+1) g) (a :: t)) <|> pure (a :: t)
 
 meta def list_while {β} (f : ℕ → tactic β) (P : ℕ → β → bool) : tactic (list β) :=
-do 
+(do 
   g ← f 0,
   r ← (list_while' f P 0 g (P 0 g) []),
-  pure r.reverse
+  pure r.reverse) <|> pure []
 
 def flatten {β} : list (list β) → list β
 | [] := []
 | (h :: t) := h ++ (flatten t)
 
-meta def all_rewrites (rs: list expr) (source : expr) : tactic (list (string × (expr × ℕ × ℕ × expr))) :=
+meta def all_rewrites (rs: list expr) (source : expr) : tactic (list (vertex_data string expr (ℕ × ℕ × expr))) :=
 do table ← rs.enum.mmap $ λ e,
-   (do results ← (list_while (λ n, do v ← tactic.rewrite e.2 source {occs := occurrences.pos [n+1]}, pure (n, v)) (λ n x, tt)),
+   (do results ← (list_while (λ n, do v ← tactic.rewrite e.2 source {occs := occurrences.pos [n+1]}, pure (n, v)) (λ n x, tt /- do we need to discard any? or just wait until rewrite fails? -/)),
       results.mmap (λ result, do
         let (n, target, proof, _) := result,
-        trace ((e, n), target),
+        -- trace ((e, n), target),
         pp ← pp target,
         let pp := pp.to_string,
-        pure (pp, (target, e.1, n, proof)))),
+        pure { vertex_data . compare_on := pp, data := target, descent_data := (e.1, n, proof) })),
    pure (flatten table) 
+
+meta def rewrite_search_core (rs : list expr) (n : ℕ) (start : expr) := 
+do pp ← pp start,
+   let pp := pp.to_string,
+   @depth_first_search_monadic _ _ _ tactic _ _ (all_rewrites rs) ⟨ pp, start, (0, 0, start /- this should be refl or something... -/) ⟩ n
+
+meta def rewrite_search (rs: parse rw_rules) (n : ℕ) (e : tactic expr := target): tactic unit :=
+do rs ← rs.rules.mmap $ λ r, to_expr' r.rule,
+   t ← e,
+   result ← rewrite_search_core rs n t,
+   trace (result.traversed_vertices.map (λ v : traversed_vertex_data _ _ _, v.data.compare_on)),
+  --  trace (result.untraversed_vertices.map (λ v : untraversed_vertex_data _ _ _, v.data.compare_on)),
+   skip
 
 end interactive
 end tactic
 
--- meta def rewrite_search (rs : list expr) (start : expr) := 
--- do pp ← pp start,
---    let pp := pp.to_string,
--- breadth_first_search_γic (all_rewrites rs) pp (expr, 0, 0, sorry)
+
+open tactic.interactive
+
+private lemma foo : [0] = [1] := sorry
+private lemma bar : [2] = [1] := sorry
+
+private lemma qux : [[0],[0]] = [[2],[2]] :=
+begin
+rewrite_search [foo, bar] 4,
+rw [foo] {occs := occurrences.pos [1]},
+rw ← bar,
+end
 
 -- meta def ppexpr := expr × string × ℕ 
 
