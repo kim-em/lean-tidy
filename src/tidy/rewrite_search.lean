@@ -1,10 +1,16 @@
 import data.list
 import data.hash_map
+import .edit_distance
 
 open lean
 open lean.parser
 
 universes t u v w
+
+def list.flatten {β} : list (list β) → list β
+| [] := []
+| (h :: t) := h ++ (list.flatten t)
+
 
 /-
 A `partial_graph` represents a partial traversal of a graph, along with a tentative shortest path tree.
@@ -38,12 +44,30 @@ structure partial_graph (α : Type t) (β : Type u) (γ : Type v) :=
 
 attribute [simp] partial_graph.nonempty
 
+structure partial_graph_pair (α : Type t) (β : Type u) (γ : Type v) :=
+(graph_1 : partial_graph α β γ)
+(graph_2 : partial_graph α β γ)
+(distances : list (list ℕ))  -- pairwise distances between untraversed vertices on each graph
+
 variable {α : Type u}
 variable {β : Type u}
 variable {γ : Type v}
 
 def partial_graph.current_vertex (g : partial_graph α β γ) := g.traversed_vertices.length
 def partial_graph.current_vertex_data (g : partial_graph α β γ) := g.traversed_vertices.last g.nonempty
+
+-- We have to use meta here because the recursion can't be justified without much more care.
+meta def partial_graph.traversed_vertex_ancestry (g : partial_graph α β γ) : ℕ → list γ 
+| 0 := []
+| n := match g.traversed_vertices.nth n with
+       | none := []
+       | (some v) := v.data.descent_data :: (partial_graph.traversed_vertex_ancestry v.parent)
+       end
+meta def partial_graph.untraversed_vertex_ancestry (g : partial_graph α β γ) : ℕ → list γ 
+| n := match g.untraversed_vertices.nth n with
+       | none := []
+       | (some v) := v.data.descent_data :: (partial_graph.traversed_vertex_ancestry g v.parent)
+       end
 
 -- we're only ever adding vertices which are neighbours of the last traversed vertex
 def add_new_untraversed_vertex (g : partial_graph α β γ) (data : vertex_data α β γ) := {
@@ -189,6 +213,42 @@ match g.untraversed_vertices.nth n with
                  pure (ns.foldl (process_neighbour n) g')
 end              
 
+def min_with_position : list ℕ → option (ℕ × ℕ)
+| [] := none
+| (h :: t) := let min := t.foldl min h in
+              let p := (h :: t).index_of min in
+              some (min, p)
+
+def min_with_position_2 : list (list ℕ) → option (ℕ × ℕ × ℕ)
+| l := match min_with_position l.flatten with
+       | none := none
+       | (some (min, _)) := let n := l.find_index (λ r, min ∈ r) in
+                            match l.nth n with
+                            | none := none -- impossible
+                            | (some r) := some (min, n, r.index_of min)
+                            end
+       end
+
+def pair_traverse [decidable_eq α] [monad m] (neighbours : β → m (list (vertex_data α β γ))) (distance : α → α → ℕ) (p : partial_graph_pair α β γ) : m (partial_graph_pair α β γ) :=
+match min_with_position_2 p.distances with 
+| none := /- we're done! -/ pure p
+| (some (0, _, _)) := /- we're done! -/ pure p
+| (some (min, x, y)) := do new_graph_1 ← traverse neighbours x p.graph_1,
+                           new_graph_2 ← traverse neighbours y p.graph_2,
+                           let old_distances := (p.distances.remove_nth x).map(λ r, r.remove_nth y),
+                           let new_distances := ((new_graph_1.untraversed_vertices.enum).map $
+                                                  λ p_i, (new_graph_2.untraversed_vertices.enum).map $
+                                                    λ p_j, if h_i : p_i.1 < old_distances.length then
+                                                            if h_j : p_j.1 < (old_distances.nth_le p_i.1 h_i).length then
+                                                              (old_distances.nth_le p_i.1 h_i).nth_le p_j.1 h_j
+                                                            else
+                                                              distance p_i.2.data.compare_on p_j.2.data.compare_on
+                                                           else
+                                                             distance p_i.2.data.compare_on p_j.2.data.compare_on),
+                           pure ⟨ new_graph_1, new_graph_2, new_distances ⟩
+                                                    
+end
+
 def partial_graph.root [decidable_eq α] [monad m] (neighbours : β → m (list (vertex_data α β γ))) (vertex : vertex_data α β γ) : m (partial_graph α β γ) := 
 do
  ns ← neighbours vertex.data,
@@ -209,6 +269,18 @@ def depth_first_search_monadic [decidable_eq α] [monad m] (neighbours : β → 
 | 0 := partial_graph.root neighbours vertex
 | (n+1) := do previous ← depth_first_search_monadic n,
               traverse neighbours (previous.untraversed_vertices.length - 1) previous
+
+def graph_pair_search_monadic [decidable_eq α] [monad m]
+  (neighbours : β → m (list (vertex_data α β γ))) 
+  (distance : α → α → ℕ) 
+  (vertex_1 : vertex_data α β γ) 
+  (vertex_2 : vertex_data α β γ) : ℕ → m (partial_graph_pair α β γ)
+| 0 := do graph_1 ← partial_graph.root neighbours vertex_1,
+          graph_2 ← partial_graph.root neighbours vertex_2,
+          let distances := graph_1.untraversed_vertices.map $ λ v, graph_2.untraversed_vertices.map $ λ w, distance v.data.compare_on w.data.compare_on,
+          pure ⟨ graph_1, graph_2, distances ⟩
+| (n+1) := do previous ← graph_pair_search_monadic n,
+              pair_traverse neighbours distance previous
 
 instance id_monad : monad id := 
 begin
@@ -251,10 +323,13 @@ meta def list_while {β} (f : ℕ → tactic β) (P : ℕ → β → bool) : tac
   g ← f 0,
   r ← (list_while' f P 0 g (P 0 g) []),
   pure r.reverse) <|> pure []
-
-def flatten {β} : list (list β) → list β
-| [] := []
-| (h :: t) := h ++ (flatten t)
+ 
+meta def simp_as_rewrite (source : expr) : tactic (list (vertex_data string expr (ℕ × ℕ × expr))) :=
+(do (s, u) ← tactic.mk_simp_set ff [] [],
+   (target, proof) ← tactic.simplify s [] source {},
+   pp ← pp target,
+   let pp := pp.to_string,
+   pure [ { vertex_data . compare_on := pp, data := target, descent_data := (0, 0, proof) } ]) <|> pure []
 
 meta def all_rewrites (rs: list expr) (source : expr) : tactic (list (vertex_data string expr (ℕ × ℕ × expr))) :=
 do table ← rs.enum.mmap $ λ e,
@@ -264,8 +339,9 @@ do table ← rs.enum.mmap $ λ e,
         -- trace ((e, n), target),
         pp ← pp target,
         let pp := pp.to_string,
-        pure { vertex_data . compare_on := pp, data := target, descent_data := (e.1, n, proof) })),
-   pure (flatten table) 
+        pure { vertex_data . compare_on := pp, data := target, descent_data := (e.1 + 1, n, proof) })),
+   by_simp ← simp_as_rewrite source,
+   pure (by_simp ++ table.flatten) 
 
 meta def rewrite_search_core (rs : list expr) (n : ℕ) (start : expr) := 
 do pp ← pp start,
@@ -280,6 +356,33 @@ do rs ← rs.rules.mmap $ λ r, to_expr' r.rule,
   --  trace (result.untraversed_vertices.map (λ v : untraversed_vertex_data _ _ _, v.data.compare_on)),
    skip
 
+meta def rewrite_search_eq_core (rs : list expr) (n : ℕ) (e1 e2 : expr) := 
+do pp1 ← pp e1,
+   let pp1 := pp1.to_string,
+   pp2 ← pp e2,
+   let pp2 := pp2.to_string,
+   @graph_pair_search_monadic _ _ _ tactic _ _ (all_rewrites rs) string_edit_distance ⟨ pp1, e1, (0, 0, e1 /- FIXME -/) ⟩ ⟨ pp2, e2, (0, 0, e2 /- FIXME -/) ⟩ n
+
+
+meta def rewrite_search_eq (rs: parse rw_rules) (n : ℕ) : tactic unit :=
+do rs ← rs.rules.mmap $ λ r, to_expr' r.rule,
+   t ← target,
+   (lhs, rhs) ← match t with
+     | `(%%lhs = %%rhs) := pure (lhs, rhs)
+     | _ := fail "goal is not an equality"
+     end,
+   result ← rewrite_search_eq_core rs n lhs rhs,
+   trace (result.graph_1.untraversed_vertices.map (λ v : untraversed_vertex_data _ _ _, v.data.compare_on)),
+   trace (result.graph_2.untraversed_vertices.map (λ v : untraversed_vertex_data _ _ _, v.data.compare_on)),
+   trace result.distances,
+   match min_with_position_2 result.distances with
+   | none := fail "exhausted rewrites without reaching equality"
+   | (some (0, x, y)) := do let a_1 := (result.graph_1.untraversed_vertex_ancestry x).map(λ p, p.2.2),
+                            let a_2 := (result.graph_2.untraversed_vertex_ancestry y).map(λ p, p.2.2),
+                            skip
+   | (some (d, x, y)) := fail "ran out of time without reaching equality"
+   end
+
 end interactive
 end tactic
 
@@ -291,9 +394,14 @@ private lemma bar : [2] = [1] := sorry
 
 private lemma qux : [[0],[0]] = [[2],[2]] :=
 begin
-rewrite_search [foo, bar] 4,
+rewrite_search [foo, bar] 100,
 rw [foo] {occs := occurrences.pos [1]},
 rw ← bar,
 rw [foo, ← bar],
 end
 
+private lemma turkle : [[0],[0]] = [[2],[2]] :=
+begin
+rewrite_search_eq [foo, bar] 2,
+sorry
+end
