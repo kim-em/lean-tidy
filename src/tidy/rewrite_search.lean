@@ -464,7 +464,7 @@ do pp1 ← pp e1,
    let pp2 := pp2.to_string,
    e1refl ← mk_eq_refl e1,
    e2refl ← mk_eq_refl e2,
-   graph_pair_search_monadic (all_rewrites rs) string_edit_distance ⟨ pp1, e1, (0, 0, e1refl) ⟩ ⟨ pp2, e2, (0, 0, e2refl) ⟩ cfg
+   graph_pair_search_monadic (all_rewrites rs) word_edit_distance ⟨ pp1, e1, (0, 0, e1refl) ⟩ ⟨ pp2, e2, (0, 0, e2refl) ⟩ cfg
 
 private meta def rewrite_search_aux (rs: list (expr × bool)) (cfg : rewrite_search_config := {}) : tactic unit :=
 do t ← target,

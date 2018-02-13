@@ -56,7 +56,7 @@ meta def tidy_tactics : list (tactic string) :=
   automatic_induction                         >> pure "automatic_induction",
   run_tidy_tactics
   -- focus1 ( smt_eblast >> tactic.done )        >> pure "smt_eblast"
-  -- `[rewrite_search_using `ematch]             >> pure "rewrite_search_using `match"
+  `[rewrite_search_using `ematch]             >> pure "rewrite_search_using `match"
 ]
 
 private meta def any_later_goals_core { α : Type } (tac : tactic α) : list expr → list expr → list (option α) → bool → tactic (list (option α))
