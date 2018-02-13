@@ -476,9 +476,9 @@ do t ← target,
      | _ := fail "goal is not an equality"
      end,
    result ← rewrite_search_core rs n lhs rhs,
-   trace (result.graph_1.traversed_vertices.map (λ v : traversed_vertex_data _ _ _, v.data.compare_on)),
+  --  trace (result.graph_1.traversed_vertices.map (λ v : traversed_vertex_data _ _ _, v.data.compare_on)),
   --  trace (result.graph_1.untraversed_vertices.map (λ v : untraversed_vertex_data _ _ _, v.data.compare_on)),
-   trace (result.graph_2.traversed_vertices.map (λ v : traversed_vertex_data _ _ _, v.data.compare_on)),
+  --  trace (result.graph_2.traversed_vertices.map (λ v : traversed_vertex_data _ _ _, v.data.compare_on)),
   --  trace (result.graph_2.untraversed_vertices.map (λ v : untraversed_vertex_data _ _ _, v.data.compare_on)),
   --  trace result.tt_distances,
   --  trace result.tu_distances,
@@ -495,8 +495,8 @@ do t ← target,
                                     --  trace eq,
                                      tactic.exact eq
    | (_, sum.inr _)            := fail "unreachable code"
-   | (d, sum.inl (ff, α₁, α₂)) := fail format!"ran out of time without reaching equality, reached distance d, closest expressions were:\n{α₁}\n{α₂}"
-   | (d, sum.inl (tt, α₁, α₂)) := fail format!"rewrites exhausted, reached distance d, closest expressions were:\n{α₁}\n{α₂}"
+   | (d, sum.inl (ff, α₁, α₂)) := fail format!"ran out of time without reaching equality, reached distance {d}, closest expressions were:\n{α₁}\n{α₂}"
+   | (d, sum.inl (tt, α₁, α₂)) := fail format!"rewrites exhausted, reached distance {d}, closest expressions were:\n{α₁}\n{α₂}"
    end
 
 meta def rewrite_search (rs: parse rw_rules) (n : ℕ := 1000) : tactic unit :=
@@ -516,10 +516,10 @@ end tactic
 
 open tactic.interactive
 
-@[ematch] private lemma foo : [0] = [1] := sorry
-@[ematch] private lemma bar1 : [1] = [2] := sorry
-@[ematch] private lemma bar2 : [3] = [2] := sorry
-@[ematch] private lemma bar3 : [3] = [4] := sorry
+@[ematch] private axiom foo : [0] = [1]
+@[ematch] private axiom bar1 : [1] = [2]
+@[ematch] private axiom bar2 : [3] = [2]
+@[ematch] private axiom bar3 : [3] = [4]
 
 private example : [[0],[0]] = [[4],[4]] :=
 begin
@@ -537,7 +537,7 @@ rewrite_search_using `ematch,
 end
 
 
-@[ematch] lemma foo' (n : ℕ) : [n, n] = [n+1, n+1] := sorry
+@[ematch] private axiom foo' (n : ℕ) : [n, n] = [n+1, n+1]
 
 private example : [0,0] = [1,1] :=
 begin
