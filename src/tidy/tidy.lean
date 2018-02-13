@@ -24,14 +24,6 @@ attribute [ematch] subtype.property
 meta def dsimp' := `[dsimp [eq.mpr] {unfold_reducible := tt, md := semireducible}]
 meta def dsimp_all' := `[dsimp at * {unfold_reducible := tt, md := semireducible}]
 
-
-meta def if_first_goal_safe { α : Type } ( t : tactic α ) : tactic α :=
-do ng ← num_goals, -- TODO it might be more robust to count the metavariables in the result
-   if ng = 1 then t else do {
-     p ← target >>= is_prop,
-     if p then t else fail "there are multiple goals, and the first goal is not a mere proposition"
-   }
-
 -- TODO I'd love to do some profiling here, and find how much time is spent inside each tactic,
 -- also divided up between successful and unsuccessful calls.
 
@@ -55,8 +47,6 @@ meta def tidy_tactics : list (tactic string) :=
   simp_at_each                                >> pure "simp_at_each",
   automatic_induction                         >> pure "automatic_induction",
   run_tidy_tactics
-  -- focus1 ( smt_eblast >> tactic.done )        >> pure "smt_eblast"
-  -- `[rewrite_search_using `ematch]             >> pure "rewrite_search_using `match"
 ]
 
 private meta def any_later_goals_core { α : Type } (tac : tactic α) : list expr → list expr → list (option α) → bool → tactic (list (option α))
@@ -113,7 +103,7 @@ do
    if continue then               
     do
       results ← chain numbered_tactics cfg.to_chain_cfg,
-      try tactic.interactive.resetI, -- reset the typeclass inference cache, since `dsimp at *` may have spoiled it: https://github.com/leanprover/lean/issues/1920
+      try tactic.interactive.resetI, -- FIXME reset the typeclass inference cache, since `dsimp at *` may have spoiled it: https://github.com/leanprover/lean/issues/1920
       if cfg.show_hints ∨ ¬ cfg.hints.empty then
         let hints := results.map (λ p, p.2) in
         interaction_monad.trace ("tidy {hints:=" ++ hints.to_string ++ "}")
@@ -127,7 +117,7 @@ do
    else
      tactic.skip
 
-meta def obviously := try tidy >> (tactic.done <|> `[rewrite_search_using `ematch])
+meta def obviously := try tidy >> (tactic.done <|> smt_eblast) >> (tactic.done <|> tactic.trace "warning: eblast failed, falling back to rewrite_search" >> `[rewrite_search_using `ematch])
 
 notation `♮` := by reducible_abstract { smt_eblast }
 notation `♯`  := by reducible_abstract { obviously }
