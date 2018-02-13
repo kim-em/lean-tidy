@@ -7,6 +7,8 @@ import .monadic_chain
 import .smt
 import .reducible_abstract
 import .simp_at_each
+import .rewrite_search
+
 import tactic.interactive
 
 import data.list
@@ -53,7 +55,8 @@ meta def tidy_tactics : list (tactic string) :=
   simp_at_each                                >> pure "simp_at_each",
   automatic_induction                         >> pure "automatic_induction",
   run_tidy_tactics,
-  focus1 ( smt_eblast >> tactic.done )        >> pure "smt_eblast"
+  -- focus1 ( smt_eblast >> tactic.done )        >> pure "smt_eblast"
+  `[rewrite_search_using `ematch]             >> pure "rewrite_search_using `match"
 ]
 
 private meta def any_later_goals_core { α : Type } (tac : tactic α) : list expr → list expr → list (option α) → bool → tactic (list (option α))
