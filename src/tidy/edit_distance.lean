@@ -22,6 +22,20 @@ def edit_distance.aux' {α} [decidable_eq α] : list α → list α → ℕ × l
 def edit_distance {α} [decidable_eq α] (l₁ l₂ : list α) : ℕ :=
 (edit_distance.aux' l₁ l₂).1
 
-def string_edit_distance (s₁ s₂ : string) := edit_distance s₁.to_list s₂.to_list
+def list.split_on_aux {α} [decidable_eq α] (a : α) : list α → list α → list (list α) 
+| [] l       := [l.reverse]
+| (h :: t) l := if h = a then
+                  l.reverse :: (list.split_on_aux t [])
+                else
+                  list.split_on_aux t (h :: l)
 
-#eval edit_distance (list.range 20) (list.range 20).reverse
+def list.split_on {α} [decidable_eq α] (a : α) : list α → list (list α) 
+| l := list.split_on_aux a l []
+
+def string.split_on (c : char) (s : string) := (s.to_list.split_on c).map(λ l, l.as_string)
+
+def string_edit_distance (s₁ s₂ : string) := edit_distance s₁.to_list s₂.to_list
+def word_edit_distance (s₁ s₂ : string) := edit_distance (s₁.split_on ' ') (s₂.split_on ' ')
+
+#eval string_edit_distance "the quick brown fox" "jumped over the lazy dog"
+#eval word_edit_distance "big oak flat" "oak big flat"
