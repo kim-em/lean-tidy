@@ -6,7 +6,6 @@ import .tactic_states
 import .hash_target
 
 open tactic
-open interaction_monad
 
 universe variables u v
 
@@ -68,15 +67,3 @@ meta instance instrument_for_loop_detection_coercion { α : Type } : has_coe (in
 -- meta instance lift_to_loop_detection_tactic : tactic_lift loop_detection_state :=
 -- ⟨ λ { σ α : Type } [uts : underlying_tactic_state σ], @instrument_for_loop_detection σ α uts ⟩
 
-meta def interactive_simp := `[simp]
-
-lemma looping_test_1 (a : empty): 1 = 1 :=
-begin
-success_if_fail { detect_looping $ skip },
-success_if_fail { detect_looping $ skip >> skip },
-refl
-end
-lemma looping_test_2 (a : empty): 1 = 1 :=
-begin
-detect_looping $ interactive_simp
-end
