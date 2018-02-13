@@ -127,7 +127,7 @@ do
    else
      tactic.skip
 
-meta def obviously := tidy >> (tactic.done <|> `[rewrite_search_using `ematch])
+meta def obviously := try tidy >> (tactic.done <|> `[rewrite_search_using `ematch])
 
 notation `♮` := by reducible_abstract { smt_eblast }
 notation `♯`  := by reducible_abstract { obviously }
