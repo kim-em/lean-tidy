@@ -416,9 +416,11 @@ meta def simp_as_rewrite (source : expr) : tactic (list (vertex_data string expr
    pure [ { vertex_data . compare_on := pp, data := target, descent_data := (0, 0, proof) } ]) <|> pure []
 
 meta def rewrite_without_new_mvars (h : expr) (e : expr) (cfg : rewrite_cfg := {}) : tactic (expr × expr × list expr) :=
-do (new_t, prf, metas) ← rewrite_core h e cfg,
+do n_before ← num_goals,
+   (new_t, prf, metas) ← rewrite_core h e cfg,
    try_apply_opt_auto_param cfg.to_apply_cfg metas,
-   guard (metas = []),
+   n_after ← num_goals,
+   guard (n_before = n_after),
    return (new_t, prf, metas)
 
 meta def all_rewrites (rs: list (expr × bool)) (source : expr) : tactic (list (vertex_data string expr (ℕ × ℕ × expr))) :=
@@ -518,3 +520,11 @@ private lemma turkle' : [[0],[0]] = [[4],[4]] :=
 begin
 rewrite_search_using `ematch,
 end
+
+@[ematch] private lemma foo' (n : ℕ) : [n, n] = [n+1, n+1] := sorry
+
+private lemma turkle'' : [0,0] = [1,1] :=
+begin
+rewrite_search_using `ematch,
+end
+ 
