@@ -347,8 +347,8 @@ def depth_first_search_monadic [decidable_eq α] [monad m] (neighbours : β → 
               traverse neighbours (previous.untraversed_vertices.length - 1) previous
 
 structure rewrite_search_config :=
-(max_steps : ℕ := 1000)
-(distance_limit_factor : ℕ := 2)
+(max_steps : ℕ := 6)
+(distance_limit_factor : ℕ := 1)
 (trace : bool := ff)
 
 meta def graph_pair_search_monadic_core [decidable_eq α] 
