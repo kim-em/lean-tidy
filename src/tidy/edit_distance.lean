@@ -37,5 +37,5 @@ def string.split_on (c : char) (s : string) := (s.to_list.split_on c).map(λ l, 
 def string_edit_distance (s₁ s₂ : string) := edit_distance s₁.to_list s₂.to_list
 def word_edit_distance (s₁ s₂ : string) := edit_distance (s₁.split_on ' ') (s₂.split_on ' ')
 
-#eval string_edit_distance "the quick brown fox" "jumped over the lazy dog"
-#eval word_edit_distance "big oak flat" "oak big flat"
+-- #eval string_edit_distance "the quick brown fox" "jumped over the lazy dog"
+-- #eval word_edit_distance "big oak flat" "oak big flat"
