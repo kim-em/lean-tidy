@@ -112,6 +112,7 @@ structure partial_graph_pair (α : Type) (β : Type) (γ : Type) :=
 (graph_2 : partial_graph α β γ)
 (connected : bool)
 (exhausted : bool)
+(min_distance : ℕ)
 (tt_distances : list (list ℕ))
 (tu_distances : list (list ℕ))
 (ut_distances : list (list ℕ))
@@ -137,32 +138,32 @@ meta def partial_graph.untraversed_vertex_ancestry (g : partial_graph α β γ) 
        | (some v) := v.data.descent_data :: (partial_graph.traversed_vertex_ancestry g v.parent)
        end
 
-meta def partial_graph_pair.min_distance [inhabited α] (p : partial_graph_pair α β γ) : ℕ × ((bool /- exhausted -/ × α × α) ⊕ (list γ × list γ) ) :=
+meta def partial_graph_pair.closest_pair [inhabited α] (p : partial_graph_pair α β γ) : (α × α) ⊕ (list γ × list γ) :=
 let tu_min_distance := min_with_position_2 p.tu_distances in
 let ut_min_distance := min_with_position_2 p.ut_distances in
 let uu_min_distance := min_with_position_2 p.uu_distances in
 match tu_min_distance, ut_min_distance, uu_min_distance with
 | none,                      none,                      none                      := match min_with_position_2 p.tt_distances with
-                                                                                     | none := /- impossible -/ (0, sum.inr ([], []))
-                                                                                     | (some (d_tt, x_tt, y_tt)) := (d_tt, sum.inl (tt, option.iget ((p.graph_1.traversed_vertices.nth x_tt).map(λ v, v.data.compare_on)), option.iget ((p.graph_2.traversed_vertices.nth y_tt).map(λ v, v.data.compare_on))))
+                                                                                     | none := /- impossible -/ sum.inr ([], [])
+                                                                                     | (some (d_tt, x_tt, y_tt)) := sum.inl (option.iget ((p.graph_1.traversed_vertices.nth x_tt).map(λ v, v.data.compare_on)), option.iget ((p.graph_2.traversed_vertices.nth y_tt).map(λ v, v.data.compare_on)))
                                                                                      end
-| (some (0, x_tu, y_tu)),    _,                         _                         := (0, sum.inr (p.graph_1.traversed_vertex_ancestry   x_tu, p.graph_2.untraversed_vertex_ancestry y_tu))
-| _,                         (some (0, x_ut, y_ut)),    _                         := (0, sum.inr (p.graph_1.untraversed_vertex_ancestry x_ut, p.graph_2.traversed_vertex_ancestry   y_ut))
-| _,                         _,                         (some (0, x_uu, y_uu))    := (0, sum.inr (p.graph_1.untraversed_vertex_ancestry x_uu, p.graph_2.untraversed_vertex_ancestry y_uu))
-| (some (d_tu, x_tu, y_tu)), none,                      none                      := (d_tu, sum.inl (ff, option.iget ((p.graph_1.traversed_vertices.nth x_tu).map(λ v, v.data.compare_on)), option.iget ((p.graph_2.untraversed_vertices.nth y_tu).map(λ v, v.data.compare_on))))
-| none,                      (some (d_ut, x_ut, y_ut)), none                      := (d_ut, sum.inl (ff, option.iget ((p.graph_1.untraversed_vertices.nth x_ut).map(λ v, v.data.compare_on)), option.iget ((p.graph_2.traversed_vertices.nth y_ut).map(λ v, v.data.compare_on))))
-| none,                      none,                      (some (d_uu, x_uu, y_uu)) := (d_uu, sum.inl (ff, option.iget ((p.graph_1.untraversed_vertices.nth x_uu).map(λ v, v.data.compare_on)), option.iget ((p.graph_2.untraversed_vertices.nth y_uu).map(λ v, v.data.compare_on))))
-| (some (d_tu, x_tu, y_tu)), (some (d_ut, x_ut, y_ut)), none                      := (min d_tu d_ut, sum.inl (if d_tu ≤ d_ut then (ff, option.iget ((p.graph_1.traversed_vertices.nth x_tu).map(λ v, v.data.compare_on)), (option.iget ((p.graph_2.untraversed_vertices.nth y_tu).map(λ v, v.data.compare_on)))) else (ff, option.iget ((p.graph_1.untraversed_vertices.nth x_ut).map(λ v, v.data.compare_on)), option.iget ((p.graph_2.traversed_vertices.nth y_ut).map(λ v, v.data.compare_on)))))
-| (some (d_tu, x_tu, y_tu)), none,                      (some (d_uu, x_uu, y_uu)) := (min d_tu d_uu, sum.inl (if d_tu ≤ d_uu then (ff, option.iget ((p.graph_1.traversed_vertices.nth x_tu).map(λ v, v.data.compare_on)), (option.iget ((p.graph_2.untraversed_vertices.nth y_tu).map(λ v, v.data.compare_on)))) else (ff, option.iget ((p.graph_1.untraversed_vertices.nth x_uu).map(λ v, v.data.compare_on)), option.iget ((p.graph_2.untraversed_vertices.nth y_uu).map(λ v, v.data.compare_on)))))
-| none,                      (some (d_ut, x_ut, y_ut)), (some (d_uu, x_uu, y_uu)) := (min d_ut d_uu, sum.inl (if d_ut ≤ d_uu then (ff, option.iget ((p.graph_1.untraversed_vertices.nth x_ut).map(λ v, v.data.compare_on)), (option.iget ((p.graph_2.traversed_vertices.nth y_ut).map(λ v, v.data.compare_on)))) else (ff, option.iget ((p.graph_1.untraversed_vertices.nth x_uu).map(λ v, v.data.compare_on)), option.iget ((p.graph_2.untraversed_vertices.nth y_uu).map(λ v, v.data.compare_on)))))
-| (some (d_tu, x_tu, y_tu)), (some (d_ut, x_ut, y_ut)), (some (d_uu, x_uu, y_uu)) := (min (min d_tu d_ut) d_uu, sum.inl (if min d_tu d_ut ≤ d_uu then
-                                                                                                                                if d_tu ≤ d_ut then
-                                                                                                                                  (ff, option.iget ((p.graph_1.traversed_vertices.nth x_tu).map(λ v, v.data.compare_on)), option.iget ((p.graph_2.untraversed_vertices.nth y_tu).map(λ v, v.data.compare_on)))
-                                                                                                                                else
-                                                                                                                                  (ff, option.iget ((p.graph_1.untraversed_vertices.nth x_ut).map(λ v, v.data.compare_on)), option.iget ((p.graph_2.traversed_vertices.nth y_ut).map(λ v, v.data.compare_on)))
-                                                                                                                              else
-                                                                                                                                (ff, option.iget ((p.graph_1.untraversed_vertices.nth x_uu).map(λ v, v.data.compare_on)), option.iget ((p.graph_2.untraversed_vertices.nth y_uu).map(λ v, v.data.compare_on)))
-                                                                                                                             ))
+| (some (0, x_tu, y_tu)),    _,                         _                         := sum.inr (p.graph_1.traversed_vertex_ancestry   x_tu, p.graph_2.untraversed_vertex_ancestry y_tu)
+| _,                         (some (0, x_ut, y_ut)),    _                         := sum.inr (p.graph_1.untraversed_vertex_ancestry x_ut, p.graph_2.traversed_vertex_ancestry   y_ut)
+| _,                         _,                         (some (0, x_uu, y_uu))    := sum.inr (p.graph_1.untraversed_vertex_ancestry x_uu, p.graph_2.untraversed_vertex_ancestry y_uu)
+| (some (d_tu, x_tu, y_tu)), none,                      none                      := sum.inl (option.iget ((p.graph_1.traversed_vertices.nth x_tu).map(λ v, v.data.compare_on)), option.iget ((p.graph_2.untraversed_vertices.nth y_tu).map(λ v, v.data.compare_on)))
+| none,                      (some (d_ut, x_ut, y_ut)), none                      := sum.inl (option.iget ((p.graph_1.untraversed_vertices.nth x_ut).map(λ v, v.data.compare_on)), option.iget ((p.graph_2.traversed_vertices.nth y_ut).map(λ v, v.data.compare_on)))
+| none,                      none,                      (some (d_uu, x_uu, y_uu)) := sum.inl (option.iget ((p.graph_1.untraversed_vertices.nth x_uu).map(λ v, v.data.compare_on)), option.iget ((p.graph_2.untraversed_vertices.nth y_uu).map(λ v, v.data.compare_on)))
+| (some (d_tu, x_tu, y_tu)), (some (d_ut, x_ut, y_ut)), none                      := sum.inl (if d_tu ≤ d_ut then (option.iget ((p.graph_1.traversed_vertices.nth x_tu).map(λ v, v.data.compare_on)), (option.iget ((p.graph_2.untraversed_vertices.nth y_tu).map(λ v, v.data.compare_on)))) else (option.iget ((p.graph_1.untraversed_vertices.nth x_ut).map(λ v, v.data.compare_on)), option.iget ((p.graph_2.traversed_vertices.nth y_ut).map(λ v, v.data.compare_on))))
+| (some (d_tu, x_tu, y_tu)), none,                      (some (d_uu, x_uu, y_uu)) := sum.inl (if d_tu ≤ d_uu then (option.iget ((p.graph_1.traversed_vertices.nth x_tu).map(λ v, v.data.compare_on)), (option.iget ((p.graph_2.untraversed_vertices.nth y_tu).map(λ v, v.data.compare_on)))) else (option.iget ((p.graph_1.untraversed_vertices.nth x_uu).map(λ v, v.data.compare_on)), option.iget ((p.graph_2.untraversed_vertices.nth y_uu).map(λ v, v.data.compare_on))))
+| none,                      (some (d_ut, x_ut, y_ut)), (some (d_uu, x_uu, y_uu)) := sum.inl (if d_ut ≤ d_uu then (option.iget ((p.graph_1.untraversed_vertices.nth x_ut).map(λ v, v.data.compare_on)), (option.iget ((p.graph_2.traversed_vertices.nth y_ut).map(λ v, v.data.compare_on)))) else (option.iget ((p.graph_1.untraversed_vertices.nth x_uu).map(λ v, v.data.compare_on)), option.iget ((p.graph_2.untraversed_vertices.nth y_uu).map(λ v, v.data.compare_on))))
+| (some (d_tu, x_tu, y_tu)), (some (d_ut, x_ut, y_ut)), (some (d_uu, x_uu, y_uu)) := sum.inl (if min d_tu d_ut ≤ d_uu then
+                                                                                                if d_tu ≤ d_ut then
+                                                                                                  (option.iget ((p.graph_1.traversed_vertices.nth x_tu).map(λ v, v.data.compare_on)), option.iget ((p.graph_2.untraversed_vertices.nth y_tu).map(λ v, v.data.compare_on)))
+                                                                                                else
+                                                                                                  (option.iget ((p.graph_1.untraversed_vertices.nth x_ut).map(λ v, v.data.compare_on)), option.iget ((p.graph_2.traversed_vertices.nth y_ut).map(λ v, v.data.compare_on)))
+                                                                                              else
+                                                                                                (option.iget ((p.graph_1.untraversed_vertices.nth x_uu).map(λ v, v.data.compare_on)), option.iget ((p.graph_2.untraversed_vertices.nth y_uu).map(λ v, v.data.compare_on)))
+                                                                                              )
 end
 
 -- we're only ever adding vertices which are neighbours of the last traversed vertex
@@ -170,9 +171,6 @@ def add_new_untraversed_vertex (g : partial_graph α β γ) (data : vertex_data 
   untraversed_vertices := g.untraversed_vertices ++ [⟨ data, g.traversed_vertices.length - 1, g.current_vertex_data.depth + 1⟩]
   ..g
 }
-
-
-
 
 def update_traversed_vertex (g : partial_graph α β γ) (just_traversed : ℕ) (previously_traversed : ℕ) (descent_data : γ) :=
 match g.traversed_vertices.nth previously_traversed with
@@ -236,7 +234,6 @@ untraversed_neighbours := (v.untraversed_neighbours.remove_all [n]).map(λ m, if
 ..v
 }
 
-
 def mark_vertex_traversed_2 (n : ℕ) (g : partial_graph α β γ) : partial_graph α β γ :=
 match g.untraversed_vertices.nth n with
 | none := g
@@ -269,11 +266,7 @@ match g.untraversed_vertices.nth n with
 | (some d) := let g' := mark_vertex_traversed_2 n g in
               do ns ← neighbours d.data.data,
                  pure (ns.foldl (process_neighbour n) g')
-end              
-
-
-   
-
+end
 
 def pair_traverse_left [decidable_eq α] [monad m] (neighbours : β → m (list (vertex_data α β γ))) (distance : α → α → ℕ) (x : ℕ) (p : partial_graph_pair α β γ) : m (partial_graph_pair α β γ) :=
 do new_graph_1 ← traverse neighbours x p.graph_1,
@@ -290,7 +283,8 @@ do new_graph_1 ← traverse neighbours x p.graph_1,
                               distance v_i.data.compare_on v_j.data.compare_on),
   let connected := if ∃ r ∈ new_ut_distances, 0 ∈ r ∨ ∃ r ∈ new_uu_distances, 0 ∈ r then tt else ff,
   let exhausted := if new_graph_1.untraversed_vertices.length = 0 ∧ p.graph_2.untraversed_vertices.length = 0 then tt else ff,
-  pure ⟨ new_graph_1, p.graph_2, connected, exhausted, new_tt_distances, new_tu_distances, new_ut_distances, new_uu_distances ⟩
+  let min_distance := (new_ut_distances.flatten ++ new_uu_distances.flatten).foldl min p.min_distance,
+  pure ⟨ new_graph_1, p.graph_2, connected, exhausted, min_distance, new_tt_distances, new_tu_distances, new_ut_distances, new_uu_distances ⟩
 
 
 def pair_traverse_right [decidable_eq α] [monad m] (neighbours : β → m (list (vertex_data α β γ))) (distance : α → α → ℕ) (y : ℕ) (p : partial_graph_pair α β γ) : m (partial_graph_pair α β γ) :=
@@ -302,7 +296,8 @@ do new_graph_2 ← traverse neighbours y p.graph_2,
   let new_uu_distances := (p.uu_distances.zip p.graph_1.untraversed_vertices).map $ λ q, (q.1.remove_nth y) ++ ((new_graph_2.untraversed_vertices.drop offset).map $ λ v, distance q.2.data.compare_on v.data.compare_on),
   let connected := if ∃ r ∈ new_tu_distances, 0 ∈ r ∨ ∃ r ∈ new_uu_distances, 0 ∈ r then tt else ff,
   let exhausted := if p.graph_1.untraversed_vertices.length = 0 ∧ new_graph_2.untraversed_vertices.length = 0 then tt else ff,
-  pure ⟨ p.graph_1, new_graph_2, connected, exhausted, new_tt_distances, new_tu_distances, new_ut_distances, new_uu_distances ⟩
+  let min_distance := (new_tu_distances.flatten ++ new_uu_distances.flatten).foldl min p.min_distance,
+  pure ⟨ p.graph_1, new_graph_2, connected, exhausted, min_distance, new_tt_distances, new_tu_distances, new_ut_distances, new_uu_distances ⟩
 
 def pair_traverse [decidable_eq α] [monad m] (neighbours : β → m (list (vertex_data α β γ))) (distance : α → α → ℕ) (p : partial_graph_pair α β γ) : m (partial_graph_pair α β γ) :=
 if p.connected ∨ p.exhausted then pure p else
@@ -351,22 +346,31 @@ def depth_first_search_monadic [decidable_eq α] [monad m] (neighbours : β → 
 | (n+1) := do previous ← depth_first_search_monadic n,
               traverse neighbours (previous.untraversed_vertices.length - 1) previous
 
+structure rewrite_search_config :=
+(max_steps : ℕ := 1000)
+(distance_limit_factor : ℕ := 2)
+(trace : bool := ff)
+
 meta def graph_pair_search_monadic_core [decidable_eq α] 
   (neighbours : β → tactic (list (vertex_data α β γ))) 
-  (distance : α → α → ℕ) (limit : ℕ) : ℕ → (partial_graph_pair α β γ) → tactic (partial_graph_pair α β γ)
+  (distance : α → α → ℕ) (cfg : rewrite_search_config := {}) (initial_min_distance : ℕ) : ℕ → (partial_graph_pair α β γ) → tactic (partial_graph_pair α β γ)
 | 0     p := pure p /- out of time -/
 | (n+1) p := do if p.connected ∨ p.exhausted then
-                  do tactic.trace format!"search steps : {limit - n}",
+                  do if cfg.trace then tactic.trace format!"search steps: {cfg.max_steps - n}" else tactic.skip,
                      pure p
                 else
                   do next ← pair_traverse neighbours distance p,
-                     graph_pair_search_monadic_core n next
+                     if next.min_distance > initial_min_distance * cfg.distance_limit_factor then
+                       do tactic.trace format!"minimum distance exceeded initial distance by a factor of {cfg.distance_limit_factor}",
+                           pure p
+                     else
+                       do graph_pair_search_monadic_core n next
 
 meta def graph_pair_search_monadic [decidable_eq α]
   (neighbours : β → tactic (list (vertex_data α β γ))) 
   (distance : α → α → ℕ) 
   (vertex_1 : vertex_data α β γ) 
-  (vertex_2 : vertex_data α β γ) (n : ℕ) : tactic (partial_graph_pair α β γ) :=
+  (vertex_2 : vertex_data α β γ) (cfg : rewrite_search_config := {}) : tactic (partial_graph_pair α β γ) :=
 do 
   graph_1 ← partial_graph.root neighbours vertex_1,
   graph_2 ← partial_graph.root neighbours vertex_2,
@@ -376,7 +380,8 @@ do
   let uu_distances := graph_1.untraversed_vertices.map $ λ v, graph_2.untraversed_vertices.map $ λ w, distance v.data.compare_on w.data.compare_on in
   let connected := if ∃ r ∈ ut_distances, 0 ∈ r ∨ ∃ r ∈ tu_distances, 0 ∈ r ∨ ∃ r ∈ uu_distances, 0 ∈ r then tt else ff in
   let exhausted := if graph_1.untraversed_vertices.length = 0 ∧ graph_2.untraversed_vertices.length = 0 then tt else ff in
-    do graph_pair_search_monadic_core neighbours distance n n ⟨ graph_1, graph_2, connected, exhausted, tt_distances, tu_distances, ut_distances, uu_distances ⟩
+  let min_distance := (tu_distances.flatten ++ ut_distances.flatten ++ uu_distances.flatten).foldl min (distance vertex_1.compare_on vertex_2.compare_on) in
+    do graph_pair_search_monadic_core neighbours distance cfg min_distance cfg.max_steps ⟨ graph_1, graph_2, connected, exhausted, min_distance, tt_distances, tu_distances, ut_distances, uu_distances ⟩
 
 instance id_monad : monad id := 
 begin
@@ -402,11 +407,6 @@ def knights := (λ p : ℤ × ℤ, [(p.1+2,p.2+1),(p.1+2,p.2-1),(p.1-2,p.2+1),(p
 #eval (breadth_first_search knights (0,0) 20).traversed_vertices.map(λ v : traversed_vertex_data (ℤ × ℤ) (ℤ × ℤ) ℕ, (v.data.data, v.data.descent_data))
 #eval (depth_first_search knights (0,0) 20).traversed_vertices.map(λ v : traversed_vertex_data (ℤ × ℤ) (ℤ × ℤ) ℕ, (v.data.data, v.data.descent_data))
 
-namespace tactic
-
-namespace interactive
-open interactive interactive.types expr
-
 
 private meta def list_while' {β} (f : ℕ → tactic β) (P : ℕ → β → bool) : ℕ → β → bool → list β → tactic (list β)
 | _ _ ff t := pure t
@@ -417,7 +417,10 @@ meta def list_while {β} (f : ℕ → tactic β) (P : ℕ → β → bool) : tac
   g ← f 0,
   r ← (list_while' f P 0 g (P 0 g) []),
   pure r.reverse) <|> pure []
- 
+
+open tactic
+open interactive interactive.types expr
+
 meta def simp_as_rewrite (source : expr) : tactic (list (vertex_data string expr (ℕ × ℕ × expr))) :=
 (do (s, u) ← tactic.mk_simp_set ff [] [],
    (target, proof) ← tactic.simplify s [] source {},
@@ -445,6 +448,10 @@ do table ← rs.enum.mmap $ λ e,
    by_simp ← simp_as_rewrite source,
    pure (by_simp ++ table.flatten) 
 
+
+namespace tactic
+namespace interactive
+
 -- meta def rewrite_search_core (rs : list expr) (n : ℕ) (start : expr) := 
 -- do pp ← pp start,
 --    let pp := pp.to_string,
@@ -458,24 +465,24 @@ do table ← rs.enum.mmap $ λ e,
 --   --  trace (result.untraversed_vertices.map (λ v : untraversed_vertex_data _ _ _, v.data.compare_on)),
 --    skip
 
-meta def rewrite_search_core (rs : list (expr × bool)) (n : ℕ) (e1 e2 : expr) := 
+
+
+private meta def rewrite_search_core (rs : list (expr × bool)) (cfg : rewrite_search_config := {}) (e1 e2 : expr) := 
 do pp1 ← pp e1,
    let pp1 := pp1.to_string,
    pp2 ← pp e2,
    let pp2 := pp2.to_string,
    e1refl ← mk_eq_refl e1,
    e2refl ← mk_eq_refl e2,
-   graph_pair_search_monadic (all_rewrites rs) string_edit_distance ⟨ pp1, e1, (0, 0, e1refl) ⟩ ⟨ pp2, e2, (0, 0, e2refl) ⟩ n
+   graph_pair_search_monadic (all_rewrites rs) string_edit_distance ⟨ pp1, e1, (0, 0, e1refl) ⟩ ⟨ pp2, e2, (0, 0, e2refl) ⟩ cfg
 
-
-
-meta def rewrite_search_aux (rs: list (expr × bool)) (n : ℕ := 1000) : tactic unit :=
+private meta def rewrite_search_aux (rs: list (expr × bool)) (cfg : rewrite_search_config := {}) : tactic unit :=
 do t ← target,
    (lhs, rhs) ← match t with
      | `(%%lhs = %%rhs) := pure (lhs, rhs)
      | _ := fail "goal is not an equality"
      end,
-   result ← rewrite_search_core rs n lhs rhs,
+   result ← rewrite_search_core rs cfg lhs rhs,
   --  trace (result.graph_1.traversed_vertices.map (λ v : traversed_vertex_data _ _ _, v.data.compare_on)),
   --  trace (result.graph_1.untraversed_vertices.map (λ v : untraversed_vertex_data _ _ _, v.data.compare_on)),
   --  trace (result.graph_2.traversed_vertices.map (λ v : traversed_vertex_data _ _ _, v.data.compare_on)),
@@ -484,8 +491,9 @@ do t ← target,
   --  trace result.tu_distances,
   --  trace result.ut_distances,
   --  trace result.uu_distances,
-   match result.min_distance with
-   | (0, sum.inr (l₁, l₂)) := do let eq₁ := l₁.map(λ p, p.2.2),
+   match result.exhausted, result.min_distance, result.closest_pair with
+   | tt, d, sum.inl (α₁, α₂) := fail format!"rewrites exhausted, reached distance {d}, best goal:\n{α₁} = {α₂}"
+   | ff, 0, sum.inr (l₁, l₂) := do let eq₁ := l₁.map(λ p, p.2.2),
                                      let eq₂ := l₂.map(λ p, p.2.2),
                                     --  trace eq₁,
                                     --  trace eq₂,
@@ -494,53 +502,24 @@ do t ← target,
                                      eq ← (eq₁.reverse ++ eq₂_symm).mfoldl mk_eq_trans refl,
                                     --  trace eq,
                                      tactic.exact eq
-   | (_, sum.inr _)            := fail "unreachable code"
-   | (d, sum.inl (ff, α₁, α₂)) := fail format!"ran out of time without reaching equality, reached distance {d}, closest expressions were:\n{α₁}\n{α₂}"
-   | (d, sum.inl (tt, α₁, α₂)) := fail format!"rewrites exhausted, reached distance {d}, closest expressions were:\n{α₁}\n{α₂}"
+   | ff, d, sum.inl (α₁, α₂) := fail format!"ran out of time without reaching equality, reached distance {d}, best goal:\n{α₁} = {α₂}"
+   | _, _, sum.inr _ := fail "unreachable code!"
    end
 
-meta def rewrite_search (rs: parse rw_rules) (n : ℕ := 1000) : tactic unit :=
+meta def rewrite_search (rs: parse rw_rules) (cfg : rewrite_search_config := {}) : tactic unit :=
 do rs ← rs.rules.mmap (λ r, do e ← to_expr' r.rule, pure (e, r.symm)),
-   rewrite_search_aux rs n
+   rewrite_search_aux rs cfg
 
-meta def rewrite_search_using (a : name) (n : ℕ := 1000) : tactic unit :=
+meta def rewrite_search_using (a : name) (cfg : rewrite_search_config := {}) : tactic unit :=
 do names ← attribute.get_instances a,
-   trace names,
+  --  trace names,
    exprs ← names.mmap $ mk_const,
    let pairs := exprs.map (λ e, (e, ff)) ++ exprs.map (λ e, (e, tt)),
-   rewrite_search_aux pairs n
+   rewrite_search_aux pairs cfg
 
 end interactive
 end tactic
 
 
-open tactic.interactive
 
-@[ematch] private axiom foo : [0] = [1]
-@[ematch] private axiom bar1 : [1] = [2]
-@[ematch] private axiom bar2 : [3] = [2]
-@[ematch] private axiom bar3 : [3] = [4]
-
-private example : [[0],[0]] = [[4],[4]] :=
-begin
-rewrite_search [foo, bar1, ← bar2, bar2, ← bar3],
-end
-
-private example : [[0],[0]] = [[4],[4]] :=
-begin
-rewrite_search_using `ematch,
-end
-
-private example : [[0],[0]] = [[4],[5]] :=
-begin
-rewrite_search_using `ematch,
-end
-
-
-@[ematch] private axiom foo' (n : ℕ) : [n, n] = [n+1, n+1]
-
-private example : [0,0] = [1,1] :=
-begin
-rewrite_search_using `ematch,
-end
  
