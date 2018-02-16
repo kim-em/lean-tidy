@@ -9,6 +9,8 @@ open tactic
 
 namespace tidy.test
 
+meta def interactive_simp := `[simp]
+
 meta instance loop_detecting_and_profiling_coercion { α : Type } : has_coe (interaction_monad tactic_state α) (interaction_monad ((tactic_state × invocation_count) × loop_detection_state) α) :=
 ⟨ instrument_for_loop_detection ∘ profiling_tactic_coercion.coe ⟩ 
 

@@ -1,3 +1,7 @@
+-- Copyright (c) 2018 Scott Morrison. All rights reserved.
+-- Released under Apache 2.0 license as described in the file LICENSE.
+-- Authors: Scott Morrison
+
 import tidy.recover
 import tidy.fsplit
 
@@ -19,3 +23,22 @@ private structure C :=
  terminal_goal,
  exact (0, tt)
  end     
+
+ -- verifying that terminal_goal correctly considers all propositional goals as terminal?
+private structure foo :=
+(x : ℕ)
+(p : x = 0)
+
+open tactic
+private lemma bar : ∃ F : foo, F = ⟨ 0, by refl ⟩ := 
+begin
+split,
+swap,
+split,
+terminal_goal,
+swap,
+success_if_fail { terminal_goal },
+exact 0,
+refl,
+refl,
+end

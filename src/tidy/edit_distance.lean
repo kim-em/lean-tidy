@@ -6,6 +6,11 @@ def edit_distance_naive {α} [decidable_eq α] : list α → list α → ℕ
                        else 
                          1 + min (min (edit_distance_naive (a :: b) d) (edit_distance_naive b (c :: d))) (edit_distance_naive b d)
 
+-- PROJECT it would be great to be able to specify a maximum distance here, and bail out if we got beyond that.
+-- The type signature would be:
+--   def edit_distance {α} [decidable_eq α] (l₁ l₂ : list α) (max : option ℕ) : option ℕ :=
+-- with a value of `none` meaning that `max` was `some L`, and the edit distance is at least `L`.
+
 def edit_distance.aux {α} [decidable_eq α] (a : α) (b : list α) : list α → ℕ → list ℕ → ℕ × list ℕ
 | []     _  _  := (b.length + 1, [])
 | (c::d) _  [] := (0, []) -- won't happen
@@ -21,6 +26,10 @@ def edit_distance.aux' {α} [decidable_eq α] : list α → list α → ℕ × l
 
 def edit_distance {α} [decidable_eq α] (l₁ l₂ : list α) : ℕ :=
 (edit_distance.aux' l₁ l₂).1
+
+-- PROJECT some lemmas that show edit_distance behaves correctly?
+-- PROJECT edit distance with transpositions?
+-- PROJECT edit distance on trees?
 
 def list.split_on_aux {α} [decidable_eq α] (a : α) : list α → list α → list (list α) 
 | [] l       := [l.reverse]
