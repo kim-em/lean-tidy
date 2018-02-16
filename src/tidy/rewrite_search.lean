@@ -356,7 +356,7 @@ meta def graph_pair_search_monadic_core [decidable_eq α]
   (distance : α → α → ℕ) (cfg : rewrite_search_config := {}) (initial_min_distance : ℕ) : ℕ → (partial_graph_pair α β γ) → tactic (partial_graph_pair α β γ)
 | 0     p := pure p /- out of time -/
 | (n+1) p := do if p.connected ∨ p.exhausted then
-                  do if cfg.trace then tactic.trace format!"search steps: {cfg.max_steps - n}" else tactic.skip,
+                  do --if cfg.trace then tactic.trace format!"search steps: {cfg.max_steps - n}" else tactic.skip,
                      pure p
                 else
                   do next ← pair_traverse neighbours distance p,
