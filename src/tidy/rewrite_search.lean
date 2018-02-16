@@ -349,7 +349,7 @@ def depth_first_search_monadic [decidable_eq α] [monad m] (neighbours : β → 
 structure rewrite_search_config :=
 (max_steps : ℕ := 10)
 (distance_limit_factor : ℕ := 1)
-(trace : bool := ff)
+(trace : bool := tt)
 
 meta def graph_pair_search_monadic_core [decidable_eq α] 
   (neighbours : β → tactic (list (vertex_data α β γ))) 
@@ -434,7 +434,7 @@ do table ← rs.enum.mmap $ λ e,
         -- trace ((e, n), target),
         pp ← pp target,
         let pp := pp.to_string,
-        pure { vertex_data . compare_on := pp, data := target, descent_data := (e.1 + 1, n, proof) })),
+        pure { vertex_data . compare_on := pp, data := target, descent_data := (e.1 + 1, n + 1, proof) })),
    by_simp ← simp_as_rewrite source,
    pure (by_simp ++ table.flatten) 
 
@@ -466,6 +466,14 @@ do pp1 ← pp e1,
    e2refl ← mk_eq_refl e2,
    graph_pair_search_monadic (all_rewrites rs) word_edit_distance ⟨ pp1, e1, (0, 0, e1refl) ⟩ ⟨ pp2, e2, (0, 0, e2refl) ⟩ cfg
 
+-- TODO finish this
+private meta def trace_proof (rs : list (expr × bool)) (steps : (list (ℕ × ℕ × expr) × list (ℕ × ℕ × expr))) : string :=
+string.intercalate ", " (steps.1.map $ λ t : ℕ × ℕ × expr, if t.1 = 0 then "simp" else match rs.nth (t.1 - 1) with
+                                                           | none := "fail"
+                                                           | (some p) := "rw " ++ (if p.2 then "← " else "") ++ p.1.to_string
+                                                           end)
+                                                           
+
 private meta def rewrite_search_aux (rs: list (expr × bool)) (cfg : rewrite_search_config := {}) : tactic unit :=
 do t ← target,
    (lhs, rhs) ← match t with
@@ -491,6 +499,9 @@ do t ← target,
                                      refl ← mk_eq_refl lhs,
                                      eq ← (eq₁.reverse ++ eq₂_symm).mfoldl mk_eq_trans refl,
                                     --  trace eq,
+                                    if cfg.trace then
+                                     trace format!"rewrite search succeeded, found a chain of length {eq₁.length + eq₂.length}, after attempting {result.graph_1.traversed_vertices.length} and {result.graph_2.traversed_vertices.length} rewrites on either side"
+                                    else skip,
                                      tactic.exact eq
    | ff, d, sum.inl (α₁, α₂) := fail format!"ran out of time without reaching equality, reached distance {d}, best goal:\n{α₁} = {α₂}"
    | _, _, sum.inr _ := fail "unreachable code!"
