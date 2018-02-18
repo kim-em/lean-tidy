@@ -46,7 +46,7 @@ meta def tidy_tactics : list (tactic string) :=
   `[simp]                                     >> pure "simp",
   dsimp_all'                                  >> pure "dsimp_all'",
   simp_at_each                                >> pure "simp_at_each",
-  injections                                  >> pure "injections",
+  injections_and_clear                        >> pure "injections_and_clear",
   automatic_induction                         >> pure "automatic_induction",
   run_tidy_tactics
 ]
