@@ -5,13 +5,6 @@ import .edit_distance
 open lean
 open lean.parser
 
--- universes t u v w
-
--- TODO mathlib
-def list.flatten {β} : list (list β) → list β
-| [] := []
-| (h :: t) := h ++ (list.flatten t)
-
 -- TODO mathlib
 def option.to_list {α} : option α → list α 
 | none := []
@@ -24,7 +17,7 @@ def min_with_position : list ℕ → option (ℕ × ℕ)
               some (min, p)
 
 def min_with_position_2 : list (list ℕ) → option (ℕ × ℕ × ℕ)
-| l := match min_with_position l.flatten with
+| l := match min_with_position l.join with
        | none := none
        | (some (min, _)) := let n := l.find_index (λ r, min ∈ r) in
                             match l.nth n with
@@ -32,48 +25,6 @@ def min_with_position_2 : list (list ℕ) → option (ℕ × ℕ × ℕ)
                             | (some r) := some (min, n, r.index_of min)
                             end
        end
-
--- TODO PR'd to mathlib as https://github.com/leanprover/mathlib/pull/51
-@[simp] lemma append_eq_nil {β} (p q : list β) : (p ++ q) = [] ↔ p = [] ∧ q = [] :=
-begin
-split,
-show (p ++ q) = [] → p = [] ∧ q = [],
-{
-  intro h,
-  split,
-  apply list.eq_nil_of_prefix_nil, rw ← h, simp, 
-  apply list.eq_nil_of_suffix_nil, rw ← h, simp,
-},
-show p = [] ∧ q = [] → p ++ q = [],
-{
-  intros h,
-  rw [h.left, h.right],
-  refl,
-}
-end
-
--- TODO PR'd to mathlib as https://github.com/leanprover/mathlib/pull/51
-@[simp] lemma update_nth_eq_nil {β} (l : list β) (n : ℕ) (a : β) : l.update_nth n a = [] ↔ l = [] :=
-begin
-split,
-show list.update_nth l n a = list.nil → l = list.nil, 
-{
-  induction l,
-  case list.nil {
-    intros,
-    assumption
-  },
-  case list.cons {
-    induction n,
-    all_goals { contradiction }
-  }
-},
--- show l = list.nil → list.update_nth l n a = list.nil,
-{
-  intros, simp *, refl
-}
-end
-
 
 /-
 A `partial_graph` represents a partial traversal of a graph, along with a tentative shortest path tree.
@@ -283,7 +234,7 @@ do new_graph_1 ← traverse neighbours x p.graph_1,
                               distance v_i.data.compare_on v_j.data.compare_on),
   let connected := if ∃ r ∈ new_ut_distances, 0 ∈ r ∨ ∃ r ∈ new_uu_distances, 0 ∈ r then tt else ff,
   let exhausted := if new_graph_1.untraversed_vertices.length = 0 ∧ p.graph_2.untraversed_vertices.length = 0 then tt else ff,
-  let min_distance := (new_ut_distances.flatten ++ new_uu_distances.flatten).foldl min p.min_distance,
+  let min_distance := (new_ut_distances.join ++ new_uu_distances.join).foldl min p.min_distance,
   pure ⟨ new_graph_1, p.graph_2, connected, exhausted, min_distance, new_tt_distances, new_tu_distances, new_ut_distances, new_uu_distances ⟩
 
 
@@ -296,7 +247,7 @@ do new_graph_2 ← traverse neighbours y p.graph_2,
   let new_uu_distances := (p.uu_distances.zip p.graph_1.untraversed_vertices).map $ λ q, (q.1.remove_nth y) ++ ((new_graph_2.untraversed_vertices.drop offset).map $ λ v, distance q.2.data.compare_on v.data.compare_on),
   let connected := if ∃ r ∈ new_tu_distances, 0 ∈ r ∨ ∃ r ∈ new_uu_distances, 0 ∈ r then tt else ff,
   let exhausted := if p.graph_1.untraversed_vertices.length = 0 ∧ new_graph_2.untraversed_vertices.length = 0 then tt else ff,
-  let min_distance := (new_tu_distances.flatten ++ new_uu_distances.flatten).foldl min p.min_distance,
+  let min_distance := (new_tu_distances.join ++ new_uu_distances.join).foldl min p.min_distance,
   pure ⟨ p.graph_1, new_graph_2, connected, exhausted, min_distance, new_tt_distances, new_tu_distances, new_ut_distances, new_uu_distances ⟩
 
 def pair_traverse [decidable_eq α] [monad m] (neighbours : β → m (list (vertex_data α β γ))) (distance : α → α → ℕ) (p : partial_graph_pair α β γ) : m (partial_graph_pair α β γ) :=
@@ -380,7 +331,7 @@ do
   let uu_distances := graph_1.untraversed_vertices.map $ λ v, graph_2.untraversed_vertices.map $ λ w, distance v.data.compare_on w.data.compare_on in
   let connected := if ∃ r ∈ ut_distances, 0 ∈ r ∨ ∃ r ∈ tu_distances, 0 ∈ r ∨ ∃ r ∈ uu_distances, 0 ∈ r then tt else ff in
   let exhausted := if graph_1.untraversed_vertices.length = 0 ∧ graph_2.untraversed_vertices.length = 0 then tt else ff in
-  let min_distance := (tu_distances.flatten ++ ut_distances.flatten ++ uu_distances.flatten).foldl min (distance vertex_1.compare_on vertex_2.compare_on) in
+  let min_distance := (tu_distances.join ++ ut_distances.join ++ uu_distances.join).foldl min (distance vertex_1.compare_on vertex_2.compare_on) in
     do graph_pair_search_monadic_core neighbours distance cfg min_distance cfg.max_steps ⟨ graph_1, graph_2, connected, exhausted, min_distance, tt_distances, tu_distances, ut_distances, uu_distances ⟩
 
 instance id_monad : monad id := 
@@ -436,7 +387,7 @@ do table ← rs.enum.mmap $ λ e,
         let pp := pp.to_string,
         pure { vertex_data . compare_on := pp, data := target, descent_data := (e.1 + 1, n + 1, proof) })),
    by_simp ← simp_as_rewrite source,
-   pure (by_simp ++ table.flatten) 
+   pure (by_simp ++ table.join) 
 
 
 namespace tactic
