@@ -1,14 +1,9 @@
 import data.list
-import data.hash_map
+import data.option
 import .edit_distance
 
 open lean
 open lean.parser
-
--- TODO mathlib
-def option.to_list {α} : option α → list α 
-| none := []
-| (some a) := [a]
 
 def min_with_position : list ℕ → option (ℕ × ℕ)
 | [] := none
