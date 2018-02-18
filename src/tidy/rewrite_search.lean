@@ -446,7 +446,7 @@ do t ← target,
                                      eq ← (eq₁.reverse ++ eq₂_symm).mfoldl mk_eq_trans refl,
                                     --  trace eq,
                                     if cfg.trace then
-                                     trace format!"rewrite search succeeded, found a chain of length {eq₁.length + eq₂.length}, after attempting {result.graph_1.traversed_vertices.length} and {result.graph_2.traversed_vertices.length} rewrites on either side"
+                                     trace format!"rewrite search succeeded, found a chain of length {eq₁.length + eq₂.length}, after attempting {result.graph_1.traversed_vertices.length - 1} and {result.graph_2.traversed_vertices.length - 1} rewrites on either side"
                                     else skip,
                                      tactic.exact eq
    | ff, d, sum.inl (α₁, α₂) := fail format!"ran out of time without reaching equality, reached distance {d}, best goal:\n{α₁} = {α₂}"
