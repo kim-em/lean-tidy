@@ -40,3 +40,29 @@ do cs ← attribute.get_instances `semiapplicable,
 
 attribute [applicable] funext
 attribute [applicable] subtype.eq
+
+universes u₁ u₂
+
+@[applicable] lemma ulifts_equal
+  {α : Type u₁} (X Y : ulift.{u₂} α)
+  (w : X.down = Y.down) : X = Y :=
+  begin
+  induction X,
+  induction Y,
+  dsimp at w,
+  rw w,
+  end
+@[applicable] lemma sigmas_equal
+  {α : Type u₁} (Z : α → Type u₂)
+  (X Y : Σ a : α, Z a)
+  (w1 : X.1 = Y.1)
+  (w2 : @eq.rec_on _ X.1 _ _ w1 X.2 = Y.2) : X = Y :=
+  begin
+    induction X,
+    induction Y,
+    dsimp at w1,
+    dsimp at w2,
+    induction w1,
+    induction w2,
+    refl,
+  end
