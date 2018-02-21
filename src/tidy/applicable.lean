@@ -43,6 +43,8 @@ attribute [applicable] subtype.eq
 
 universes u₁ u₂
 
+@[applicable] lemma punits_equal
+  (a b : punit.{u₁}): a = b := by induction a; induction b; refl
 @[applicable] lemma ulifts_equal
   {α : Type u₁} (X Y : ulift.{u₂} α)
   (w : X.down = Y.down) : X = Y :=
