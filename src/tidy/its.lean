@@ -5,7 +5,7 @@
 import .transport .tidy
 
 namespace tactic
-meta def its { α : Type } (e : expr) (discharger : tactic α): tactic α := (`[refine (transport %%e _)] <|> `[refine (cast _ %%e)]) >> discharger
+meta def its { α : Type } (e : expr) (discharger : tactic α) : tactic α := (`[refine (transport %%e _)] <|> `[refine (cast _ %%e)]) >> discharger
 end tactic
 
 open tactic

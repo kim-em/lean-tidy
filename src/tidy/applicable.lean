@@ -68,3 +68,8 @@ universes u₁ u₂
     induction w2,
     refl,
   end
+@[applicable] lemma {u v} pairs_componentwise_equal {α : Type u} {β : Type v} {X Y : α × β} (p1 : X.1 = Y.1) (p2 : X.2 = Y.2) : X = Y := 
+begin
+induction X, induction Y, dsimp at *, rw p1, rw p2,
+end
+
