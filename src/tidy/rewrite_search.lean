@@ -126,20 +126,20 @@ match g.traversed_vertices.nth previously_traversed with
               if d.depth > g.current_vertex_data.depth + 1 then
                 {
                   traversed_vertices := g.traversed_vertices.update_nth previously_traversed {
-                                                                            data := { descent_data := descent_data, .. d.data },
-                                                                            traversed_neighbours := new_traversed_neighbours,
-                                                                            untraversed_neighbours := new_untraversed_neighbours,
-                                                                            parent := g.current_vertex, 
-                                                                            depth := g.current_vertex_data.depth + 1
+                    data := { descent_data := descent_data, .. d.data },
+                    traversed_neighbours := new_traversed_neighbours,
+                    untraversed_neighbours := new_untraversed_neighbours,
+                    parent := g.current_vertex, 
+                    depth := g.current_vertex_data.depth + 1
                                                                           },
                   nonempty := by simp,
                 .. g }
               else 
                 {
                   traversed_vertices := g.traversed_vertices.update_nth previously_traversed {
-                                                                            traversed_neighbours := new_traversed_neighbours,
-                                                                            untraversed_neighbours := new_untraversed_neighbours,
-                                                                          .. d},
+                    traversed_neighbours := new_traversed_neighbours,
+                    untraversed_neighbours := new_untraversed_neighbours,
+                  .. d },
                   nonempty := by simp,
                 .. g }
 end
@@ -258,15 +258,14 @@ match min_with_position_2 p.uu_distances, min_with_position_2 p.tu_distances, mi
 | none, none, (some (min_ut, x_ut, y_ut)) := do pair_traverse_left neighbours  distance x_ut p
 | none, (some (min_tu, x_tu, y_tu)), none := do pair_traverse_right neighbours distance y_tu p
 | (some (min_uu, x_uu, y_uu)), (some (min_tu, x_tu, y_tu)), (some (min_ut, x_ut, y_ut)) := if min_uu ≤ min_ut ∧ min_uu ≤ min_tu then
-                                                                                            if p.graph_1.untraversed_vertices.length ≤ p.graph_2.untraversed_vertices.length then
-                                                                                              do pair_traverse_left neighbours distance x_uu p
-                                                                                            else
-                                                                                              do pair_traverse_right neighbours distance y_uu p
-                                                                                          else
-                                                                                            if min_ut ≤ min_tu then
-                                                                                              do pair_traverse_left neighbours distance x_ut p
-                                                                                            else                                         
-                                                                                              do pair_traverse_right neighbours distance y_tu p
+             if p.graph_1.untraversed_vertices.length ≤ p.graph_2.untraversed_vertices.length then
+               do pair_traverse_left neighbours distance x_uu p
+             else
+               do pair_traverse_right neighbours distance y_uu p
+             else if min_ut ≤ min_tu then
+               do pair_traverse_left neighbours distance x_ut p             
+             else
+               do pair_traverse_right neighbours distance y_tu p
 end
 
 
