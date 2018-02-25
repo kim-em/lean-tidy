@@ -20,9 +20,10 @@ universe variable u
 
 attribute [reducible] cast
 attribute [reducible] lift_t coe_t coe_b has_coe_to_fun.coe
+attribute [reducible] eq.mpr
 attribute [ematch] subtype.property
 
-meta def dsimp' := `[dsimp [eq.mpr] {unfold_reducible := tt, md := semireducible}]
+meta def dsimp' := `[dsimp {unfold_reducible := tt, md := semireducible}]
 meta def dsimp_all' := `[dsimp at * {unfold_reducible := tt, md := semireducible}]
 
 -- TODO I'd love to do some profiling here, and find how much time is spent inside each tactic,

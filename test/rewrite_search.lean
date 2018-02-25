@@ -26,6 +26,7 @@ def knights := (λ p : ℤ × ℤ, [(p.1+2,p.2+1),(p.1+2,p.2-1),(p.1-2,p.2+1),(p
 
 private example (a : unit) : [[0],[0]] = [[4],[4]] :=
 begin
+rw tidy.test.foo, rw tidy.test.bar1, rw ← tidy.test.bar3, rw tidy.test.bar2, 
 rewrite_search [foo, bar1, ← bar2, bar2, ← bar3],
 end
 

@@ -357,12 +357,17 @@ meta def list_while {β} (f : ℕ → tactic β) (P : ℕ → β → bool) : tac
 open tactic
 open interactive interactive.types expr
 
-meta def simp_as_rewrite (source : expr) : tactic (list (vertex_data string expr (ℕ × ℕ × expr))) :=
+inductive which_rw
+| position (k : ℕ) (loc : ℕ)
+| all (k : ℕ)
+| by_simp
+
+meta def simp_as_rewrite (source : expr) : tactic (list (vertex_data string expr (which_rw × expr))) :=
 (do (s, u) ← tactic.mk_simp_set ff [] [],
    (target, proof) ← tactic.simplify s [] source {},
    pp ← pp target,
    let pp := pp.to_string,
-   pure [ { vertex_data . compare_on := pp, data := target, descent_data := (0, 0, proof) } ]) <|> pure []
+   pure [ { vertex_data . compare_on := pp, data := target, descent_data := (which_rw.by_simp, proof) } ]) <|> pure []
 
 meta def rewrite_without_new_mvars (h : expr) (e : expr) (cfg : rewrite_cfg := {}) : tactic (expr × expr × list expr) :=
 do n_before ← num_goals,
@@ -372,7 +377,7 @@ do n_before ← num_goals,
    guard (n_before = n_after),
    return (new_t, prf, metas)
 
-meta def all_rewrites (rs: list (expr × bool)) (source : expr) : tactic (list (vertex_data string expr (ℕ × ℕ × expr))) :=
+meta def all_rewrites (rs: list (expr × bool)) (source : expr) : tactic (list (vertex_data string expr (which_rw × expr))) :=
 do table ← rs.enum.mmap $ λ e,
    (do results ← (list_while (λ n, do v ← rewrite_without_new_mvars e.2.1 source {symm := e.2.2, occs := occurrences.pos [n+1]}, pure (n, v)) (λ n x, tt /- do we need to discard any? or just wait until rewrite fails? -/)),
       results.mmap (λ result, do
@@ -380,7 +385,7 @@ do table ← rs.enum.mmap $ λ e,
         -- trace ((e, n), target),
         pp ← pp target,
         let pp := pp.to_string,
-        pure { vertex_data . compare_on := pp, data := target, descent_data := (e.1 + 1, n + 1, proof) })),
+        pure { vertex_data . compare_on := pp, data := target, descent_data := (which_rw.position e.1 (n + 1), proof) })),
    by_simp ← simp_as_rewrite source,
    pure (by_simp ++ table.join) 
 
@@ -414,11 +419,11 @@ do pp1 ← pp e1,
 
 -- TODO finish this
 private meta def trace_proof (rs : list (expr × bool)) (steps : (list (ℕ × ℕ × expr) × list (ℕ × ℕ × expr))) : string :=
-string.intercalate ", " (steps.1.map $ λ t : ℕ × ℕ × expr, if t.1 = 0 then "simp" else match rs.nth (t.1 - 1) with
+let rw_string := (λ l : list (ℕ × ℕ × expr), (string.intercalate ", " (l.map $ λ t : ℕ × ℕ × expr, if t.1 = 0 then "simp" else match rs.nth (t.1 - 1) with
                                                            | none := "fail"
                                                            | (some p) := "rw " ++ (if p.2 then "← " else "") ++ p.1.to_string
-                                                           end)
-                                                           
+                                                           end))) in
+(rw_string steps.1.reverse) ++ ", " ++ (rw_string steps.2.reverse)                                                       
 
 private meta def rewrite_search_aux (rs: list (expr × bool)) (cfg : rewrite_search_config := {}) : tactic unit :=
 do t ← target,
@@ -446,7 +451,8 @@ do t ← target,
                                      eq ← (eq₁.reverse ++ eq₂_symm).mfoldl mk_eq_trans refl,
                                     --  trace eq,
                                     if cfg.trace then
-                                     trace format!"rewrite search succeeded, found a chain of length {eq₁.length + eq₂.length - 1}, after attempting {result.graph_1.traversed_vertices.length - 1} and {result.graph_2.traversed_vertices.length - 1} rewrites on either side"
+                                     do trace format!"rewrite search succeeded, found a chain of length {eq₁.length + eq₂.length - 1}, after attempting {result.graph_1.traversed_vertices.length - 1} and {result.graph_2.traversed_vertices.length - 1} rewrites on either side",
+                                        trace (trace_proof rs (l₁, l₂))
                                     else skip,
                                      tactic.exact eq
    | ff, d, sum.inl (α₁, α₂) := fail format!"ran out of time without reaching equality, reached distance {d}, best goal:\n{α₁} = {α₂}"
