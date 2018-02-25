@@ -358,6 +358,7 @@ open tactic
 open interactive interactive.types expr
 
 inductive which_rw
+| nil
 | position (k : ℕ) (loc : ℕ)
 | all (k : ℕ)
 | by_simp
@@ -378,14 +379,29 @@ do n_before ← num_goals,
    return (new_t, prf, metas)
 
 meta def all_rewrites (rs: list (expr × bool)) (source : expr) : tactic (list (vertex_data string expr (which_rw × expr))) :=
-do table ← rs.enum.mmap $ λ e,
-   (do results ← (list_while (λ n, do v ← rewrite_without_new_mvars e.2.1 source {symm := e.2.2, occs := occurrences.pos [n+1]}, pure (n, v)) (λ n x, tt /- do we need to discard any? or just wait until rewrite fails? -/)),
+do 
+   table ← rs.enum.mmap $ λ e,
+   (do global ← try_core ( rewrite_without_new_mvars e.2.1 source {symm := e.2.2} ),
+       results ← match global with
+       | none := pure []
+       | (some g) := do
+             one_at_a_time ← (list_while (λ n, do v ← rewrite_without_new_mvars e.2.1 source {symm := e.2.2, occs := occurrences.pos [n+1]}, pure (some (n + 1), v)) (λ n x, tt /- do we need to discard any? or just wait until rewrite fails? -/)),
+            match one_at_a_time.length with
+             | 0 := pure [(none, g)] -- shouldn't actually happen
+             | 1 := pure [(none, g)]
+             | _ := pure one_at_a_time
+             end
+      end,
       results.mmap (λ result, do
         let (n, target, proof, mvars) := result,
         -- trace ((e, n), target),
         pp ← pp target,
         let pp := pp.to_string,
-        pure { vertex_data . compare_on := pp, data := target, descent_data := (which_rw.position e.1 (n + 1), proof) })),
+        let which := match n with
+        | none := which_rw.all e.1
+        | (some n) := which_rw.position e.1 n
+        end,
+        pure { vertex_data . compare_on := pp, data := target, descent_data := (which, proof) })),
    by_simp ← simp_as_rewrite source,
    pure (by_simp ++ table.join) 
 
@@ -415,15 +431,24 @@ do pp1 ← pp e1,
    let pp2 := pp2.to_string,
    e1refl ← mk_eq_refl e1,
    e2refl ← mk_eq_refl e2,
-   graph_pair_search_monadic (all_rewrites rs) word_edit_distance ⟨ pp1, e1, (0, 0, e1refl) ⟩ ⟨ pp2, e2, (0, 0, e2refl) ⟩ cfg
+   graph_pair_search_monadic (all_rewrites rs) word_edit_distance ⟨ pp1, e1, (which_rw.nil, e1refl) ⟩ ⟨ pp2, e2, (which_rw.nil, e2refl) ⟩ cfg
 
 -- TODO finish this
-private meta def trace_proof (rs : list (expr × bool)) (steps : (list (ℕ × ℕ × expr) × list (ℕ × ℕ × expr))) : string :=
-let rw_string := (λ l : list (ℕ × ℕ × expr), (string.intercalate ", " (l.map $ λ t : ℕ × ℕ × expr, if t.1 = 0 then "simp" else match rs.nth (t.1 - 1) with
-                                                           | none := "fail"
-                                                           | (some p) := "rw " ++ (if p.2 then "← " else "") ++ p.1.to_string
-                                                           end))) in
-(rw_string steps.1.reverse) ++ ", " ++ (rw_string steps.2.reverse)                                                       
+private meta def trace_proof (rs : list (expr × bool)) (steps : (list (which_rw × expr) × list (which_rw × expr))) : string :=
+let rw_string := (λ l : list (which_rw × expr), (string.intercalate ",\n" (l.map $
+  λ t : which_rw × expr, match t.1 with
+  | which_rw.by_simp := "simp"
+  | (which_rw.all k) := match rs.nth k with
+                        | none := "[fail: unreachable code]" -- unreachable code
+                        | (some p) := "rw " ++ (if p.2 then "← " else "") ++ p.1.to_string
+                        end
+  | (which_rw.position k n) := match rs.nth k with
+                        | none := "[fail: unreachable code]" -- unreachable code
+                        | (some p) := "rw [" ++ (if p.2 then "← " else "") ++ p.1.to_string ++ "] {occs := occurrences.pos [" ++ (format!"{n}").to_string ++ "]}"
+                        end
+  | which_rw.nil     := "[fail: unreachable code]"
+  end))) in
+string.intercalate ",\n" ([rw_string steps.1.reverse, rw_string steps.2.reverse].filter $ λ s, s ≠ "")
 
 private meta def rewrite_search_aux (rs: list (expr × bool)) (cfg : rewrite_search_config := {}) : tactic unit :=
 do t ← target,
@@ -442,8 +467,8 @@ do t ← target,
   --  trace result.uu_distances,
    match result.exhausted, result.min_distance, result.closest_pair with
    | tt, d, sum.inl (α₁, α₂) := fail format!"rewrites exhausted, reached distance {d}, best goal:\n{α₁} = {α₂}"
-   | ff, 0, sum.inr (l₁, l₂) := do let eq₁ := l₁.map(λ p, p.2.2),
-                                     let eq₂ := l₂.map(λ p, p.2.2),
+   | ff, 0, sum.inr (l₁, l₂) := do let eq₁ := l₁.map(λ p, p.2),
+                                     let eq₂ := l₂.map(λ p, p.2),
                                     --  trace eq₁,
                                     --  trace eq₂,
                                      eq₂_symm ← eq₂.mmap mk_eq_symm,
@@ -451,7 +476,7 @@ do t ← target,
                                      eq ← (eq₁.reverse ++ eq₂_symm).mfoldl mk_eq_trans refl,
                                     --  trace eq,
                                     if cfg.trace then
-                                     do trace format!"rewrite search succeeded, found a chain of length {eq₁.length + eq₂.length - 1}, after attempting {result.graph_1.traversed_vertices.length - 1} and {result.graph_2.traversed_vertices.length - 1} rewrites on either side",
+                                     do trace format!"rewrite search succeeded, found a chain of length {eq₁.length + eq₂.length}, after searching {result.graph_1.traversed_vertices.length + result.graph_2.traversed_vertices.length} expressions.",
                                         trace (trace_proof rs (l₁, l₂))
                                     else skip,
                                      tactic.exact eq

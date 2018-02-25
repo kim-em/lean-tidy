@@ -26,12 +26,21 @@ def knights := (λ p : ℤ × ℤ, [(p.1+2,p.2+1),(p.1+2,p.2-1),(p.1-2,p.2+1),(p
 
 private example (a : unit) : [[0],[0]] = [[4],[4]] :=
 begin
-rw tidy.test.foo, rw tidy.test.bar1, rw ← tidy.test.bar3, rw tidy.test.bar2, 
 rewrite_search [foo, bar1, ← bar2, bar2, ← bar3],
 end
 
 private example : [[0],[0]] = [[4],[4]] :=
 begin
+rewrite_search_using `ematch,
+end
+
+@[ematch] private axiom qux' : [[1], [2]] = [[6], [7]]
+@[ematch] private axiom qux'' : [6] = [7]
+private example : [[1], [1]] = [[7], [7]] :=
+begin
+-- rw [tidy.test.bar1] {occs := occurrences.pos [2]},
+-- rw [← tidy.test.qux''] {occs := occurrences.pos [1]},
+-- rw ← tidy.test.qux',
 rewrite_search_using `ematch,
 end
 
