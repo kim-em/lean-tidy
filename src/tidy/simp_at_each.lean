@@ -16,26 +16,27 @@ local postfix `?`:9001 := optional
 
 namespace tactic.interactive
 
-meta def change_core (e : expr) : option expr → tactic unit
-| none     := tactic.change e
-| (some h) :=
-  do num_reverted : ℕ ← tactic.revert h,
-     expr.pi n bi d b ← target,
-     tactic.change $ expr.pi n bi e b,
-     intron num_reverted
+-- meta def change_core (e : expr) : option expr → tactic unit
+-- | none     := tactic.change e
+-- | (some h) :=
+--   do num_reverted : ℕ ← tactic.revert h,
+--      expr.pi n bi d b ← target,
+--      tactic.change $ expr.pi n bi e b,
+--      intron num_reverted
 
 meta def simp_core_aux' (cfg : simp_config) (discharger : tactic unit) (s : simp_lemmas) (u : list name) (hs : list expr) (tgt : bool) : tactic unit :=
-do to_remove ← hs.mfilter $ λ h, do {
+do processed_hypotheses ← hs.mmap $ λ h, do {
          h_type ← infer_type h,
          (do (new_h_type, pr) ← simplify s u h_type cfg `eq discharger,
-             change_core new_h_type (some h) <|>
+             change_core new_h_type (some h) >> return (h, tt, ff) <|>
              (do assert h.local_pp_name new_h_type,
-                 mk_eq_mp pr h >>= tactic.exact))  >> return tt
-         <|>
-         (return ff) },
+                 mk_eq_mp pr h >>= tactic.exact) >> return (h, ff, tt))
+         <|> (return (h, ff, tt)) },
+   let changed := processed_hypotheses.filter $ λ t, t.2.1,
+   let to_remove := processed_hypotheses.filter $ λ t, t.2.2,
    goal_simplified ← if tgt then (simp_target s u cfg discharger >> return tt) <|> (return ff) else return ff,
-   guard (cfg.fail_if_unchanged = ff ∨ to_remove.length > 0 ∨ goal_simplified) <|> fail "simplify tactic failed to simplify",
-   to_remove.mmap' (λ h, tactic.interactive.try (tactic.clear h))
+   guard (cfg.fail_if_unchanged = ff ∨ changed.length > 0 ∨ to_remove.length > 0 ∨ goal_simplified) <|> fail "simplify tactic failed to simplify",
+   to_remove.mmap' (λ h, tactic.interactive.try (tactic.clear h.1))
 
 meta def simp_core' (cfg : simp_config) (discharger : tactic unit)
                    (no_dflt : bool) (hs : list simp_arg_type) (attr_names : list name)
@@ -93,6 +94,7 @@ private def foo ( f : if tt = ff then empty else unit ) : unit.star = f :=
 begin
 -- induction f,
 -- refl
+simp at f,
 simp_at_each,
 induction f,
 refl

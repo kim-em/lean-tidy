@@ -6,7 +6,7 @@ import .force .applicable .congr_assumptions .fsplit .automatic_induction .tidy_
 import .monadic_chain
 import .smt
 import .reducible_abstract
-import .simp_at_each
+-- import .simp_at_each
 import .rewrite_search
 import .injections
 
@@ -46,7 +46,8 @@ meta def tidy_tactics : list (tactic string) :=
   dsimp'                                      >> pure "dsimp'",
   `[simp]                                     >> pure "simp",
   dsimp_all'                                  >> pure "dsimp_all'",
-  simp_at_each                                >> pure "simp_at_each",
+  `[simp at *]                                >> pure "simp at *",
+  -- simp_at_each                                >> pure "simp_at_each",
   injections_and_clear                        >> pure "injections_and_clear",
   automatic_induction                         >> pure "automatic_induction",
   run_tidy_tactics
