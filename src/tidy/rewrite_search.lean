@@ -1,6 +1,7 @@
 import data.list
 import data.option
 import .edit_distance
+import .pretty_print
 
 open lean
 open lean.parser
@@ -365,8 +366,7 @@ inductive which_rw
 meta def simp_as_rewrite (source : expr) : tactic (list (vertex_data string expr (which_rw × expr))) :=
 (do (s, u) ← tactic.mk_simp_set ff [] [],
    (target, proof) ← tactic.simplify s [] source {},
-   pp ← pp target,
-   let pp := pp.to_string,
+   pp ← pretty_print target,
    pure [ { vertex_data . compare_on := pp, data := target, descent_data := (which_rw.by_simp, proof) } ]) <|> pure []
 
 meta def rewrite_without_new_mvars (h : expr) (e : expr) (cfg : rewrite_cfg := {}) : tactic (expr × expr × list expr) :=
@@ -394,8 +394,7 @@ do
       results.mmap (λ result, do
         let (n, target, proof, mvars) := result,
         -- trace ((e, n), target),
-        pp ← pp target,
-        let pp := pp.to_string,
+        pp ← pretty_print target,
         let which := match n with
         | none := which_rw.all e.1
         | (some n) := which_rw.position e.1 n
@@ -424,15 +423,12 @@ namespace interactive
 
 
 private meta def rewrite_search_core (rs : list (expr × bool)) (cfg : rewrite_search_config := {}) (e1 e2 : expr) := 
-do pp1 ← pp e1,
-   let pp1 := pp1.to_string,
-   pp2 ← pp e2,
-   let pp2 := pp2.to_string,
+do pp1 ← pretty_print e1,
+   pp2 ← pretty_print e2,
    e1refl ← mk_eq_refl e1,
    e2refl ← mk_eq_refl e2,
    graph_pair_search_monadic (all_rewrites rs) word_edit_distance ⟨ pp1, e1, (which_rw.nil, e1refl) ⟩ ⟨ pp2, e2, (which_rw.nil, e2refl) ⟩ cfg
 
--- TODO finish this
 private meta def trace_proof (rs : list (string × bool)) (steps : (list (which_rw × expr) × list (which_rw × expr))) : string :=
 let rw_string := (λ l : list (which_rw × expr), (string.intercalate ",\n" (l.map $
   λ t : which_rw × expr, match t.1 with
@@ -456,26 +452,15 @@ do t ← target,
      | _ := fail "goal is not an equality"
      end,
    result ← rewrite_search_core rs cfg lhs rhs,
-  --  trace (result.graph_1.traversed_vertices.map (λ v : traversed_vertex_data _ _ _, v.data.compare_on)),
-  --  trace (result.graph_1.untraversed_vertices.map (λ v : untraversed_vertex_data _ _ _, v.data.compare_on)),
-  --  trace (result.graph_2.traversed_vertices.map (λ v : traversed_vertex_data _ _ _, v.data.compare_on)),
-  --  trace (result.graph_2.untraversed_vertices.map (λ v : untraversed_vertex_data _ _ _, v.data.compare_on)),
-  --  trace result.tt_distances,
-  --  trace result.tu_distances,
-  --  trace result.ut_distances,
-  --  trace result.uu_distances,
    match result.exhausted, result.min_distance, result.closest_pair with
    | tt, d, sum.inl (α₁, α₂) := fail format!"rewrites exhausted, reached distance {d}, best goal:\n{α₁} = {α₂}"
    | ff, 0, sum.inr (l₁, l₂) := do 
-                                   rs_strings ← rs.mmap $ λ p, (do s ← pp p.1, pure s.to_string),
+                                   rs_strings ← rs.mmap $ λ p, pretty_print p.1,
                                    let eq₁ := l₁.map(λ p, p.2),
                                    let eq₂ := l₂.map(λ p, p.2),
-                                    --  trace eq₁,
-                                    --  trace eq₂,
                                      eq₂_symm ← eq₂.mmap mk_eq_symm,
                                      refl ← mk_eq_refl lhs,
                                      eq ← (eq₁.reverse ++ eq₂_symm).mfoldl mk_eq_trans refl,
-                                    --  trace eq,
                                     if cfg.trace then
                                      do trace format!"rewrite search succeeded, found a chain of length {eq₁.length + eq₂.length}, after searching {result.graph_1.traversed_vertices.length + result.graph_2.traversed_vertices.length} expressions.",
                                         trace (trace_proof (rs_strings.zip (rs.map $ λ p, p.2)) (l₁, l₂))
@@ -491,7 +476,6 @@ do rs ← rs.rules.mmap (λ r, do e ← to_expr' r.rule, pure (e, r.symm)),
 
 meta def rewrite_search_using (a : name) (cfg : rewrite_search_config := {}) : tactic unit :=
 do names ← attribute.get_instances a,
-  --  trace names,
    exprs ← names.mmap $ mk_const,
    hyps ← local_context,
    let exprs := exprs ++ hyps,
