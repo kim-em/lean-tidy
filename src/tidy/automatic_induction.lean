@@ -15,7 +15,7 @@ meta def automatic_induction_at (h : expr) : tactic unit :=
 do t' ← infer_type h,
 --    t ← whnf t',
 match t' with
-| `(unit)      := induction h >> skip
+| `(unit)      := induction h >> skip -- TODO try using cases here
 | `(punit)     := induction h >> skip
 | `(false)     := induction h >> skip
 | `(empty)     := induction h >> skip
