@@ -92,9 +92,6 @@ do l ← tactic.local_context,
 -- Can we give a more direct proof??
 private def foo ( f : if tt = ff then empty else unit ) : unit.star = f :=
 begin
--- induction f,
--- refl
-simp at f,
 simp_at_each,
 induction f,
 refl
