@@ -433,17 +433,17 @@ do pp1 ← pp e1,
    graph_pair_search_monadic (all_rewrites rs) word_edit_distance ⟨ pp1, e1, (which_rw.nil, e1refl) ⟩ ⟨ pp2, e2, (which_rw.nil, e2refl) ⟩ cfg
 
 -- TODO finish this
-private meta def trace_proof (rs : list (expr × bool)) (steps : (list (which_rw × expr) × list (which_rw × expr))) : string :=
+private meta def trace_proof (rs : list (string × bool)) (steps : (list (which_rw × expr) × list (which_rw × expr))) : string :=
 let rw_string := (λ l : list (which_rw × expr), (string.intercalate ",\n" (l.map $
   λ t : which_rw × expr, match t.1 with
   | which_rw.by_simp := "simp"
   | (which_rw.all k) := match rs.nth k with
                         | none := "[fail: unreachable code]" -- unreachable code
-                        | (some p) := "rw " ++ (if p.2 then "← " else "") ++ p.1.to_string
+                        | (some p) := "rw " ++ (if p.2 then "← " else "") ++ p.1
                         end
   | (which_rw.position k n) := match rs.nth k with
                         | none := "[fail: unreachable code]" -- unreachable code
-                        | (some p) := "rw [" ++ (if p.2 then "← " else "") ++ p.1.to_string ++ "] {occs := occurrences.pos [" ++ (format!"{n}").to_string ++ "]}"
+                        | (some p) := "rw [" ++ (if p.2 then "← " else "") ++ p.1 ++ "] {occs := occurrences.pos [" ++ (format!"{n}").to_string ++ "]}"
                         end
   | which_rw.nil     := "[fail: unreachable code]"
   end))) in
@@ -466,8 +466,10 @@ do t ← target,
   --  trace result.uu_distances,
    match result.exhausted, result.min_distance, result.closest_pair with
    | tt, d, sum.inl (α₁, α₂) := fail format!"rewrites exhausted, reached distance {d}, best goal:\n{α₁} = {α₂}"
-   | ff, 0, sum.inr (l₁, l₂) := do let eq₁ := l₁.map(λ p, p.2),
-                                     let eq₂ := l₂.map(λ p, p.2),
+   | ff, 0, sum.inr (l₁, l₂) := do 
+                                   rs_strings ← rs.mmap $ λ p, (do s ← pp p.1, pure s.to_string),
+                                   let eq₁ := l₁.map(λ p, p.2),
+                                   let eq₂ := l₂.map(λ p, p.2),
                                     --  trace eq₁,
                                     --  trace eq₂,
                                      eq₂_symm ← eq₂.mmap mk_eq_symm,
@@ -476,7 +478,7 @@ do t ← target,
                                     --  trace eq,
                                     if cfg.trace then
                                      do trace format!"rewrite search succeeded, found a chain of length {eq₁.length + eq₂.length}, after searching {result.graph_1.traversed_vertices.length + result.graph_2.traversed_vertices.length} expressions.",
-                                        trace (trace_proof rs (l₁, l₂))
+                                        trace (trace_proof (rs_strings.zip (rs.map $ λ p, p.2)) (l₁, l₂))
                                     else skip,
                                      tactic.exact eq
    | ff, d, sum.inl (α₁, α₂) := fail format!"ran out of time without reaching equality, reached distance {d}, best goal:\n{α₁} = {α₂}"
