@@ -16,13 +16,13 @@ local postfix `?`:9001 := optional
 
 namespace tactic.interactive
 
--- meta def change_core (e : expr) : option expr → tactic unit
--- | none     := tactic.change e
--- | (some h) :=
---   do num_reverted : ℕ ← tactic.revert h,
---      expr.pi n bi d b ← target,
---      tactic.change $ expr.pi n bi e b,
---      intron num_reverted
+meta def change_core (e : expr) : option expr → tactic unit
+| none     := tactic.change e
+| (some h) :=
+  do num_reverted : ℕ ← tactic.revert h,
+     expr.pi n bi d b ← target,
+     tactic.change $ expr.pi n bi e b,
+     intron num_reverted
 
 meta def simp_core_aux' (cfg : simp_config) (discharger : tactic unit) (s : simp_lemmas) (u : list name) (hs : list expr) (tgt : bool) : tactic unit :=
 do processed_hypotheses ← hs.mmap $ λ h, do {
