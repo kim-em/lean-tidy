@@ -43,10 +43,9 @@ meta def tidy_tactics : list (tactic string) :=
   intro_at_least_one                          >> pure "intros",
   force (fsplit)                              >> pure "fsplit", 
   dsimp'                                      >> pure "dsimp'",
-  `[simp]                                     >> pure "simp",
+  `[simp!]                                    >> pure "simp!",
   dsimp_all'                                  >> pure "dsimp_all'",
   `[simp at *]                                >> pure "simp at *",
-  -- simp_at_each                                >> pure "simp_at_each",
   injections_and_clear                        >> pure "injections_and_clear",
   automatic_induction                         >> pure "automatic_induction",
   run_tidy_tactics
