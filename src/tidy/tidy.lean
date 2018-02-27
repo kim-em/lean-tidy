@@ -36,7 +36,6 @@ meta def tidy_tactics : list (tactic string) :=
 [
   terminal_goal >> assumption >> pure "assumption",
   terminal_goal >> congr_assumptions,
-  terminal_goal >> `[simp only [id_locked_eq]]                 >> pure "simp only [id_locked_eq]",
   force (reflexivity)                         >> pure "refl", 
   `[exact dec_trivial]                        >> pure "exact dec_trivial",
   semiapplicable                              >>= λ n, pure ("fapply " ++ n.to_string),
