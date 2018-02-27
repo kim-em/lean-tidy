@@ -13,5 +13,5 @@ open interactive
 open interactive.types
 
 namespace tactic.interactive
-meta def its (q : parse texpr) : tactic unit := i_to_expr ``(%%q) >>= λ e, tactic.its e (try tidy)
+meta def its (q : parse texpr) : tactic unit := i_to_expr ``(%%q) >>= λ e, tactic.its e (skip)
 end tactic.interactive
