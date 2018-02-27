@@ -295,7 +295,7 @@ def depth_first_search_monadic [decidable_eq α] [monad m] (neighbours : β → 
 structure rewrite_search_config :=
 (max_steps : ℕ := 10)
 (distance_limit_factor : ℕ := 1)
-(trace : bool := tt)
+(trace : bool := ff)
 
 meta def graph_pair_search_monadic_core [decidable_eq α] 
   (neighbours : β → tactic (list (vertex_data α β γ))) 
