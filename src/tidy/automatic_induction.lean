@@ -15,19 +15,19 @@ meta def automatic_induction_at (h : expr) : tactic unit :=
 do t' ← infer_type h,
 --    t ← whnf t',
 match t' with
-| `(unit)      := induction h >> skip -- TODO try using cases here
-| `(punit)     := induction h >> skip
-| `(false)     := induction h >> skip
-| `(empty)     := induction h >> skip
-| `(pempty)    := induction h >> skip
-| `(ulift _)   := induction h >> skip
-| `(plift _)   := induction h >> skip
-| `(eq _ _)    := induction h >> skip
-| `(prod _ _)  := induction h >> skip
-| `(and _ _)   := induction h >> skip
-| `(sigma _)   := induction h >> skip
-| `(subtype _) := induction h >> skip
-| `(fin nat.zero) := induction h >> `[cases is_lt]
+| `(unit)      := cases h >> skip -- TODO try using cases here
+| `(punit)     := cases h >> skip
+| `(false)     := cases h >> skip
+| `(empty)     := cases h >> skip
+| `(pempty)    := cases h >> skip
+| `(ulift _)   := cases h >> skip
+| `(plift _)   := cases h >> skip
+| `(eq _ _)    := cases h >> skip
+| `(prod _ _)  := cases h >> skip
+| `(and _ _)   := cases h >> skip
+| `(sigma _)   := cases h >> skip
+| `(subtype _) := cases h >> skip
+| `(fin nat.zero) := cases h >> `[cases is_lt]
 | _              := failed
 end
 
