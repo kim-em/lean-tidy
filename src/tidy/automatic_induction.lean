@@ -27,6 +27,7 @@ match t' with
 | `(and _ _)   := cases h >> skip
 | `(sigma _)   := cases h >> skip
 | `(subtype _) := cases h >> skip
+| `(Exists _)  := cases h >> skip
 | `(fin nat.zero) := cases h >> `[cases is_lt]
 | _              := failed
 end
