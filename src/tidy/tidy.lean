@@ -34,7 +34,7 @@ meta def dsimp_all' := `[dsimp at * {unfold_reducible := tt, md := semireducible
 -- TODO does cc help?
 meta def tidy_tactics : list (tactic string) :=
 [
-  terminal_goal >> assumption >> pure "assumption",
+   terminal_goal >> assumption >> pure "assumption",
   terminal_goal >> congr_assumptions,
   force (reflexivity)                         >> pure "refl", 
   `[exact dec_trivial]                        >> pure "exact dec_trivial",
@@ -42,10 +42,14 @@ meta def tidy_tactics : list (tactic string) :=
   applicable                                  >>= λ n, pure ("fapply " ++ n.to_string),
   intro_at_least_one                          >> pure "intros",
   force (fsplit)                              >> pure "fsplit", 
-  dsimp'                                      >> pure "dsimp'",
+  `[dsimp]                                    >> pure "dsimp",
+  `[dsimp at *]                               >> pure "dsimp at *",
+  `[unfold_projs]                             >> pure "unfold_projs",
+  `[unfold_projs at *]                        >> pure "unfold_projs at *",
   `[simp!]                                    >> pure "simp!",
+  `[simp! at *]                               >> pure "simp! at *",
+  dsimp'                                      >> pure "dsimp'",
   dsimp_all'                                  >> pure "dsimp_all'",
-  `[simp at *]                                >> pure "simp at *",
   injections_and_clear                        >> pure "injections_and_clear",
   automatic_induction                         >> pure "automatic_induction",
   run_tidy_tactics
