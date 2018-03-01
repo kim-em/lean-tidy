@@ -39,6 +39,7 @@ do cs ← attribute.get_instances `semiapplicable,
    (any_apply_no_new_goals cs) <|> fail "no @[semiapplicable] lemmas could be applied"
 
 attribute [applicable] funext
+attribute [applicable] propext
 attribute [applicable] subtype.eq
 
 universes u₁ u₂
