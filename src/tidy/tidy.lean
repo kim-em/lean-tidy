@@ -123,9 +123,11 @@ do
    else
      tactic.skip
 
-meta def obviously := try tidy >> (tactic.done <|> smt_eblast) >> (tactic.done <|> /-tactic.trace "warning: eblast failed, falling back to rewrite_search" >>-/ `[rewrite_search_using `ematch])
+meta def obviously := reducible_abstract {
+  try tidy >> (tactic.done <|> smt_eblast) >> (tactic.done <|> /-tactic.trace "warning: eblast failed, falling back to rewrite_search" >>-/ `[rewrite_search_using `ematch])
+}
 
 notation `♮` := by reducible_abstract { smt_eblast }
-notation `♯`  := by reducible_abstract { obviously }
+notation `♯`  := by obviously
 
 example : 1 = 1 := ♯ 

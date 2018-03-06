@@ -22,7 +22,7 @@ match t' with
 | `(pempty)    := cases h >> skip
 | `(ulift _)   := cases h >> skip
 | `(plift _)   := cases h >> skip
-| `(eq _ _)    := cases h >> skip
+| `(eq _ _)    := induction h >> skip  -- cases here triggers https://github.com/leanprover/lean/issues/1942
 | `(prod _ _)  := cases h >> skip
 | `(and _ _)   := cases h >> skip
 | `(sigma _)   := cases h >> skip
