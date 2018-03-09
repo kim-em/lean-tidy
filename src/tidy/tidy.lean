@@ -42,6 +42,8 @@ meta def tidy_tactics : list (tactic string) :=
   -- terminal_goal >> assumption >> pure "assumption",
   -- terminal_goal >> congr_assumptions,
   force (reflexivity)                         >> pure "refl", 
+  apply_auto_param                            >> pure "apply_auto_param",
+  apply_opt_param                             >> pure "apply_opt_param",
   `[exact dec_trivial]                        >> pure "exact dec_trivial",
   semiapplicable                              >>= λ n, pure ("fapply " ++ n.to_string),
   applicable                                  >>= λ n, pure ("fapply " ++ n.to_string),
