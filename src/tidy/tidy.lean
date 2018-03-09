@@ -134,7 +134,7 @@ do
 
 meta def obviously_tactics : list (tactic string) :=
 [
-  force ( smt_eblast) >> pure "smt_eblast",
+  -- force ( smt_eblast) >> pure "smt_eblast",
   `[rewrite_search_using `ematch] >> pure "rewrite_search_using `ematch"
 ]
 
