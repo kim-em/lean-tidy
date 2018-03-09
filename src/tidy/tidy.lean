@@ -31,12 +31,16 @@ meta def dsimp_all' := `[dsimp at * {unfold_reducible := tt, md := semireducible
 
 -- TODO also find tactics which are never used!
 
+meta def my_solve_by_elim (asms : option (list expr) := none)  : opt_param ℕ 3 → tactic unit
+| 0 := tactic.done
+| (n+1) :=
+tactic.interactive.apply_assumption asms $ cc <|> my_solve_by_elim n
+
 -- TODO does cc help?
 meta def tidy_tactics : list (tactic string) :=
 [
   -- terminal_goal >> assumption >> pure "assumption",
   -- terminal_goal >> congr_assumptions,
-  terminal_goal >> tactic.interactive.solve_by_elim >> pure "solve_by_elim",
   force (reflexivity)                         >> pure "refl", 
   `[exact dec_trivial]                        >> pure "exact dec_trivial",
   semiapplicable                              >>= λ n, pure ("fapply " ++ n.to_string),
@@ -50,9 +54,10 @@ meta def tidy_tactics : list (tactic string) :=
   `[unfold_projs at *]                        >> pure "unfold_projs at *",
   `[simp!]                                    >> pure "simp!",
   `[simp! at *]                               >> pure "simp! at *",
+  injections_and_clear                        >> pure "injections_and_clear",
+  terminal_goal >> (cc <|> my_solve_by_elim)  >> pure "solve_by_elim",
   dsimp'                                      >> pure "dsimp'",
   dsimp_all'                                  >> pure "dsimp_all'",
-  injections_and_clear                        >> pure "injections_and_clear",
   run_tidy_tactics
 ]
 
@@ -70,14 +75,15 @@ meta def any_later_goals { α : Type } (tac : tactic α ) : tactic (list (option
 do gs ← get_goals,
    any_later_goals_core tac gs [] [] ff
 
-meta def tactics_on_later_goals :=
-tidy_tactics.map(λ t, any_later_goals t >>= λ s, pure ("tactic.focus [ " ++ ((((none :: s).map(λ o, option.get_or_else (option.map (λ m, "`[" ++ m ++ "]") o) "tactic.skip")).intersperse ", ").foldl append "") ++ "]"))
+meta def tactics_on_later_goals (tactics : list (tactic string)) :=
+tactics.map(λ t, any_later_goals t >>= λ s, pure ("tactic.focus [ " ++ ((((none :: s).map(λ o, option.get_or_else (option.map (λ m, "`[" ++ m ++ "]") o) "tactic.skip")).intersperse ", ").foldl append "") ++ "]"))
 
 meta structure tidy_cfg extends chain_cfg :=
 ( trace_result : bool    := ff )
 ( show_hints   : bool    := ff )
 ( hints        : list ℕ  := [] )
 ( later_goals  : bool    := tt )
+( extra_tactics : list (tactic string) := [] )
 
 private meta def number_tactics { α : Type } ( tactics : list (tactic α) ) : list ( tactic (α × ℕ) ) :=
 tactics.map₂ ( λ t, λ n, (do r ← t, pure (r, n))) (list.range tactics.length)
@@ -90,8 +96,9 @@ private meta def apply_hints { α : Type } ( tactics : list (tactic α) ) : list
                end
 
 meta def tidy ( cfg : tidy_cfg := {} ) : tactic unit :=
-let tidy_tactics := tidy_tactics
-                     ++ (if cfg.later_goals then tactics_on_later_goals else []) in
+let tactics := tidy_tactics ++ cfg.extra_tactics in
+let tidy_tactics := tactics
+                     ++ (if cfg.later_goals then tactics_on_later_goals tactics else []) in
 let numbered_tactics := number_tactics tidy_tactics in
 do
    /- first apply hints -/
@@ -124,9 +131,18 @@ do
    else
      tactic.skip
 
+
+meta def obviously_tactics : list (tactic string) :=
+[
+  force ( smt_eblast) >> pure "smt_eblast",
+  `[rewrite_search_using `ematch] >> pure "rewrite_search_using `ematch"
+]
+
 meta def obviously := reducible_abstract (
-  try tidy >> (tactic.done <|> smt_eblast) >> (tactic.done <|> /-tactic.trace "warning: eblast failed, falling back to rewrite_search" >>-/ `[rewrite_search_using `ematch])
+  tidy { extra_tactics := obviously_tactics }
 )
+
+-- TODO obviously!, which uses solve_by_elim even on unsafe goals
 
 notation `♮` := by reducible_abstract { smt_eblast }
 notation `♯`  := by obviously
