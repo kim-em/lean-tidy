@@ -52,13 +52,17 @@ meta def monadic_chain_core { σ α : Type } ( cfg : chain_cfg ) ( tactics : lis
 do
   (results, completed, timing) ← monadic_chain_core' tactics ⟨ cfg.max_steps, [], tactics, list.repeat (0, 0) tactics.length ⟩,
   if cfg.trace_timing then
-    interaction_monad.trace ("tactic invocation times (success/failure): " ++ timing.reverse.to_string)
+    do name ← id_lift decl_name,
+       let msg := format!"tactic invocation times during elaboration of {name} (success/failure): {timing.reverse}",
+       interaction_monad.trace msg
   else
     result.success (),
-  guard completed <|> (if cfg.fail_on_max_steps then
-                         interaction_monad.fail "chain iteration limit exceeded"
-                       else 
-                         interaction_monad.trace "chain iteration limit exceeded"),
+  guard completed <|> (do name ← id_lift decl_name,
+                          let msg := format!"chain iteration limit exceeded during elaboration of {name}",
+                          if cfg.fail_on_max_steps then
+                            interaction_monad.fail msg
+                          else 
+                            interaction_monad.trace msg),
   pure results
 
 private meta def monadic_chain_handle_looping
@@ -74,7 +78,8 @@ else
 
 meta def trace_output { σ α : Type } [ has_to_format α ] ( t : interaction_monad (tactic_state × σ) α ) : interaction_monad (tactic_state × σ) α :=
 do r ← t,
-   interaction_monad.trace format!"succeeded with result: {r}",
+   name ← id_lift decl_name,
+   interaction_monad.trace format!"chain succeeded during elaboration of {name} with result: {r}",
    pure r
 
 private meta def monadic_chain_handle_trace

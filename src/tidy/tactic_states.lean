@@ -42,6 +42,7 @@ meta def unpack_states {σ τ ρ α : Type}: interaction_monad (σ × (τ × ρ)
 λ t s, (t (s.1.1, (s.1.2, s.2))).map(λ s', ((s'.1, s'.2.1), s'.2.2))
 
 meta def unit_lift { α : Type } ( t : tactic α ) : interaction_monad (tactic_state × unit) α := λ s, (t s.1).map(λ s, (s, unit.star))
+meta def id_lift {σ α : Type} ( t : tactic α ) : interaction_monad (tactic_state × σ) α := λ s, (t s.1).map(λ y, (y, s.2))
 
 meta instance discard_unit_coe (σ α : Type) : has_coe (interaction_monad (σ × unit) α) (interaction_monad σ α) := {
   coe := λ t s, (t (s, unit.star)).map(λ s', s'.1)
