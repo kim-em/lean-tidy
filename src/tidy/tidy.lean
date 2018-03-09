@@ -97,9 +97,9 @@ private meta def apply_hints { α : Type } ( tactics : list (tactic α) ) : list
 
 meta def tidy ( cfg : tidy_cfg := {} ) : tactic unit :=
 let tactics := tidy_tactics ++ cfg.extra_tactics in
-let tidy_tactics := tactics
+let tactics := tactics
                      ++ (if cfg.later_goals then tactics_on_later_goals tactics else []) in
-let numbered_tactics := number_tactics tidy_tactics in
+let numbered_tactics := number_tactics tactics in
 do
    /- first apply hints -/
    continue ← (if ¬ cfg.hints.empty then
