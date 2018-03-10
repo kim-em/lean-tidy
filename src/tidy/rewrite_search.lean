@@ -393,7 +393,7 @@ do
       end,
       results.mmap (λ result, do
         let (n, target, proof, mvars) := result,
-        -- trace ((e, n), target),
+        trace ((e, n), target),
         pp ← pretty_print target,
         let which := match n with
         | none := which_rw.all e.1

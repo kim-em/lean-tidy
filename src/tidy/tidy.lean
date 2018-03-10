@@ -51,7 +51,7 @@ meta def tidy_tactics : list (tactic string) :=
   `[dsimp]                                    >> pure "dsimp",
   `[dsimp at *]                               >> pure "dsimp at *",
   `[unfold_projs]                             >> pure "unfold_projs",
-  `[unfold_projs at *]                        >> pure "unfold_projs at *",
+  -- `[unfold_projs at *]                        >> pure "unfold_projs at *",
   `[simp!]                                    >> pure "simp!",
   `[simp! at *]                               >> pure "simp! at *",
   injections_and_clear                        >> pure "injections_and_clear",
