@@ -2,6 +2,8 @@
 -- Released under Apache 2.0 license as described in the file LICENSE.
 -- Authors: Scott Morrison
 
+import .recover
+
 open tactic
 
 universe variables u v w
@@ -47,3 +49,9 @@ meta def id_lift {σ α : Type} ( t : tactic α ) : interaction_monad (tactic_st
 meta instance discard_unit_coe (σ α : Type) : has_coe (interaction_monad (σ × unit) α) (interaction_monad σ α) := {
   coe := λ t s, (t (s, unit.star)).map(λ s', s'.1)
 }
+
+meta def interaction_monad.done {σ : Type} [underlying_tactic_state σ] : interaction_monad σ unit :=
+λ s, (done_no_metavariables (underlying_tactic_state.to_tactic_state s)).map(λ s', s)
+
+meta def interaction_monad.trace {σ : Type} [underlying_tactic_state σ] {α : Type u} [has_to_tactic_format α] (a : α) : interaction_monad σ unit :=
+λ s, (trace a (underlying_tactic_state.to_tactic_state s)).map(λ s', s)

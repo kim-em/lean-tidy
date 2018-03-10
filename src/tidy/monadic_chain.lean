@@ -12,9 +12,6 @@ open nat tactic
 
 universe variables u
 
-meta def interaction_monad.done {σ : Type} [underlying_tactic_state σ] : interaction_monad σ unit :=
-λ s, (done_no_metavariables (underlying_tactic_state.to_tactic_state s)).map(λ s', s)
-
 private meta structure chain_progress ( σ α : Type ) :=
   ( iteration_limit   : nat )
   ( results           : list α )
@@ -42,11 +39,9 @@ structure chain_cfg :=
   ( fail_on_max_steps  : bool := ff )
   ( trace_steps        : bool := ff )
   ( allowed_collisions : nat  := 0 )
-  ( fail_on_loop       : bool := ff ) -- be careful this is very slow, because it pretty prints states to compare
+  ( fail_on_loop       : bool := tt ) -- be careful this is very slow, because it pretty prints states to compare
   ( trace_timing       : bool := ff )
 
-meta def interaction_monad.trace {σ : Type} [underlying_tactic_state σ] {α : Type u} [has_to_tactic_format α] (a : α) : interaction_monad σ unit :=
-λ s, (trace a (underlying_tactic_state.to_tactic_state s)).map(λ s', s)
 
 meta def monadic_chain_core { σ α : Type } ( cfg : chain_cfg ) ( tactics : list (interaction_monad (tactic_state × σ) α) ) : interaction_monad (tactic_state × σ) (list α) :=
 do
