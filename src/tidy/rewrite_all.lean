@@ -80,9 +80,10 @@ def remove_adjacent_duplicates {α β} (f : α → β) [decidable_eq β] : list 
 | [] := []
 
 meta def all_rewrites (r : expr × bool) (e : expr) : tactic (list (expr × expr)) :=
-do results ← rewrite_fold (rewrite_F r) e [],
+do tactic.trace format!"finding all rewrites on {e}",
+   results ← rewrite_fold (rewrite_F r) e [],
    let results : list (expr × expr) := remove_adjacent_duplicates (λ p, p.1) results,
-  --  tactic.trace results,
+   tactic.trace results,
    pure results
 
 meta def perform_nth_rewrite (r : expr × bool) (n : ℕ) : tactic unit := 

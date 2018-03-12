@@ -307,6 +307,10 @@ meta def graph_pair_search_monadic_core [decidable_eq α]
                      pure p
                 else
                   do next ← pair_traverse neighbours distance p,
+                     tactic.trace "pairwise distances:",
+                     tactic.trace ("tu: " ++ next.tu_distances.to_string),
+                     tactic.trace ("ut: " ++ next.ut_distances.to_string),
+                     tactic.trace ("uu: " ++ next.uu_distances.to_string),
                      if next.min_distance > initial_min_distance * cfg.distance_limit_factor then
                        do tactic.trace format!"minimum distance exceeded initial distance by a factor of {cfg.distance_limit_factor}",
                            pure p
@@ -372,11 +376,11 @@ meta def simp_as_rewrite (source : expr) : tactic (list (vertex_data string expr
 meta def rewrite_search_neighbours (rs: list (expr × bool)) (source : expr) : tactic (list (vertex_data string expr (which_rw × expr))) :=
 do table ← rs.enum.mmap (λ e,
    do results ← all_rewrites e.2 source,
-     let n := e.1,
-     results.enum.mmap (λ result,
-       do let (k, tgt, prf) := result,
-          pp ← pretty_print tgt,
-          pure { vertex_data . compare_on := pp, data := tgt, descent_data := (which_rw.by_rw n k, prf) }
+      let n := e.1,
+      results.enum.mmap (λ result,
+        do let (k, tgt, prf) := result,
+           pp ← pretty_print tgt,
+           pure { vertex_data . compare_on := pp, data := tgt, descent_data := (which_rw.by_rw n k, prf) }
    )),
    by_simp ← simp_as_rewrite source,
    pure (by_simp ++ table.join) 
