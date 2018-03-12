@@ -15,9 +15,6 @@ do n_before ← num_goals,
    guard (n_before = n_after),
    return (new_t, prf)
 
-meta def each_goal {α} (t : conv α) : conv (list α) := sorry
-
-
 open tactic.interactive
 
 meta def search_attribute : user_attribute := {
@@ -109,11 +106,11 @@ do e ← target,
    (new_t, prf) ← rewrites.nth n,
    replace_target new_t prf
 
-@[search] lemma b (l : list ℕ) : 1 :: l = 2 :: l := sorry
+-- @[search] lemma b (l : list ℕ) : 1 :: l = 2 :: l := sorry
 
-example (f : ℕ → list ℕ → Type) : f 3 [1,1,1,2,1] = f 3 [1,2,1,2,1] :=
-begin
-target >>= all_rewrites_using `search,
-perform_nth_rewrite_using `search 5,
-refl
-end
+-- example (f : ℕ → list ℕ → Type) : f 3 [1,1,1,2,1] = f 3 [1,2,1,2,1] :=
+-- begin
+-- target >>= all_rewrites_using `search,
+-- perform_nth_rewrite_using `search 5,
+-- refl
+-- end
