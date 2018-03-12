@@ -72,6 +72,7 @@ do
   let r_pp := (if r.2 then "← " else "") ++ r_pp,
   tactic.trace format!"rewriting at {e_pp} via {r_pp}",
   (v, pr) ← rewrite_without_new_mvars r.1 e {symm := r.2},
+  tactic.trace "success!",
   let v' := l.replace v,
   pr' ← l.congr pr | (do v_pp ← pretty_print v, pr_pp ← pretty_print pr, tactic.trace format!"lens congr failed: {v_pp} {pr_pp}"),
   pure ((v', pr') :: state)
