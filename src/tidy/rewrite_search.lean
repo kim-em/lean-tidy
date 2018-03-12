@@ -349,15 +349,15 @@ def breadth_first_search [decidable_eq β] (neighbours : β → list β) (a : β
 def depth_first_search [decidable_eq β] (neighbours : β → list β) (a : β) : ℕ → partial_graph β β ℕ := @depth_first_search_monadic β β ℕ id _ _ (λ x, (neighbours x).enum.map(λ p, ⟨ p.2, p.2, p.1 ⟩)) ⟨ a, a, 0 ⟩
 
 
-private meta def list_while' {β} (f : ℕ → tactic β) (P : ℕ → β → bool) : ℕ → β → bool → list β → tactic (list β)
-| _ _ ff t := pure t
-| n a tt t := (do g ← f (n+1), list_while' (n+1) g (P (n+1) g) (a :: t)) <|> pure (a :: t)
+-- private meta def list_while' {β} (f : ℕ → tactic β) (P : ℕ → β → bool) : ℕ → β → bool → list β → tactic (list β)
+-- | _ _ ff t := pure t
+-- | n a tt t := (do g ← f (n+1), list_while' (n+1) g (P (n+1) g) (a :: t)) <|> pure (a :: t)
 
-meta def list_while {β} (f : ℕ → tactic β) (P : ℕ → β → bool) : tactic (list β) :=
-(do 
-  g ← f 0,
-  r ← (list_while' f P 0 g (P 0 g) []),
-  pure r.reverse) <|> pure []
+-- meta def list_while {β} (f : ℕ → tactic β) (P : ℕ → β → bool) : tactic (list β) :=
+-- (do 
+--   g ← f 0,
+--   r ← (list_while' f P 0 g (P 0 g) []),
+--   pure r.reverse) <|> pure []
 
 open tactic
 open interactive interactive.types expr
@@ -374,7 +374,9 @@ meta def simp_as_rewrite (source : expr) : tactic (list (vertex_data string expr
    pure [ { vertex_data . compare_on := pp, data := target, descent_data := (which_rw.by_simp, proof) } ]) <|> pure []
 
 meta def rewrite_search_neighbours (rs: list (expr × bool)) (source : expr) : tactic (list (vertex_data string expr (which_rw × expr))) :=
-do table ← rs.enum.mmap (λ e,
+do source_pp ← pretty_print source,
+   tactic.trace format!"finding all rewrites for {source_pp}",
+   table ← rs.enum.mmap (λ e,
    do results ← all_rewrites e.2 source,
       let n := e.1,
       results.enum.mmap (λ result,
@@ -383,7 +385,9 @@ do table ← rs.enum.mmap (λ e,
            pure { vertex_data . compare_on := pp, data := tgt, descent_data := (which_rw.by_rw n k, prf) }
    )),
    by_simp ← simp_as_rewrite source,
-   pure (by_simp ++ table.join) 
+   let rewrites := by_simp ++ table.join,
+   rewrites.mmap' (λ r, tactic.trace r.compare_on),
+   pure rewrites
 
 -- meta def all_rewrites' (rs: list (expr × bool)) (source : expr) : tactic (list (vertex_data string expr (which_rw × expr))) :=
 -- do 
