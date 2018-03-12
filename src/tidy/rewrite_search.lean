@@ -2,6 +2,7 @@ import data.list
 import data.option
 import .edit_distance
 import .pretty_print
+import .rewrite_all
 
 open lean
 open lean.parser
@@ -358,9 +359,8 @@ open tactic
 open interactive interactive.types expr
 
 inductive which_rw
-| nil
-| position (k : ℕ) (loc : ℕ)
-| all (k : ℕ)
+| none
+| by_rw (rule : ℕ) (pos : ℕ)
 | by_simp
 
 meta def simp_as_rewrite (source : expr) : tactic (list (vertex_data string expr (which_rw × expr))) :=
@@ -369,39 +369,43 @@ meta def simp_as_rewrite (source : expr) : tactic (list (vertex_data string expr
    pp ← pretty_print target,
    pure [ { vertex_data . compare_on := pp, data := target, descent_data := (which_rw.by_simp, proof) } ]) <|> pure []
 
-meta def rewrite_without_new_mvars (h : expr) (e : expr) (cfg : rewrite_cfg := {}) : tactic (expr × expr × list expr) :=
-do n_before ← num_goals,
-   (new_t, prf, metas) ← rewrite_core h e cfg,
-   try_apply_opt_auto_param cfg.to_apply_cfg metas,
-   n_after ← num_goals,
-   guard (n_before = n_after),
-   return (new_t, prf, metas)
-
-meta def all_rewrites (rs: list (expr × bool)) (source : expr) : tactic (list (vertex_data string expr (which_rw × expr))) :=
-do 
-   table ← rs.enum.mmap $ λ e,
-   (do global ← try_core ( rewrite_without_new_mvars e.2.1 source {symm := e.2.2} ),
-       results ← match global with
-       | none := pure []
-       | (some g) := do
-             one_at_a_time ← (list_while (λ n, do v ← rewrite_without_new_mvars e.2.1 source {symm := e.2.2, occs := occurrences.pos [n+1]}, pure (some (n + 1), v)) (λ n x, tt /- do we need to discard any? or just wait until rewrite fails? -/)),
-            match one_at_a_time.length with
-             | 0 := pure [(none, g)] -- shouldn't actually happen
-             | 1 := pure [(none, g)]
-             | _ := pure one_at_a_time
-             end
-      end,
-      results.mmap (λ result, do
-        let (n, target, proof, mvars) := result,
-        trace ((e, n), target),
-        pp ← pretty_print target,
-        let which := match n with
-        | none := which_rw.all e.1
-        | (some n) := which_rw.position e.1 n
-        end,
-        pure { vertex_data . compare_on := pp, data := target, descent_data := (which, proof) })),
+meta def rewrite_search_neighbours (rs: list (expr × bool)) (source : expr) : tactic (list (vertex_data string expr (which_rw × expr))) :=
+do table ← rs.enum.mmap (λ e,
+   do results ← all_rewrites e.2 source,
+     let n := e.1,
+     results.enum.mmap (λ result,
+       do let (k, tgt, prf) := result,
+          pp ← pretty_print tgt,
+          pure { vertex_data . compare_on := pp, data := tgt, descent_data := (which_rw.by_rw n k, prf) }
+   )),
    by_simp ← simp_as_rewrite source,
    pure (by_simp ++ table.join) 
+
+-- meta def all_rewrites' (rs: list (expr × bool)) (source : expr) : tactic (list (vertex_data string expr (which_rw × expr))) :=
+-- do 
+--    table ← rs.enum.mmap $ λ e,
+--    (do global ← try_core ( rewrite_without_new_mvars e.2.1 source {symm := e.2.2} ),
+--        results ← match global with
+--        | none := pure []
+--        | (some g) := do
+--              one_at_a_time ← (list_while (λ n, do v ← rewrite_without_new_mvars e.2.1 source {symm := e.2.2, occs := occurrences.pos [n+1]}, pure (some (n + 1), v)) (λ n x, tt /- do we need to discard any? or just wait until rewrite fails? -/)),
+--             match one_at_a_time.length with
+--              | 0 := pure [(none, g)] -- shouldn't actually happen
+--              | 1 := pure [(none, g)]
+--              | _ := pure one_at_a_time
+--              end
+--       end,
+--       results.mmap (λ result, do
+--         let (n, target, proof) := result,
+--         trace ((e, n), target),
+--         pp ← pretty_print target,
+--         let which := match n with
+--         | none := which_rw.all e.1
+--         | (some n) := which_rw.position e.1 n
+--         end,
+--         pure { vertex_data . compare_on := pp, data := target, descent_data := (which, proof) })),
+--    by_simp ← simp_as_rewrite source,
+--    pure (by_simp ++ table.join) 
 
 
 namespace tactic
@@ -427,21 +431,20 @@ do pp1 ← pretty_print e1,
    pp2 ← pretty_print e2,
    e1refl ← mk_eq_refl e1,
    e2refl ← mk_eq_refl e2,
-   graph_pair_search_monadic (all_rewrites rs) word_edit_distance ⟨ pp1, e1, (which_rw.nil, e1refl) ⟩ ⟨ pp2, e2, (which_rw.nil, e2refl) ⟩ cfg
+   graph_pair_search_monadic (rewrite_search_neighbours rs) word_edit_distance ⟨ pp1, e1, (which_rw.none, e1refl) ⟩ ⟨ pp2, e2, (which_rw.none, e2refl) ⟩ cfg
 
 private meta def trace_proof (rs : list (string × bool)) (steps : (list (which_rw × expr) × list (which_rw × expr))) : string :=
 let rw_string := (λ l : list (which_rw × expr), (string.intercalate ",\n" (l.map $
   λ t : which_rw × expr, match t.1 with
   | which_rw.by_simp := "simp"
-  | (which_rw.all k) := match rs.nth k with
-                        | none := "[fail: unreachable code]" -- unreachable code
-                        | (some p) := "rw " ++ (if p.2 then "← " else "") ++ p.1
-                        end
-  | (which_rw.position k n) := match rs.nth k with
-                        | none := "[fail: unreachable code]" -- unreachable code
-                        | (some p) := "rw [" ++ (if p.2 then "← " else "") ++ p.1 ++ "] {occs := occurrences.pos [" ++ (format!"{n}").to_string ++ "]}"
-                        end
-  | which_rw.nil     := "[fail: unreachable code]"
+  | (which_rw.by_rw n k) := match rs.nth n with
+                            | none := "[fail: unreachable code]" -- unreachable code
+                            | (some p) := if k = 1 then
+                                            "rw [" ++ (if p.2 then "← " else "") ++ p.1 ++ "]"
+                                          else
+                                            (format!"perform_nth_rewrite {p}").to_string
+                            end
+  | which_rw.none     := "[fail: unreachable code]"
   end))) in
 string.intercalate ",\n" ([rw_string steps.1.reverse, rw_string steps.2.reverse].filter $ λ s, s ≠ "")
 
