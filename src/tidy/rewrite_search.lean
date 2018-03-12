@@ -396,6 +396,7 @@ do source_pp ← pretty_print source,
            pure { vertex_data . compare_on := pp, data := tgt, descent_data := (which_rw.by_rw n k, prf) }
    )),
    by_simp ← simp_as_rewrite source,
+   by_simp.mmap (λ r, do tactic.trace ("≪ " ++ r.compare_on ++ " via simp")),
    let rewrites := by_simp ++ table.join,
    pure rewrites
 
