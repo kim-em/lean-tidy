@@ -375,18 +375,19 @@ meta def simp_as_rewrite (source : expr) : tactic (list (vertex_data string expr
 
 meta def rewrite_search_neighbours (rs: list (expr × bool)) (source : expr) : tactic (list (vertex_data string expr (which_rw × expr))) :=
 do source_pp ← pretty_print source,
-   tactic.trace format!"finding all rewrites for {source_pp}",
+   tactic.trace format!"finding all rewrites for:\n  {source_pp}",   
+   rules_pp ← rs.mmap (λ r, pretty_print r.1),
    table ← rs.enum.mmap (λ e,
    do results ← all_rewrites e.2 source,
       let n := e.1,
       results.enum.mmap (λ result,
         do let (k, tgt, prf) := result,
            pp ← pretty_print tgt,
+           tactic.trace ("* " ++ pp ++ " via " ++ ((rules_pp.nth n).get_or_else "") ++ (format!" {k}").to_string),
            pure { vertex_data . compare_on := pp, data := tgt, descent_data := (which_rw.by_rw n k, prf) }
    )),
    by_simp ← simp_as_rewrite source,
    let rewrites := by_simp ++ table.join,
-   rewrites.mmap' (λ r, tactic.trace r.compare_on),
    pure rewrites
 
 -- meta def all_rewrites' (rs: list (expr × bool)) (source : expr) : tactic (list (vertex_data string expr (which_rw × expr))) :=
