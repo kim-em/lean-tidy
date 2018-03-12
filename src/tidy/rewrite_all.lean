@@ -82,10 +82,12 @@ def remove_adjacent_duplicates {α β} (f : α → β) [decidable_eq β] : list 
 
 meta def all_rewrites (r : expr × bool) (e : expr) : tactic (list (expr × expr)) :=
 do pp ← pretty_print e,
-   tactic.trace format!"⟫ finding all rewrites on {pp}",
    results ← rewrite_fold (rewrite_F r) e [],
    let results : list (expr × expr) := remove_adjacent_duplicates (λ p, p.1) results,
    results_pp ← results.mmap(λ p, pretty_print p.1),
+   r_pp ← pretty_print r.1,
+   let r_pp := (if r.2 then "← " else "") ++ r_pp,
+   if results.length > 0 then tactic.trace format!"⟫ finding all rewrites of {pp} via {r_pp}" else tactic.skip,
    results_pp.mmap'(λ r, tactic.trace format!"⟫⟫ {r}"),
    pure results
 
