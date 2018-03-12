@@ -308,6 +308,7 @@ meta def graph_pair_search_monadic_core [decidable_eq α]
                 else
                   do next ← pair_traverse neighbours distance p,
                      tactic.trace "pairwise distances:",
+                     tactic.trace ("tt: " ++ next.tt_distances.to_string),
                      tactic.trace ("tu: " ++ next.tu_distances.to_string),
                      tactic.trace ("ut: " ++ next.ut_distances.to_string),
                      tactic.trace ("uu: " ++ next.uu_distances.to_string),
@@ -332,7 +333,13 @@ do
   let connected := if ∃ r ∈ ut_distances, 0 ∈ r ∨ ∃ r ∈ tu_distances, 0 ∈ r ∨ ∃ r ∈ uu_distances, 0 ∈ r then tt else ff in
   let exhausted := if graph_1.untraversed_vertices.length = 0 ∧ graph_2.untraversed_vertices.length = 0 then tt else ff in
   let min_distance := (tu_distances.join ++ ut_distances.join ++ uu_distances.join).foldl min (distance vertex_1.compare_on vertex_2.compare_on) in
-    do graph_pair_search_monadic_core neighbours distance cfg min_distance cfg.max_steps ⟨ graph_1, graph_2, connected, exhausted, min_distance, tt_distances, tu_distances, ut_distances, uu_distances ⟩
+  do 
+    tactic.trace "pairwise distances:",
+    tactic.trace ("tt: " ++ tt_distances.to_string),
+    tactic.trace ("tu: " ++ tu_distances.to_string),
+    tactic.trace ("ut: " ++ ut_distances.to_string),
+    tactic.trace ("uu: " ++ uu_distances.to_string),
+    graph_pair_search_monadic_core neighbours distance cfg min_distance cfg.max_steps ⟨ graph_1, graph_2, connected, exhausted, min_distance, tt_distances, tu_distances, ut_distances, uu_distances ⟩
 
 instance id_monad : monad id := 
 begin
@@ -375,7 +382,7 @@ meta def simp_as_rewrite (source : expr) : tactic (list (vertex_data string expr
 
 meta def rewrite_search_neighbours (rs: list (expr × bool)) (source : expr) : tactic (list (vertex_data string expr (which_rw × expr))) :=
 do source_pp ← pretty_print source,
-   tactic.trace format!"finding all rewrites for:\n  {source_pp}",   
+   tactic.trace format!"finding all rewrites for:\n≫ {source_pp}",   
    rules_pp ← rs.mmap (λ r, pretty_print r.1),
    table ← rs.enum.mmap (λ e,
    do e_pp ← pretty_print e.2.1,
@@ -385,7 +392,7 @@ do source_pp ← pretty_print source,
       results.enum.mmap (λ result,
         do let (k, tgt, prf) := result,
            pp ← pretty_print tgt,
-           tactic.trace ("* " ++ pp ++ " via " ++ e_pp ++ (format!", at {k}").to_string),
+           tactic.trace ("≪ " ++ pp ++ " via " ++ e_pp ++ (format!", at {k}").to_string),
            pure { vertex_data . compare_on := pp, data := tgt, descent_data := (which_rw.by_rw n k, prf) }
    )),
    by_simp ← simp_as_rewrite source,
