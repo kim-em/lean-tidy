@@ -39,9 +39,9 @@ meta def expr_lens.replace : expr_lens → expr → expr
 
 meta def expr_lens.congr : expr_lens → expr → tactic expr
 | (app_fun l f) x_eq := do fx_eq ← mk_congr_arg f x_eq,
-                                     expr_lens.congr l fx_eq
+                                    expr_lens.congr l fx_eq
 | (app_arg l x) f_eq := do fx_eq ← mk_congr_fun f_eq x,
-                                     expr_lens.congr l fx_eq
+                                    expr_lens.congr l fx_eq
 | entire                  e_eq := pure e_eq
 
 -- meta inductive expr_lens
@@ -70,10 +70,10 @@ do
   e_pp ← pretty_print e,
   r_pp ← pretty_print r.1,
   let r_pp := (if r.2 then "← " else "") ++ r_pp,
-  tactic.trace format!"rewritng at {e_pp} via {r_pp}",
+  tactic.trace format!"rewriting at {e_pp} via {r_pp}",
   (v, pr) ← rewrite_without_new_mvars r.1 e {symm := r.2},
   let v' := l.replace v,
-  pr' ← l.congr pr,
+  pr' ← l.congr pr | (do v_pp ← pretty_print v, pr_pp ← pretty_print pr, tactic.trace format!"lens congr failed: {v_pp} {pr_pp}"),
   pure ((v', pr') :: state)
 
 def remove_adjacent_duplicates {α β} (f : α → β) [decidable_eq β] : list α → list α
