@@ -1,9 +1,9 @@
 open tactic
 
-meta def pretty_print (e : expr): tactic string :=
+meta def pretty_print (e : expr) (implicits : bool := ff): tactic string :=
 do options ← get_options,
    set_options (options.set_bool `pp.universes false),
-   set_options (options.set_bool `pp.implicits false),
+   set_options (options.set_bool `pp.implicits implicits),
    t ← pp e,
    set_options options,
    pure t.to_string
