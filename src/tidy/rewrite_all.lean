@@ -16,6 +16,18 @@ do n_before ← num_goals,
    guard (n_before = n_after),
    return (new_t, prf)
 
+meta def mk_eq_symm_under_binders : expr → tactic expr
+| (e@(expr.app _ _)) := mk_eq_symm e
+| (expr.lam n bi d b) := do b' ← mk_eq_symm_under_binders b, pure (expr.lam n bi d b')
+| e := pure e
+.
+
+meta def rewrite_entire (r : (expr × bool)) (e : expr) : tactic (expr × expr) :=
+do let sl := simp_lemmas.mk,
+   r' ← if r.2 then mk_eq_symm_under_binders r.1 else pure r.1,
+   sl ← sl.add r',
+   sl.rewrite e
+
 open tactic.interactive
 
 meta def search_attribute : user_attribute := {
@@ -72,12 +84,24 @@ do
   let r_pp := (if r.2 then "← " else "") ++ r_pp,
   tactic.trace format!"rewriting at {e_pp} via {r_pp}",
   (v, pr) ← rewrite_without_new_mvars r.1 e {symm := r.2},
-  v_pp ← pretty_print v,
-  tactic.trace format!"success: {v_pp}",
-  let v' := l.replace v,
-  pr' ← l.congr pr | (do v_pp ← pretty_print v, pr_pp ← pretty_print pr, tactic.trace format!"lens congr failed: {v_pp} {pr_pp}"),
-  tactic.trace ".",
-  pure ((v', pr') :: state)
+  -- Now we determine whether the rewrite transforms the entire expression or not:
+  (do 
+    (w, qr) ← rewrite_entire r e,
+    w_pp ← pretty_print w,
+    tactic.trace format!"success (entire expression): {w_pp}",
+    let w' := l.replace w,
+    qr' ← l.congr qr | (do w_pp ← pretty_print w, qr_pp ← pretty_print qr, tactic.trace format!"lens congr failed: {w_pp} {qr_pp}"),
+    tactic.trace "..",
+    pure ((w', qr') :: state)
+  ) <|>
+  (do
+    v_pp ← pretty_print v,
+    tactic.trace format!"success (subexpression): {v_pp}",
+    -- let v' := l.replace v,
+    -- pr' ← l.congr pr | (do v_pp ← pretty_print v, pr_pp ← pretty_print pr, tactic.trace format!"lens congr failed: {v_pp} {pr_pp}"),
+    tactic.trace ".",
+    pure (state)
+  )
 
 def remove_adjacent_duplicates {α β} (f : α → β) [decidable_eq β] : list α → list α
 | (x :: y :: t) := if f x = f y then
