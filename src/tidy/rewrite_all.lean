@@ -16,9 +16,6 @@ do n_before ← num_goals,
    guard (n_before = n_after),
    return (new_t, prf)
 
-set_option trace.app_builder true
--- TODO other cases, e.g. elet?
-
 meta def mk_eq_symm_under_binders_aux : expr → (nat → expr) → tactic expr
 | (expr.pi n bi d b) f := expr.lam n bi d <$> mk_eq_symm_under_binders_aux b (λ n, f (n+1) (expr.var n))
 | `(%%a = %%b) e := mk_eq_symm (e 0)
@@ -26,7 +23,6 @@ meta def mk_eq_symm_under_binders_aux : expr → (nat → expr) → tactic expr
 
 meta def mk_eq_symm_under_binders : expr → tactic expr
 | e := do t ← infer_type e, mk_eq_symm_under_binders_aux t (λ _, e)
-.
 
 meta def rewrite_entire (r : (expr × bool)) (e : expr) : tactic (expr × expr) :=
 do let sl := simp_lemmas.mk,
@@ -78,22 +74,22 @@ do
   e_pp ← pretty_print e,
   r_pp ← pretty_print r.1,
   let r_pp := (if r.2 then "← " else "") ++ r_pp,
-  -- tactic.trace format!"rewriting at {e_pp} via {r_pp}",
+  tactic.trace format!"rewriting at {e_pp} via {r_pp}",
   (v, pr) ← rewrite_without_new_mvars r.1 e {symm := r.2},
   -- Now we determine whether the rewrite transforms the entire expression or not:
   (do 
     (w, qr) ← rewrite_entire r e,
     w_pp ← pretty_print w,
-    -- tactic.trace format!"success (entire expression): {w_pp}",
+    tactic.trace format!"success (entire expression): {w_pp}",
     let w' := l.replace w,
     qr' ← l.congr qr | (do w_pp ← pretty_print w, qr_pp ← pretty_print qr, tactic.trace format!"lens congr failed: {w_pp} {qr_pp}"),
-    -- tactic.trace "..",
+    tactic.trace "..",
     pure ((w', qr') :: state)
   ) <|>
   (do
     v_pp ← pretty_print v,
-    -- tactic.trace format!"success (subexpression): {v_pp}",
-    -- tactic.trace ".",
+    tactic.trace format!"success (subexpression): {v_pp}",
+    tactic.trace ".",
     pure (state)
   )
 
