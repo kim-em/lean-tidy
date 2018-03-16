@@ -16,10 +16,16 @@ do n_before ← num_goals,
    guard (n_before = n_after),
    return (new_t, prf)
 
+set_option trace.app_builder true
+-- TODO other cases, e.g. elet?
+
+meta def mk_eq_symm_under_binders_aux : expr → (nat → expr) → tactic expr
+| (expr.pi n bi d b) f := expr.lam n bi d <$> mk_eq_symm_under_binders_aux b (λ n, f (n+1) (expr.var n))
+| `(%%a = %%b) e := mk_eq_symm (e 0)
+| _ _ := fail "expression must have the form `Π x y z, a = b`"
+
 meta def mk_eq_symm_under_binders : expr → tactic expr
-| (e@(expr.app _ _)) := mk_eq_symm e
-| (expr.lam n bi d b) := do b' ← mk_eq_symm_under_binders b, pure (expr.lam n bi d b')
-| e := pure e
+| e := do t ← infer_type e, mk_eq_symm_under_binders_aux t (λ _, e)
 .
 
 meta def rewrite_entire (r : (expr × bool)) (e : expr) : tactic (expr × expr) :=
@@ -56,16 +62,6 @@ meta def expr_lens.congr : expr_lens → expr → tactic expr
                                     expr_lens.congr l fx_eq
 | entire                  e_eq := pure e_eq
 
--- meta inductive expr_lens
--- | app : expr_lens → expr → ℕ → list expr → expr_lens -- with arguments l f i a, this focuses `l` on the `i`-th argument of `f`, with other arguments provided by `a`.
--- | entire : expr_lens
-
--- open expr_lens
-
--- meta def expr_lens.replace : expr_lens → expr → expr
--- | (app l f i a) e := sorry
--- | entire        e := e
-
 meta def rewrite_fold_aux {α} (F : expr_lens → expr → α → tactic α) : expr_lens → expr → α → tactic α 
 | l e a := (do a' ← F l e a,
               match e with
@@ -82,24 +78,22 @@ do
   e_pp ← pretty_print e,
   r_pp ← pretty_print r.1,
   let r_pp := (if r.2 then "← " else "") ++ r_pp,
-  tactic.trace format!"rewriting at {e_pp} via {r_pp}",
+  -- tactic.trace format!"rewriting at {e_pp} via {r_pp}",
   (v, pr) ← rewrite_without_new_mvars r.1 e {symm := r.2},
   -- Now we determine whether the rewrite transforms the entire expression or not:
   (do 
     (w, qr) ← rewrite_entire r e,
     w_pp ← pretty_print w,
-    tactic.trace format!"success (entire expression): {w_pp}",
+    -- tactic.trace format!"success (entire expression): {w_pp}",
     let w' := l.replace w,
     qr' ← l.congr qr | (do w_pp ← pretty_print w, qr_pp ← pretty_print qr, tactic.trace format!"lens congr failed: {w_pp} {qr_pp}"),
-    tactic.trace "..",
+    -- tactic.trace "..",
     pure ((w', qr') :: state)
   ) <|>
   (do
     v_pp ← pretty_print v,
-    tactic.trace format!"success (subexpression): {v_pp}",
-    -- let v' := l.replace v,
-    -- pr' ← l.congr pr | (do v_pp ← pretty_print v, pr_pp ← pretty_print pr, tactic.trace format!"lens congr failed: {v_pp} {pr_pp}"),
-    tactic.trace ".",
+    -- tactic.trace format!"success (subexpression): {v_pp}",
+    -- tactic.trace ".",
     pure (state)
   )
 
@@ -144,11 +138,11 @@ do e ← target,
    (new_t, prf) ← rewrites.nth n,
    replace_target new_t prf
 
-@[search] lemma b (l : list ℕ) : 1 :: l = 2 :: l := sorry
+@[search] axiom b (l : list ℕ) : 1 :: l = 2 :: l
 
 example (f : ℕ → list ℕ → Type) : f 3 [1,1,1,2,1] = f 3 [1,2,1,2,1] :=
 begin
-target >>= all_rewrites_using `search,
+target >>= all_rewrites_using `search >>= tactic.trace,
 perform_nth_rewrite_using `search 5,
 refl
 end
