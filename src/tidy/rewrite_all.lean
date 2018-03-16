@@ -8,15 +8,19 @@ open expr
 open lean
 open lean.parser
 
+meta def lock_tactic_state {α} (t : tactic α) : tactic α
+| s := match t s with
+       | result.success a s' := result.success a s
+       | result.exception msg pos s' := result.exception msg pos s
+       end
+
 meta def rewrite_without_new_mvars (r : expr) (e : expr) (cfg : rewrite_cfg := {}) : tactic (expr × expr) :=
+lock_tactic_state $ -- Sorry I don't have a MWE example, but without this natural_transformation.lean fails.
 do n_before ← num_goals,
    (new_t, prf, metas) ← rewrite_core r e cfg,
-   tactic.trace "!",
    try_apply_opt_auto_param cfg.to_apply_cfg metas,
-   tactic.trace "!",
    n_after ← num_goals,
    guard (n_before = n_after),
-   tactic.trace "!",
    return (new_t, prf)
 
 meta def mk_eq_symm_under_binders_aux : expr → (nat → expr) → tactic expr
@@ -74,25 +78,25 @@ meta def rewrite_fold {α} (F : expr_lens → expr → α → tactic α) (e : ex
 
 meta def rewrite_F (r : expr × bool) (l : expr_lens) (e : expr) (state : list (expr × expr)) : tactic (list (expr × expr)) := 
 do 
-  e_pp ← pretty_print e,
-  r_pp ← pretty_print r.1,
-  let r_pp := (if r.2 then "← " else "") ++ r_pp,
-  tactic.trace format!"rewriting at {e_pp} via {r_pp}",
+  -- e_pp ← pretty_print e,
+  -- r_pp ← pretty_print r.1,
+  -- let r_pp := (if r.2 then "← " else "") ++ r_pp,
+  -- tactic.trace format!"rewriting at {e_pp} via {r_pp}",
   (v, pr) ← rewrite_without_new_mvars r.1 e {symm := r.2},
   -- Now we determine whether the rewrite transforms the entire expression or not:
   (do 
     (w, qr) ← rewrite_entire r e,
-    w_pp ← pretty_print w,
-    tactic.trace format!"success (entire expression): {w_pp}",
+    -- w_pp ← pretty_print w,
+    -- tactic.trace format!"success (entire expression): {w_pp}",
     let w' := l.replace w,
-    qr' ← l.congr qr | (do w_pp ← pretty_print w, qr_pp ← pretty_print qr, tactic.trace format!"lens congr failed: {w_pp} {qr_pp}"),
-    tactic.trace "..",
+    qr' ← l.congr qr,
+    -- tactic.trace "..",
     pure ((w', qr') :: state)
   ) <|>
   (do
-    v_pp ← pretty_print v,
-    tactic.trace format!"success (subexpression): {v_pp}",
-    tactic.trace ".",
+    -- v_pp ← pretty_print v,
+    -- tactic.trace format!"success (subexpression): {v_pp}",
+    -- tactic.trace ".",
     pure (state)
   )
 
@@ -136,6 +140,26 @@ do e ← target,
    rewrites ← all_rewrites_using a e,
    (new_t, prf) ← rewrites.nth n,
    replace_target new_t prf
+
+def f (x y : ℕ) := x + y
+def g (x y : ℕ) := x + y
+@[search] lemma h (x y : ℕ) : f x y = g x y := by refl
+
+example : f (g 1 0) 2 = g (f 1 0) 2 :=
+begin
+target >>= all_rewrites_using `search >>= tactic.trace,
+refl
+end
+
+def f' {α} (x y : α) := (x, y)
+def g' {α} (x y : α) := (x, y)
+@[search] lemma h' {α} (x y : α) : f' x y = g' x y := by refl
+
+example : f' (g' 1 0) (2, 3) = g' (f' 1 0) (2, 3) :=
+begin
+target >>= all_rewrites_using `search >>= tactic.trace,
+refl
+end
 
 @[search] axiom b (l : list ℕ) : 1 :: l = 2 :: l
 
