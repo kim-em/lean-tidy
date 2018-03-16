@@ -381,69 +381,28 @@ meta def simp_as_rewrite (source : expr) : tactic (list (vertex_data string expr
    pure [ { vertex_data . compare_on := pp, data := target, descent_data := (which_rw.by_simp, proof) } ]) <|> pure []
 
 meta def rewrite_search_neighbours (rs: list (expr × bool)) (source : expr) : tactic (list (vertex_data string expr (which_rw × expr))) :=
-do source_pp ← pretty_print source,
-   tactic.trace format!"finding all rewrites for:\n≫ {source_pp}",   
-   rules_pp ← rs.mmap (λ r, pretty_print r.1),
+do 
+  --  source_pp ← pretty_print source,
+  --  tactic.trace format!"finding all rewrites for:\n≫ {source_pp}",   
+  --  rules_pp ← rs.mmap (λ r, pretty_print r.1),
    table ← rs.enum.mmap (λ e,
    do e_pp ← pretty_print e.2.1,
-      let e_pp := (if e.2.2 then "← " else "") ++ e_pp,
+      -- let e_pp := (if e.2.2 then "← " else "") ++ e_pp,
       results ← all_rewrites e.2 source,
       let n := e.1,
       results.enum.mmap (λ result,
         do let (k, tgt, prf) := result,
            pp ← pretty_print tgt,
-           tactic.trace ("≪ " ++ pp ++ " via " ++ e_pp ++ (format!", at {k}").to_string),
+          --  tactic.trace ("≪ " ++ pp ++ " via " ++ e_pp ++ (format!", at {k}").to_string),
            pure { vertex_data . compare_on := pp, data := tgt, descent_data := (which_rw.by_rw n k, prf) }
    )),
    by_simp ← simp_as_rewrite source,
-   by_simp.mmap (λ r, do tactic.trace ("≪ " ++ r.compare_on ++ " via simp")),
+  --  by_simp.mmap (λ r, do tactic.trace ("≪ " ++ r.compare_on ++ " via simp")),
    let rewrites := by_simp ++ table.join,
    pure rewrites
 
--- meta def all_rewrites' (rs: list (expr × bool)) (source : expr) : tactic (list (vertex_data string expr (which_rw × expr))) :=
--- do 
---    table ← rs.enum.mmap $ λ e,
---    (do global ← try_core ( rewrite_without_new_mvars e.2.1 source {symm := e.2.2} ),
---        results ← match global with
---        | none := pure []
---        | (some g) := do
---              one_at_a_time ← (list_while (λ n, do v ← rewrite_without_new_mvars e.2.1 source {symm := e.2.2, occs := occurrences.pos [n+1]}, pure (some (n + 1), v)) (λ n x, tt /- do we need to discard any? or just wait until rewrite fails? -/)),
---             match one_at_a_time.length with
---              | 0 := pure [(none, g)] -- shouldn't actually happen
---              | 1 := pure [(none, g)]
---              | _ := pure one_at_a_time
---              end
---       end,
---       results.mmap (λ result, do
---         let (n, target, proof) := result,
---         trace ((e, n), target),
---         pp ← pretty_print target,
---         let which := match n with
---         | none := which_rw.all e.1
---         | (some n) := which_rw.position e.1 n
---         end,
---         pure { vertex_data . compare_on := pp, data := target, descent_data := (which, proof) })),
---    by_simp ← simp_as_rewrite source,
---    pure (by_simp ++ table.join) 
-
-
 namespace tactic
 namespace interactive
-
--- meta def rewrite_search_core (rs : list expr) (n : ℕ) (start : expr) := 
--- do pp ← pp start,
---    let pp := pp.to_string,
---    @depth_first_search_monadic _ _ _ tactic _ _ (all_rewrites rs) ⟨ pp, start, (0, 0, start /- this should be refl or something... -/) ⟩ n
-
--- meta def rewrite_search (rs: parse rw_rules) (n : ℕ) (e : tactic expr := target): tactic unit :=
--- do rs ← rs.rules.mmap $ λ r, to_expr' r.rule,
---    t ← e,
---    result ← rewrite_search_core rs n t,
---    trace (result.traversed_vertices.map (λ v : traversed_vertex_data _ _ _, v.data.compare_on)),
---   --  trace (result.untraversed_vertices.map (λ v : untraversed_vertex_data _ _ _, v.data.compare_on)),
---    skip
-
-
 
 private meta def rewrite_search_core (rs : list (expr × bool)) (cfg : rewrite_search_config := {}) (e1 e2 : expr) := 
 do pp1 ← pretty_print e1,
@@ -452,6 +411,7 @@ do pp1 ← pretty_print e1,
    e2refl ← mk_eq_refl e2,
    graph_pair_search_monadic (rewrite_search_neighbours rs) word_edit_distance ⟨ pp1, e1, (which_rw.none, e1refl) ⟩ ⟨ pp2, e2, (which_rw.none, e2refl) ⟩ cfg
 
+-- FIXME this is almost certainly incorrect
 private meta def trace_proof (rs : list (string × bool)) (steps : (list (which_rw × expr) × list (which_rw × expr))) : string :=
 let rw_string := (λ l : list (which_rw × expr), (string.intercalate ",\n" (l.map $
   λ t : which_rw × expr, match t.1 with
