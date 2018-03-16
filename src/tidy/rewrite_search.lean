@@ -303,15 +303,17 @@ meta def graph_pair_search_monadic_core [decidable_eq α]
   (distance : α → α → ℕ) (cfg : rewrite_search_config := {}) (initial_min_distance : ℕ) : ℕ → (partial_graph_pair α β γ) → tactic (partial_graph_pair α β γ)
 | 0     p := pure p /- out of time -/
 | (n+1) p := do if p.connected ∨ p.exhausted then
-                  do --if cfg.trace then tactic.trace format!"search steps: {cfg.max_steps - n}" else tactic.skip,
+                  do if cfg.trace then tactic.trace format!"search steps: {cfg.max_steps - n}" else tactic.skip,
                      pure p
                 else
                   do next ← pair_traverse neighbours distance p,
-                     tactic.trace "pairwise distances:",
-                     tactic.trace ("tt: " ++ next.tt_distances.to_string),
-                     tactic.trace ("tu: " ++ next.tu_distances.to_string),
-                     tactic.trace ("ut: " ++ next.ut_distances.to_string),
-                     tactic.trace ("uu: " ++ next.uu_distances.to_string),
+                     if cfg.trace then do
+                      tactic.trace "pairwise distances:",
+                      tactic.trace ("tt: " ++ next.tt_distances.to_string),
+                      tactic.trace ("tu: " ++ next.tu_distances.to_string),
+                      tactic.trace ("ut: " ++ next.ut_distances.to_string),
+                      tactic.trace ("uu: " ++ next.uu_distances.to_string)
+                     else tactic.skip,
                      if next.min_distance > initial_min_distance * cfg.distance_limit_factor then
                        do tactic.trace format!"minimum distance exceeded initial distance by a factor of {cfg.distance_limit_factor}",
                            pure p
@@ -334,11 +336,13 @@ do
   let exhausted := if graph_1.untraversed_vertices.length = 0 ∧ graph_2.untraversed_vertices.length = 0 then tt else ff in
   let min_distance := (tu_distances.join ++ ut_distances.join ++ uu_distances.join).foldl min (distance vertex_1.compare_on vertex_2.compare_on) in
   do 
-    tactic.trace "pairwise distances:",
-    tactic.trace ("tt: " ++ tt_distances.to_string),
-    tactic.trace ("tu: " ++ tu_distances.to_string),
-    tactic.trace ("ut: " ++ ut_distances.to_string),
-    tactic.trace ("uu: " ++ uu_distances.to_string),
+    if cfg.trace then do
+      tactic.trace "pairwise distances:",
+      tactic.trace ("tt: " ++ tt_distances.to_string),
+      tactic.trace ("tu: " ++ tu_distances.to_string),
+      tactic.trace ("ut: " ++ ut_distances.to_string),
+      tactic.trace ("uu: " ++ uu_distances.to_string)
+    else tactic.skip,
     graph_pair_search_monadic_core neighbours distance cfg min_distance cfg.max_steps ⟨ graph_1, graph_2, connected, exhausted, min_distance, tt_distances, tu_distances, ut_distances, uu_distances ⟩
 
 instance id_monad : monad id := 
