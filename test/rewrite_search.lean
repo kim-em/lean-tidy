@@ -6,6 +6,37 @@ import tidy.rewrite_search
 
 namespace tidy.test
 
+open tactic
+
+def f (x y : ℕ) := x + y
+def g (x y : ℕ) := x + y
+@[search] lemma h (x y : ℕ) : f x y = g x y := by refl
+
+example : f (g 1 0) 2 = g (f 1 0) 2 :=
+begin
+target >>= all_rewrites_using `search >>= tactic.trace,
+refl
+end
+
+def f' {α} (x y : α) := (x, y)
+def g' {α} (x y : α) := (x, y)
+@[search] lemma h' {α} (x y : α) : f' x y = g' x y := by refl
+
+example : f' (g' 1 0) (2, 3) = g' (f' 1 0) (2, 3) :=
+begin
+target >>= all_rewrites_using `search >>= tactic.trace,
+refl
+end
+
+@[search] axiom b (l : list ℕ) : 1 :: l = 2 :: l
+
+example (f : ℕ → list ℕ → Type) : f 3 [1,1,1,2,1] = f 3 [1,2,1,2,1] :=
+begin
+target >>= all_rewrites_using `search >>= tactic.trace,
+perform_nth_rewrite_using `search 5,
+refl
+end
+
 open tactic.interactive
 
 #eval (breadth_first_search (λ p : ℕ × ℕ, [(p.1+1,p.2),(p.1,p.2+1)]) (0,0) 15).traversed_vertices.map(λ v : traversed_vertex_data (ℕ × ℕ) (ℕ × ℕ) ℕ, v.data.data)
