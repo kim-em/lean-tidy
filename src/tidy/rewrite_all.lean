@@ -11,9 +11,12 @@ open lean.parser
 meta def rewrite_without_new_mvars (r : expr) (e : expr) (cfg : rewrite_cfg := {}) : tactic (expr × expr) :=
 do n_before ← num_goals,
    (new_t, prf, metas) ← rewrite_core r e cfg,
+   tactic.trace "!",
    try_apply_opt_auto_param cfg.to_apply_cfg metas,
+   tactic.trace "!",
    n_after ← num_goals,
    guard (n_before = n_after),
+   tactic.trace "!",
    return (new_t, prf)
 
 meta def mk_eq_symm_under_binders_aux : expr → (nat → expr) → tactic expr
