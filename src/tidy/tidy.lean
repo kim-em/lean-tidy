@@ -50,7 +50,7 @@ meta def tidy_tactics : list (tactic string) :=
   `[apply_auto_param]                         >> pure "apply_auto_param",
   `[dsimp]                                    >> pure "dsimp",
   `[dsimp at *]                               >> pure "dsimp at *",
-  `[unfold_projs]                             >> pure "unfold_projs",
+  -- `[unfold_projs]                             >> pure "unfold_projs",
   -- `[unfold_projs at *]                        >> pure "unfold_projs at *",
   `[simp!]                                    >> pure "simp!",
   `[simp! at *]                               >> pure "simp! at *",
