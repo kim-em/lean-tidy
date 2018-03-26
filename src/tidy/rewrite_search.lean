@@ -345,16 +345,11 @@ do
     else tactic.skip,
     graph_pair_search_monadic_core neighbours distance cfg min_distance cfg.max_steps ⟨ graph_1, graph_2, connected, exhausted, min_distance, tt_distances, tu_distances, ut_distances, uu_distances ⟩
 
-instance id_monad : monad id := 
-begin
-refine {
+instance id_monad : monad id := {
   bind := λ _ _ a f, f a,
   map := λ _ _ f, f,
-  pure := λ _ a, a,
-  ..
-},
-intros, refl, intros, refl, intros, refl
-end
+  pure := λ _ a, a
+}
 
 def breadth_first_search [decidable_eq β] (neighbours : β → list β) (a : β) : ℕ → partial_graph β β ℕ := @breadth_first_search_monadic β β ℕ id _ _ (λ x, (neighbours x).enum.map(λ p, ⟨ p.2, p.2, p.1 ⟩)) ⟨ a, a, 0 ⟩
 def depth_first_search [decidable_eq β] (neighbours : β → list β) (a : β) : ℕ → partial_graph β β ℕ := @depth_first_search_monadic β β ℕ id _ _ (λ x, (neighbours x).enum.map(λ p, ⟨ p.2, p.2, p.1 ⟩)) ⟨ a, a, 0 ⟩
