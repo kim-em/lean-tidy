@@ -34,13 +34,11 @@ meta def dsimp_all' := `[dsimp at * {unfold_reducible := tt, md := semireducible
 meta def my_solve_by_elim (asms : option (list expr) := none)  : opt_param ℕ 3 → tactic unit
 | 0 := tactic.done
 | (n+1) :=
-tactic.interactive.apply_assumption asms $ cc <|> my_solve_by_elim n
+tactic.interactive.apply_assumption asms $ cc <|> my_solve_by_elim n -- TODO does cc really help here? if not, just use solve_by_elim
 
--- TODO does cc help?
+
 meta def tidy_tactics : list (tactic string) :=
 [
-  -- terminal_goal >> assumption >> pure "assumption",
-  -- terminal_goal >> congr_assumptions,
   force (reflexivity)                         >> pure "refl", 
   `[exact dec_trivial]                        >> pure "exact dec_trivial",
   semiapplicable                              >>= λ n, pure ("fapply " ++ n.to_string),
@@ -51,7 +49,7 @@ meta def tidy_tactics : list (tactic string) :=
   `[dsimp]                                    >> pure "dsimp",
   `[dsimp at *]                               >> pure "dsimp at *",
   `[unfold_projs]                             >> pure "unfold_projs",
-  -- `[unfold_projs at *]                        >> pure "unfold_projs at *",
+  `[unfold_projs at *]                        >> pure "unfold_projs at *",
   `[simp!]                                    >> pure "simp!",
   `[simp! at *]                               >> pure "simp! at *",
   injections_and_clear                        >> pure "injections_and_clear",
