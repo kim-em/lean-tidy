@@ -16,7 +16,6 @@ private meta def mk_aux_decl_name : option name → tactic name
 meta def reducible_abstract (tac : tactic unit) (suffix : option name := none) (zeta_reduce := tt) : tactic unit :=
 do fail_if_no_goals,
    gs ← get_goals,
-   target >>= pp >>= λ e, trace format!"reducible abstract called on {e}",
    type ← if zeta_reduce then target >>= zeta else target,
    is_lemma ← is_prop type,
    m ← mk_meta_var type,

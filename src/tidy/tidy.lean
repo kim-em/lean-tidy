@@ -144,7 +144,6 @@ meta def obviously := abstract (
 
 -- TODO obviously!, which uses solve_by_elim even on unsafe goals
 
-notation `♮` := by reducible_abstract { smt_eblast }
 notation `♯`  := by obviously
 
 example : 1 = 1 := by obviously
