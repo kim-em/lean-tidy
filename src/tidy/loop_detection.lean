@@ -51,7 +51,7 @@ meta def loop_detector (hash : string) : interaction_monad loop_detection_state 
 @[inline] private meta def read' { σ : Type } : interaction_monad σ σ :=
 λ s, result.success s s
 
-meta def instrument_for_loop_detection { σ α : Type } [uts : underlying_tactic_state σ] ( t : interaction_monad σ α ) : interaction_monad (σ × loop_detection_state) α :=
+meta def instrument_for_loop_detection { σ α : Type } [has_to_format α] [uts : underlying_tactic_state σ] ( t : interaction_monad σ α ) : interaction_monad (σ × loop_detection_state) α :=
   do a ← lift_ignore_second t,
      s ← read',
      let hash := get_state_hash s,
@@ -59,11 +59,12 @@ meta def instrument_for_loop_detection { σ α : Type } [uts : underlying_tactic
      if ¬ p then
        do
         let name := interaction_monad.result_to_string (decl_name s.1),
-        interaction_monad.trace format!"chain encountered loop during elaboration {name}",
+        interaction_monad.trace format!"chain encountered loop during elaboration: {name}",
+        interaction_monad.trace format!"result was: {a}",
         interaction_monad.failed
      else
        pure a
 
-meta instance instrument_for_loop_detection_coercion { α : Type } : has_coe (interaction_monad tactic_state α) (interaction_monad (tactic_state × loop_detection_state) α) :=
+meta instance instrument_for_loop_detection_coercion { α : Type } [has_to_format α] : has_coe (interaction_monad tactic_state α) (interaction_monad (tactic_state × loop_detection_state) α) :=
 ⟨ instrument_for_loop_detection ⟩ 
 
