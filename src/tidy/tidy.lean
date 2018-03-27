@@ -4,7 +4,6 @@
 
 import .force .applicable .congr_assumptions .fsplit .automatic_induction .tidy_attributes .intro_at_least_one
 import .monadic_chain
-import .smt
 import .reducible_abstract
 import .rewrite_search
 import .injections
