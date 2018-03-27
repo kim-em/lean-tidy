@@ -22,14 +22,14 @@ match t' with
 | `(pempty)    := cases h >> skip
 | `(ulift _)   := cases h >> skip
 | `(plift _)   := cases h >> skip
-| `(eq _ _)    := induction h >> skip  -- cases here triggers https://github.com/leanprover/lean/issues/1942
+| `(eq _ _)    := cases h >> skip  
 | `(prod _ _)  := cases h >> skip
 | `(and _ _)   := cases h >> skip
 | `(sigma _)   := cases h >> skip
 | `(subtype _) := cases h >> skip
 | `(Exists _)  := cases h >> skip
-| `(fin nat.zero) := cases h >> `[cases is_lt]
-| _              := failed
+| `(fin 0)     := cases h >> skip 
+| _            := failed
 end
 
 meta def automatic_induction : tactic unit :=
