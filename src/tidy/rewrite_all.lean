@@ -35,7 +35,7 @@ meta def rewrite_entire (r : (expr × bool)) (e : expr) : tactic (expr × expr) 
 do let sl := simp_lemmas.mk,
    r' ← if r.2 then mk_eq_symm_under_binders r.1 else pure r.1,
    sl ← sl.add r',
-   sl.rewrite e
+   sl.rewrite e failed `eq semireducible
 
 open tactic.interactive
 
@@ -82,7 +82,7 @@ do
   -- r_pp ← pretty_print r.1,
   -- let r_pp := (if r.2 then "← " else "") ++ r_pp,
   -- tactic.trace format!"rewriting at {e_pp} via {r_pp}",
-  (v, pr) ← rewrite_without_new_mvars r.1 e {symm := r.2},
+  (v, pr) ← rewrite_without_new_mvars r.1 e {symm := r.2, md := semireducible},
   -- Now we determine whether the rewrite transforms the entire expression or not:
   (do 
     (w, qr) ← rewrite_entire r e,
