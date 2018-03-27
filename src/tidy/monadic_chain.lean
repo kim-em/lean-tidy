@@ -39,7 +39,7 @@ structure chain_cfg :=
   ( fail_on_max_steps  : bool := ff )
   ( trace_steps        : bool := ff )
   ( allowed_collisions : nat  := 0 )
-  ( fail_on_loop       : bool := tt ) -- be careful this is very slow, because it pretty prints states to compare
+  ( fail_on_loop       : bool := ff ) -- be careful this is very slow, because it pretty prints states to compare
   ( trace_timing       : bool := ff )
 
 

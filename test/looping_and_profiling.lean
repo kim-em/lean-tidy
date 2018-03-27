@@ -11,8 +11,8 @@ namespace tidy.test
 
 meta def interactive_simp := `[simp]
 
-meta instance loop_detecting_and_profiling_coercion { α : Type } : has_coe (interaction_monad tactic_state α) (interaction_monad ((tactic_state × invocation_count) × loop_detection_state) α) :=
-⟨ instrument_for_loop_detection ∘ profiling_tactic_coercion.coe ⟩ 
+meta instance loop_detecting_and_profiling_coercion {α : Type} [has_to_format α] : has_coe (interaction_monad tactic_state α) (interaction_monad ((tactic_state × invocation_count) × loop_detection_state) α) :=
+⟨ instrument_for_loop_detection ∘ instrument_for_profiling ⟩ 
 
 lemma looping_and_profiling_at_the_same_time_test_1 : true :=
 begin

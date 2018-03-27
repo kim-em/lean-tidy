@@ -9,6 +9,7 @@ import .reducible_abstract
 -- import .simp_at_each
 import .rewrite_search
 import .injections
+import .simplify_proof
 
 import tactic.interactive
 
@@ -46,10 +47,11 @@ meta def tidy_tactics : list (tactic string) :=
   intro_at_least_one                          >> pure "intros",
   automatic_induction                         >> pure "automatic_induction",
   force (fsplit)                              >> pure "fsplit", 
+  `[apply_auto_param]                         >> pure "apply_auto_param",
   `[dsimp]                                    >> pure "dsimp",
   `[dsimp at *]                               >> pure "dsimp at *",
-  `[unfold_projs]                             >> pure "unfold_projs",
-  `[unfold_projs at *]                        >> pure "unfold_projs at *",
+  -- `[unfold_projs]                             >> pure "unfold_projs",
+  -- `[unfold_projs at *]                        >> pure "unfold_projs at *",
   `[simp!]                                    >> pure "simp!",
   `[simp! at *]                               >> pure "simp! at *",
   injections_and_clear                        >> pure "injections_and_clear",
@@ -107,7 +109,7 @@ do
                       /- hints were broken ... -/     
                         do
                           interaction_monad.trace "hints for 'tidy' tactic were invalid!",
-                          interaction_monad.fail "hints for 'tidy' tactic were invalid!" -- this will be trapped a moment later
+                          interaction_monad.failed -- this will be trapped a moment later
                      else
                         pure ff
                 else
@@ -136,13 +138,12 @@ meta def obviously_tactics : list (tactic string) :=
   `[rewrite_search_using `ematch] >> pure "rewrite_search_using `ematch"
 ]
 
-meta def obviously := reducible_abstract (
+meta def obviously := abstract (
   tidy { extra_tactics := obviously_tactics }
 )
 
 -- TODO obviously!, which uses solve_by_elim even on unsafe goals
 
-notation `♮` := by reducible_abstract { smt_eblast }
 notation `♯`  := by obviously
 
-example : 1 = 1 := ♯ 
+example : 1 = 1 := by obviously
