@@ -6,7 +6,6 @@ import .force .applicable .congr_assumptions .fsplit .automatic_induction .tidy_
 import .monadic_chain
 import .smt
 import .reducible_abstract
--- import .simp_at_each
 import .rewrite_search
 import .injections
 import .simplify_proof
@@ -50,8 +49,6 @@ meta def tidy_tactics : list (tactic string) :=
   `[apply_auto_param]                         >> pure "apply_auto_param",
   `[dsimp]                                    >> pure "dsimp",
   `[dsimp at *]                               >> pure "dsimp at *",
-  -- `[unfold_projs]                             >> pure "unfold_projs",
-  -- `[unfold_projs at *]                        >> pure "unfold_projs at *",
   `[simp!]                                    >> pure "simp!",
   `[simp! at *]                               >> pure "simp! at *",
   injections_and_clear                        >> pure "injections_and_clear",
