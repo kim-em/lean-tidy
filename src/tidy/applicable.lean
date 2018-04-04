@@ -2,6 +2,8 @@
 -- Released under Apache 2.0 license as described in the file LICENSE.
 -- Authors: Scott Morrison
 
+import .pempty
+
 open tactic
 
 meta def applicable_attribute : user_attribute := {
@@ -47,6 +49,9 @@ attribute [applicable] proof_irrel
 
 universes u₁ u₂
 
+@[applicable] definition empty_exfalso (x : false) : empty := begin exfalso, trivial end
+@[applicable] definition pempty_exfalso (x : false) : pempty := begin exfalso, trivial end
+
 @[applicable] lemma punits_equal (a b : punit.{u₁}): a = b := by induction a; induction b; refl
 @[applicable] lemma ulifts_equal {α : Type u₁} (X Y : ulift.{u₂} α) (w : X.down = Y.down) : X = Y :=
 begin
@@ -70,3 +75,4 @@ begin
   induction X, induction Y, dsimp at *, rw p1, rw p2,
 end
 
+attribute [applicable] subsingleton.elim

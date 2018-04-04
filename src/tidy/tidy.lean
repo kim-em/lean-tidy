@@ -140,6 +140,13 @@ meta def obviously := abstract (
 
 -- TODO obviously!, which uses solve_by_elim even on unsafe goals
 
-notation `♯`  := by obviously
-
 example : 1 = 1 := by obviously
+
+instance subsingleton_pempty : subsingleton pempty :=
+begin
+  tidy,
+end
+instance subsingleton_punit : subsingleton punit :=
+begin
+  tidy,
+end
