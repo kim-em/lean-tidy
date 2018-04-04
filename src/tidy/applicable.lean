@@ -76,3 +76,8 @@ begin
 end
 
 attribute [applicable] subsingleton.elim
+
+@[applicable] definition decidable_true  : decidable true  := is_true  dec_trivial
+@[applicable] definition decidable_false : decidable false := is_false dec_trivial
+
+attribute [applicable] quotient.mk quotient.sound eqv_gen.rel
