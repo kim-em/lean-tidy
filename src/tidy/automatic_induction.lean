@@ -2,11 +2,10 @@
 -- Released under Apache 2.0 license as described in the file LICENSE.
 -- Authors: Scott Morrison
 
+import .pempty
 import .at_least_one 
 
 open tactic
-
-inductive {u} pempty : Type u
 
 -- FIXME this is somehow too aggressive?
 -- meta def induction_at (e :expr) := tactic.interactive.induction (none, to_pexpr e) none [] none
