@@ -75,3 +75,4 @@ begin
   induction X, induction Y, dsimp at *, rw p1, rw p2,
 end
 
+attribute [applicable] subsingleton.elim
