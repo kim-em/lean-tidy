@@ -10,7 +10,7 @@ def odd : ℕ → ℕ := λ i, 2 * i + 1
 def square : ℕ → ℕ := λ i, i ^ 2
 @[ematch] theorem odd_square_inductive_step (d : ℕ) :
   square d + odd d = square (succ d) :=
-begin dsimp [square, odd], rw [succ_eq_add_one], ring, sorry end
+begin dsimp [square, odd], rw [succ_eq_add_one], ring, end
 
 namespace def1
 
@@ -26,14 +26,21 @@ theorem my_successor_theorem (summand : ℕ → ℕ) (n : ℕ) :
   my_sum_to_n summand (succ n) = my_sum_to_n summand n + summand n :=
 by obviously
 
-lemma foo : 3 + 4 = 7 := 
+structure S :=
+   (f : ℕ → ℕ)
+
+definition s : S := {
+  f := λ n, n + 1
+}
+
+example (n m : ℕ) : s.f n = m :=
 begin
- dsimp', -- I'd really like dsimp' to not muck + up like this.
+  dsimp {unfold_reducible:=tt, md:=semireducible},
 end
 
 theorem my_odd_square_theorem : ∀ (n : ℕ), my_sum_to_n odd n = square n
 | 0        := rfl
-| (succ n) := begin unfold my_sum_to_n, obviously, rw [my_odd_square_theorem n], exact odd_square_inductive_step n, end
+| (succ n) := begin unfold my_sum_to_n, simp!, dsimp_all',/-tidy{trace_result:=tt},-/ rw [my_odd_square_theorem n], exact odd_square_inductive_step n, end
 
 end def1
 

@@ -270,7 +270,6 @@ match min_with_position_2 p.uu_distances, min_with_position_2 p.tu_distances, mi
                do pair_traverse_right neighbours distance y_tu p
 end
 
-
 def partial_graph.root [decidable_eq α] [monad m] (neighbours : β → m (list (vertex_data α β γ))) (vertex : vertex_data α β γ) : m (partial_graph α β γ) := 
 do
  ns ← neighbours vertex.data,
@@ -353,17 +352,6 @@ instance id_monad : monad id := {
 
 def breadth_first_search [decidable_eq β] (neighbours : β → list β) (a : β) : ℕ → partial_graph β β ℕ := @breadth_first_search_monadic β β ℕ id _ _ (λ x, (neighbours x).enum.map(λ p, ⟨ p.2, p.2, p.1 ⟩)) ⟨ a, a, 0 ⟩
 def depth_first_search [decidable_eq β] (neighbours : β → list β) (a : β) : ℕ → partial_graph β β ℕ := @depth_first_search_monadic β β ℕ id _ _ (λ x, (neighbours x).enum.map(λ p, ⟨ p.2, p.2, p.1 ⟩)) ⟨ a, a, 0 ⟩
-
-
--- private meta def list_while' {β} (f : ℕ → tactic β) (P : ℕ → β → bool) : ℕ → β → bool → list β → tactic (list β)
--- | _ _ ff t := pure t
--- | n a tt t := (do g ← f (n+1), list_while' (n+1) g (P (n+1) g) (a :: t)) <|> pure (a :: t)
-
--- meta def list_while {β} (f : ℕ → tactic β) (P : ℕ → β → bool) : tactic (list β) :=
--- (do 
---   g ← f 0,
---   r ← (list_while' f P 0 g (P 0 g) []),
---   pure r.reverse) <|> pure []
 
 open tactic
 open interactive interactive.types expr
