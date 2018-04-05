@@ -52,7 +52,7 @@ meta def tidy_tactics : list (tactic string) :=
   `[simp! at *]                               >> pure "simp! at *",
   injections_and_clear                        >> pure "injections_and_clear",
   terminal_goal >> (cc <|> my_solve_by_elim)  >> pure "solve_by_elim",
-  dsimp'                                      >> pure "dsimp'",
+  -- dsimp'                                      >> pure "dsimp'",
   dsimp_all'                                  >> pure "dsimp_all'",
   run_tidy_tactics
 ]
