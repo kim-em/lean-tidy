@@ -1,3 +1,7 @@
+-- Copyright (c) 2018 Scott Morrison. All rights reserved.
+-- Released under Apache 2.0 license as described in the file LICENSE.
+-- Authors: Scott Morrison
+
 import data.list
 import .pretty_print
 
@@ -119,6 +123,11 @@ do
   --  tactic.trace format!"⟫ finding all rewrites of {pp} via {r_pp}",
   --  results_pp.mmap'(λ r, tactic.trace format!"⟫⟫ {r}"),
    pure results
+
+meta def all_rewrites_list (rs : list(expr × bool)) (e : expr) : tactic (list (expr × expr)) :=
+do
+  results ← rs.mmap $ λ r, all_rewrites r e,
+  return results.join
 
 meta def perform_nth_rewrite (r : expr × bool) (n : ℕ) : tactic unit := 
 do e ← target,
