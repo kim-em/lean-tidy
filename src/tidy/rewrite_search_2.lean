@@ -13,14 +13,17 @@ namespace tidy.rewrite_search
 open edit_distance_progress
 open tactic
 
-meta structure expr_changed :=
+meta structure expr_delta :=
   (current : expr)
   (proof   : expr)
 
 meta structure node :=
-  (lhs rhs               : expr_changed)
+  (lhs rhs               : expr_delta)
   (lhs_tokens rhs_tokens : list string)
   (distance              : edit_distance_progress lhs_tokens rhs_tokens)
+
+meta def node.equiv (a b : node) : Prop := a.lhs_tokens = b.lhs_tokens ∧ a.rhs_tokens = b.lhs_tokens
+meta instance : decidable_rel node.equiv := sorry
 
 meta def node.distance_bound (n : node) :=
 match n.distance with
@@ -28,7 +31,7 @@ match n.distance with
 | at_least _ _ k _ := k
 end
 
-meta def node.mk' (lhs rhs : expr_changed) : tactic node :=
+meta def node.mk' (lhs rhs : expr_delta) : tactic node :=
 do
   lhs_pp ← pretty_print lhs.current,
   rhs_pp ← pretty_print rhs.current,
@@ -74,29 +77,29 @@ meta def select_next_aux : list node → ℕ → option (node × (list node))
 
 meta def select_next (nodes: list node) : option (node × (list node)) := select_next_aux nodes 0
 
-meta def new_nodes (rs : list (expr × bool)) (n : node) : tactic (list node) := 
+meta def new_nodes (rs : list (expr × bool)) (old_nodes : list node) (n : node) : tactic (list node) := 
 do 
   lhs_rewrites ← all_rewrites_list rs n.lhs.current,
   lhs_new_nodes ← lhs_rewrites.mmap $ λ lhs', (do prf ← mk_eq_trans n.lhs.proof lhs'.2, node.mk' ⟨ lhs'.1, prf ⟩ n.rhs),
   rhs_rewrites ← all_rewrites_list rs n.rhs.current,
   rhs_new_nodes ← rhs_rewrites.mmap $ λ rhs', (do prf ← mk_eq_trans n.rhs.proof rhs'.2, node.mk' n.lhs ⟨ rhs'.1, prf ⟩),
-  return (lhs_new_nodes ++ rhs_new_nodes)
+  return ((lhs_new_nodes ++ rhs_new_nodes).filter $ λ m, ∀ m' ∈ old_nodes, ¬ (m.equiv m'))
 
-meta def rewrite_search_core (rs : list (expr × bool)) : list node → tactic (option node)
-| nodes := match select_next nodes with
+meta def rewrite_search_core (rs : list (expr × bool)) : list node → list node → tactic (option node)
+| old_nodes active_nodes := match select_next active_nodes with
             | none := none
             | some (n, r) := match n.distance with
                 | (exactly _ _ 0) := return (some n)
                 | (exactly _ _ k) := do
-                                       nn ← new_nodes rs n,
-                                       rewrite_search_core (r ++ nn)
+                                       nn ← new_nodes rs old_nodes n,
+                                       rewrite_search_core (n :: old_nodes) (r ++ nn)
                 | _ := none --- unreachable code!
                 end
             end
 
-meta def rewrite_search' (rs : list (expr × bool)) (lhs rhs : expr) : tactic (expr_changed × expr_changed) :=
+meta def rewrite_search' (rs : list (expr × bool)) (lhs rhs : expr) : tactic (expr_delta × expr_delta) :=
 do  first_node ← node.mk'' lhs rhs,
-    result ← rewrite_search_core rs [first_node],
+    result ← rewrite_search_core rs [] [first_node],
     match result with 
     | (some n) := return (n.lhs, n.rhs)
     | _        := failed
@@ -125,6 +128,5 @@ do rs ← rs.rules.mmap (λ r, do e ← to_expr' r.rule, pure (e, r.symm)),
 
 end tactic.interactive
 
--- TODO prevent cycles!
 -- TODO test!
 -- TODO make sure all_rewrites_list is cached?
