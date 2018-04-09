@@ -56,6 +56,8 @@ structure partial_edit_distance_data (α : Type) :=
 (suffix    : list α)
 (distances : list ℕ) -- distances from the prefix of l₁ to each non-empty prefix of l₂
 
+def empty_partial_edit_distance_data {α : Type} (l₁ l₂: list α) : partial_edit_distance_data α := ⟨ 0, l₁, (list.range l₂.length).map(λ n, n+1) ⟩
+
 inductive edit_distance_progress (l₁: list α) (l₂: list α)
 | exactly : ℕ → edit_distance_progress
 | at_least : ℕ → partial_edit_distance_data α → edit_distance_progress
@@ -85,7 +87,7 @@ meta def edit_distance_core : edit_distance_progress l₁ l₂ → ℕ
 | (exactly _ _ n) := n
 | (p@_) := edit_distance_core (update_edit_distance p)
 
-meta def edit_distance' (l₁: list α) (l₂: list α) := edit_distance_core (at_least l₁ l₂ 0 ⟨ 0, l₁, (list.range l₂.length).map(λ n, n+1) ⟩)
+meta def edit_distance' (l₁: list α) (l₂: list α) := edit_distance_core (at_least l₁ l₂ 0 (empty_partial_edit_distance_data l₁ l₂))
 
 -- #eval edit_distance' [1,2,3,4] [1,2,3,4]
 
