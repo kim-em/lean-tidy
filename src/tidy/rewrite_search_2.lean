@@ -125,5 +125,6 @@ do rs ← rs.rules.mmap (λ r, do e ← to_expr' r.rule, pure (e, r.symm)),
 
 end tactic.interactive
 
+-- TODO prevent cycles!
 -- TODO test!
 -- TODO make sure all_rewrites_list is cached?
