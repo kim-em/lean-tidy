@@ -5,7 +5,7 @@
 import .force .applicable .congr_assumptions .fsplit .automatic_induction .tidy_attributes .intro_at_least_one
 import .monadic_chain
 import .reducible_abstract
-import .rewrite_search_2
+import .rewrite_search
 import .injections
 import .simplify_proof
 
