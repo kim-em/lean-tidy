@@ -130,12 +130,15 @@ do
 
 meta def obviously_tactics : list (tactic string) :=
 [
-  -- force ( smt_eblast) >> pure "smt_eblast",
-  `[rewrite_search_using `ematch] >> pure "rewrite_search_using `ematch"
+  tactic.interactive.rewrite_search_using `ematch
 ]
 
-meta def obviously := abstract (
+meta def obviously : tactic unit := abstract (
   tidy { extra_tactics := obviously_tactics }
+)
+
+meta def obviously' : tactic unit := abstract (
+  tidy { extra_tactics := obviously_tactics, trace_result :=tt }
 )
 
 -- TODO obviously!, which uses solve_by_elim even on unsafe goals

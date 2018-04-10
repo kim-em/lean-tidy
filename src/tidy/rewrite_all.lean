@@ -43,13 +43,6 @@ do let sl := simp_lemmas.mk,
 
 open tactic.interactive
 
-meta def search_attribute : user_attribute := {
-  name := `search,
-  descr := ""
-}
-
-run_cmd attribute.register `search_attribute
-
 meta inductive expr_lens
 | app_fun : expr_lens → expr → expr_lens
 | app_arg : expr_lens → expr → expr_lens
@@ -108,10 +101,16 @@ do
    let results : list (expr × expr) := remove_adjacent_duplicates (λ p, p.1) results,
    pure results
 
-meta def all_rewrites_list (rs : list(expr × bool)) (e : expr) : tactic (list (expr × expr)) :=
+-- return a list of (e', prf, n, k) where 
+--   e' is a new expression, 
+--   prf : e = e', 
+--   n is the index of the rule r used from rs, and 
+--   k is the index of (e', prf) in all_rewrites r e.
+meta def all_rewrites_list (rs : list (expr × bool)) (e : expr) : tactic (list (expr × expr × ℕ × ℕ)) :=
 do
   results ← rs.mmap $ λ r, all_rewrites r e,
-  return results.join
+  let results' := results.enum.map (λ p, p.2.enum.map (λ q, (q.2.1, q.2.2, p.1, q.1))),
+  return results'.join
 
 meta def perform_nth_rewrite (r : expr × bool) (n : ℕ) : tactic unit := 
 do e ← target,
@@ -128,13 +127,41 @@ do names ← attribute.get_instances a,
 
 namespace tactic.interactive
 
+private meta def perform_nth_rewrite' (q : parse rw_rules) (n : ℕ) (e : expr) : tactic (expr × expr) := 
+do rewrites ← q.rules.mmap $ λ p : rw_rule, to_expr p.rule >>= λ r, all_rewrites (r, p.symm) e,
+   let rewrites := rewrites.join,
+   rewrites.nth n
+
 meta def perform_nth_rewrite (q : parse rw_rules) (n : ℕ) : tactic unit := 
 do e ← target,
-   rewrites ← q.rules.mmap $ λ p : rw_rule, to_expr p.rule >>= λ r, all_rewrites (r, p.symm) e,
-   let rewrites := rewrites.join,
-   (new_t, prf) ← rewrites.nth n,
+   (new_t, prf) ← perform_nth_rewrite' q n e,
    replace_target new_t prf,
    tactic.try tactic.reflexivity
+
+meta def replace_target_lhs (new_lhs prf: expr) : tactic unit :=
+do `(%%lhs = %%rhs) ← target,
+   new_target ← to_expr ``(%%new_lhs = %%rhs),
+   prf' ← to_expr ``(congr_arg (λ L, L = %%rhs) %%prf),
+   replace_target new_target prf'
+
+meta def replace_target_rhs (new_rhs prf: expr) : tactic unit :=
+do `(%%lhs = %%rhs) ← target,
+   new_target ← to_expr ``(%%lhs = %%new_rhs),
+   prf' ← to_expr ``(congr_arg (λ R, %%lhs = R) %%prf),
+   replace_target new_target prf'
+
+meta def perform_nth_rewrite_lhs (q : parse rw_rules) (n : ℕ) : tactic unit := 
+do `(%%lhs = %%rhs) ← target,
+   (new_t, prf) ← perform_nth_rewrite' q n lhs,
+   replace_target_lhs new_t prf,
+   tactic.try tactic.reflexivity
+
+meta def perform_nth_rewrite_rhs (q : parse rw_rules) (n : ℕ) : tactic unit := 
+do `(%%lhs = %%rhs) ← target,
+   (new_t, prf) ← perform_nth_rewrite' q n rhs,
+   replace_target_rhs new_t prf,
+   tactic.try tactic.reflexivity
+
 
 meta def perform_nth_rewrite_using (a : name) (n : ℕ) : tactic unit := 
 do e ← target,
