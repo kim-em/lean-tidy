@@ -141,13 +141,13 @@ do e ← target,
 meta def replace_target_lhs (new_lhs prf: expr) : tactic unit :=
 do `(%%lhs = %%rhs) ← target,
    new_target ← to_expr ``(%%new_lhs = %%rhs),
-   prf' ← to_expr ``(congr_arg (λ L, L = %%rhs) %%prf),
+   prf' ← to_expr ``(congr_arg (λ L, L = %%rhs) %%prf) ff,
    replace_target new_target prf'
 
 meta def replace_target_rhs (new_rhs prf: expr) : tactic unit :=
 do `(%%lhs = %%rhs) ← target,
    new_target ← to_expr ``(%%lhs = %%new_rhs),
-   prf' ← to_expr ``(congr_arg (λ R, %%lhs = R) %%prf),
+   prf' ← to_expr ``(congr_arg (λ R, %%lhs = R) %%prf) ff,
    replace_target new_target prf'
 
 meta def perform_nth_rewrite_lhs (q : parse rw_rules) (n : ℕ) : tactic unit := 
