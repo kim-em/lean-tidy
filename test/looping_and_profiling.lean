@@ -16,19 +16,19 @@ meta instance loop_detecting_and_profiling_coercion {Î± : Type} [has_to_format Î
 
 lemma looping_and_profiling_at_the_same_time_test_1 : true :=
 begin
-profiling $ (detect_looping $ triv),
+    profiling $ (detect_looping $ triv),
 end
 
 lemma looping_and_profiling_at_the_same_time_test_2 : true :=
 begin
-success_if_fail { profiling $ detect_looping $ skip >> skip },
-triv
+    success_if_fail { profiling $ detect_looping $ skip >> skip },
+    triv
 end
 
 lemma looping_and_profiling_at_the_same_time_test_3 : 1 = 1 :=
 begin
-success_if_fail { profiling $ detect_looping $ interactive_simp >> skip >> skip }, -- failed, with 2 successful invocations
-simp
+    success_if_fail { profiling $ detect_looping $ interactive_simp >> skip >> skip }, -- failed, with 2 successful invocations
+    simp
 end
 
 end tidy.test

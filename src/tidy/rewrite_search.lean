@@ -297,6 +297,7 @@ structure rewrite_search_config :=
 (max_steps : ℕ := 10)
 (distance_limit_factor : ℕ := 1)
 (trace : bool := ff)
+(trace_result : bool := tt)
 
 meta def graph_pair_search_monadic_core [decidable_eq α] 
   (neighbours : β → tactic (list (vertex_data α β γ))) 
@@ -410,21 +411,25 @@ do pp1 ← pretty_print e1,
    e2refl ← mk_eq_refl e2,
    graph_pair_search_monadic (rewrite_search_neighbours rs) word_edit_distance ⟨ pp1, e1, (which_rw.none, e1refl) ⟩ ⟨ pp2, e2, (which_rw.none, e2refl) ⟩ cfg
 
+private meta def rw_string (rs : list (string × bool)) : which_rw → expr → string
+| which_rw.by_simp     _ := "simp"
+| (which_rw.by_rw n k) _ := match rs.nth n with
+                          | none := "[fail: unreachable code]"
+                          | (some p) := let s := if p.2 then "← " else "" in (format!"perform_nth_rewrite ([{s}{p.1}]) {k}").to_string                                       
+                          end
+| which_rw.none        _ := "[fail: unreachable code]" 
+.
+
+private meta def rw_string_list (rs : list (string × bool)) (l : list (which_rw × expr)) (sep : string := "\n") : string := string.intercalate ("," ++ sep) (l.map $ λ p, rw_string rs p.1 p.2)
+
 -- FIXME this is almost certainly incorrect
-private meta def trace_proof (rs : list (string × bool)) (steps : (list (which_rw × expr) × list (which_rw × expr))) : string :=
-let rw_string := (λ l : list (which_rw × expr), (string.intercalate ",\n" (l.map $
-  λ t : which_rw × expr, match t.1 with
-  | which_rw.by_simp := "simp"
-  | (which_rw.by_rw n k) := match rs.nth n with
-                            | none := "[fail: unreachable code]" -- unreachable code
-                            | (some p) := if k = 1 then
-                                            "rw [" ++ (if p.2 then "← " else "") ++ p.1 ++ "]"
-                                          else
-                                            (format!"perform_nth_rewrite {p}").to_string
-                            end
-  | which_rw.none     := "[fail: unreachable code]"
-  end))) in
-string.intercalate ",\n" ([rw_string steps.1.reverse, rw_string steps.2.reverse].filter $ λ s, s ≠ "")
+private meta def trace_proof_2 (rs : list (string × bool)) (steps : (list (which_rw × expr) × list (which_rw × expr))) : string :=
+string.intercalate ",\n" ([rw_string_list rs steps.1.reverse, rw_string_list rs steps.2.reverse].filter $ λ s, s ≠ "")
+
+private meta def trace_proof_3 (rs : list (string × bool)) (steps : (list (which_rw × expr) × list (which_rw × expr))) : string :=
+let lhs := if steps.1.length = 0 then "" else "conv { to_lhs,\n  " ++ (rw_string_list rs steps.1.reverse "\n  ") ++ "\n}" in
+let rhs := if steps.2.length = 0 then "" else "conv { to_rhs,\n  " ++ (rw_string_list rs steps.2.reverse "\n  ") ++ "\n}" in
+string.intercalate ",\n" ([lhs, rhs].filter $ λ s, s ≠ "")
 
 private meta def rewrite_search_aux (rs: list (expr × bool)) (cfg : rewrite_search_config := {}) : tactic unit :=
 do t ← target,
@@ -442,9 +447,12 @@ do t ← target,
                                      eq₂_symm ← eq₂.mmap mk_eq_symm,
                                      refl ← mk_eq_refl lhs,
                                      eq ← (eq₁.reverse ++ eq₂_symm).mfoldl mk_eq_trans refl,
-                                    if cfg.trace then
-                                     do trace format!"rewrite search succeeded, found a chain of length {eq₁.length + eq₂.length}, after searching {result.graph_1.traversed_vertices.length + result.graph_2.traversed_vertices.length} expressions.",
-                                        trace (trace_proof (rs_strings.zip (rs.map $ λ p, p.2)) (l₁, l₂))
+                                    if cfg.trace ∨ cfg.trace_result then
+                                     do if cfg.trace then
+                                          do trace format!"rewrite search succeeded, found a chain of length {eq₁.length + eq₂.length}, after searching {result.graph_1.traversed_vertices.length + result.graph_2.traversed_vertices.length} expressions."
+                                        else
+                                        skip,
+                                        trace (trace_proof_3 (rs_strings.zip (rs.map $ λ p, p.2)) (l₁, l₂))
                                     else skip,
                                      tactic.exact eq
    | ff, d, sum.inl (α₁, α₂) := fail format!"ran out of time without reaching equality, reached distance {d}, best goal:\n{α₁} = {α₂}"

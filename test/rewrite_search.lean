@@ -69,10 +69,7 @@ end
 @[ematch] private axiom qux'' : [6] = [7]
 private example : [[1], [1]] = [[7], [7]] :=
 begin
--- rw [tidy.test.bar1] {occs := occurrences.pos [2]},
--- rw [← tidy.test.qux''] {occs := occurrences.pos [1]},
--- rw ← tidy.test.qux',
-rewrite_search_using `ematch,
+rewrite_search_using `ematch {trace_result:=tt},
 end
 
 private axiom qux : [[0],[0]] = [[4],[5]]

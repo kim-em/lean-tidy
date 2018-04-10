@@ -78,25 +78,15 @@ meta def rewrite_fold {α} (F : expr_lens → expr → α → tactic α) (e : ex
 
 meta def rewrite_F (r : expr × bool) (l : expr_lens) (e : expr) (state : list (expr × expr)) : tactic (list (expr × expr)) := 
 do 
-  -- e_pp ← pretty_print e,
-  -- r_pp ← pretty_print r.1,
-  -- let r_pp := (if r.2 then "← " else "") ++ r_pp,
-  -- tactic.trace format!"rewriting at {e_pp} via {r_pp}",
   (v, pr) ← rewrite_without_new_mvars r.1 e {symm := r.2, md := semireducible},
   -- Now we determine whether the rewrite transforms the entire expression or not:
   (do 
     (w, qr) ← rewrite_entire r e,
-    -- w_pp ← pretty_print w,
-    -- tactic.trace format!"success (entire expression): {w_pp}",
     let w' := l.replace w,
     qr' ← l.congr qr,
-    -- tactic.trace "..",
     pure ((w', qr') :: state)
   ) <|>
   (do
-    -- v_pp ← pretty_print v,
-    -- tactic.trace format!"success (subexpression): {v_pp}",
-    -- tactic.trace ".",
     pure (state)
   )
 
@@ -110,23 +100,9 @@ def remove_adjacent_duplicates {α β} (f : α → β) [decidable_eq β] : list 
 
 meta def all_rewrites (r : expr × bool) (e : expr) : tactic (list (expr × expr)) :=
 do 
-  --  pp ← pretty_print e,
    results ← rewrite_fold (rewrite_F r) e [],
    let results : list (expr × expr) := remove_adjacent_duplicates (λ p, p.1) results,
-  --  results_pp ← results.mmap(λ p, pretty_print p.1),
-  --  r_pp ← pretty_print r.1,
-  --  let r_pp := (if r.2 then "← " else "") ++ r_pp,
-  --  tactic.trace format!"⟫ finding all rewrites of {pp} via {r_pp}",
-  --  results_pp.mmap'(λ r, tactic.trace format!"⟫⟫ {r}"),
    pure results
-
-meta def perform_nth_rewrite (r : expr × bool) (n : ℕ) : tactic unit := 
-do e ← target,
-   rewrites ← all_rewrites r e,
-   (new_t, prf) ← rewrites.nth n,
-   replace_target new_t prf
-
--- TODO interactive version
 
 meta def all_rewrites_using (a : name) (e : expr) : tactic (list (expr × expr)) :=
 do names ← attribute.get_instances a,
@@ -135,8 +111,20 @@ do names ← attribute.get_instances a,
    results ← pairs.mmap $ λ r, all_rewrites r e,
    pure results.join
 
+namespace tactic.interactive
+
+meta def perform_nth_rewrite (q : parse rw_rules) (n : ℕ) : tactic unit := 
+do e ← target,
+   rewrites ← q.rules.mmap $ λ p : rw_rule, to_expr p.rule >>= λ r, all_rewrites (r, p.symm) e,
+   let rewrites := rewrites.join,
+   (new_t, prf) ← rewrites.nth n,
+   replace_target new_t prf,
+   tactic.try tactic.reflexivity
+
 meta def perform_nth_rewrite_using (a : name) (n : ℕ) : tactic unit := 
 do e ← target,
    rewrites ← all_rewrites_using a e,
    (new_t, prf) ← rewrites.nth n,
    replace_target new_t prf
+
+end tactic.interactive
