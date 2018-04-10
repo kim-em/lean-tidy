@@ -129,7 +129,7 @@ do
 
 meta def obviously_tactics : list (tactic string) :=
 [
-  tactic.interactive.rewrite_search_using `ematch
+  tactic.interactive.rewrite_search_using `search
 ]
 
 meta def obviously : tactic unit := all_goals ( abstract ( -- TODO this is a bit gross
