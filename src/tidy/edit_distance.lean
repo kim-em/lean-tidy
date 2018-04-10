@@ -66,6 +66,11 @@ variables {l₁: list α} {l₂: list α}
 
 open edit_distance_progress
 
+-- FIXME get this out of meta
+meta def edit_distance_progress.to_string : edit_distance_progress l₁ l₂ → string
+| (exactly _ _ k)    := (format!"= {k}").to_string
+| (at_least _ _ k _) := (format!"≤ {k}").to_string
+
 def triples (p : partial_edit_distance_data α) (l₂ : list α): list (ℕ × ℕ × α) := p.distances.zip ((p.prefix_length :: p.distances).zip l₂)
 
 def update_edit_distance : edit_distance_progress l₁ l₂ → edit_distance_progress l₁ l₂ 

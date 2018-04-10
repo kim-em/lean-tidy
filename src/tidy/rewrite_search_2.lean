@@ -19,11 +19,23 @@ meta structure expr_delta :=
 
 meta structure node :=
   (lhs rhs               : expr_delta)
+  (lhs_pp rhs_pp         : string)
   (lhs_tokens rhs_tokens : list string)
   (distance              : edit_distance_progress lhs_tokens rhs_tokens)
 
-meta def node.equiv (a b : node) : Prop := a.lhs_tokens = b.lhs_tokens ∧ a.rhs_tokens = b.lhs_tokens
-meta instance : decidable_rel node.equiv := sorry
+meta def node.to_string (n : node) := n.lhs_pp ++ " = " ++ n.rhs_pp.
+
+-- TODO perhaps also store a hash in node, and compare on that first?
+meta def node.equiv (a b : node) : Prop := a.lhs_pp = b.lhs_pp ∧ a.rhs_pp = b.lhs_pp
+
+-- set_option trace.class_instances true
+meta instance : decidable_rel node.equiv := λ a b,
+begin
+    dunfold node.equiv,
+    dunfold id_rhs,
+    clear decidable_rel,
+    by apply_instance,
+end
 
 meta def node.distance_bound (n : node) :=
 match n.distance with
@@ -38,7 +50,7 @@ do
   let lhs_tokens := lhs_pp.split_on ' ',
   let rhs_tokens := rhs_pp.split_on ' ',
   let distance := at_least lhs_tokens rhs_tokens 0 (empty_partial_edit_distance_data lhs_tokens rhs_tokens),
-  return ⟨ lhs, rhs, lhs_tokens, rhs_tokens, distance ⟩
+  return ⟨ lhs, rhs, lhs_pp, rhs_pp, lhs_tokens, rhs_tokens, distance ⟩
 
 meta def node.mk'' (lhs rhs : expr) : tactic node :=
 do
@@ -68,12 +80,12 @@ meta def find_first_at : list node → ℕ → (option node) × list node
                   | (o, l) := (o, h :: l)
                   end
 
-
 meta def select_next_aux : list node → ℕ → option (node × (list node))
-| nodes k := match find_first_at nodes k with
+| [] _    := none
+| nodes k := trace (to_string k) (match find_first_at nodes k with
                 | (some n, r) := some (n, r)
                 | (none, r)   := select_next_aux r (k+1)
-             end
+             end)
 
 meta def select_next (nodes: list node) : option (node × (list node)) := select_next_aux nodes 0
 
@@ -83,12 +95,20 @@ do
   lhs_new_nodes ← lhs_rewrites.mmap $ λ lhs', (do prf ← mk_eq_trans n.lhs.proof lhs'.2, node.mk' ⟨ lhs'.1, prf ⟩ n.rhs),
   rhs_rewrites ← all_rewrites_list rs n.rhs.current,
   rhs_new_nodes ← rhs_rewrites.mmap $ λ rhs', (do prf ← mk_eq_trans n.rhs.proof rhs'.2, node.mk' n.lhs ⟨ rhs'.1, prf ⟩),
-  return ((lhs_new_nodes ++ rhs_new_nodes).filter $ λ m, ∀ m' ∈ old_nodes, ¬ (m.equiv m'))
+  let result := ((lhs_new_nodes ++ rhs_new_nodes).filter $ λ m, ∀ m' ∈ old_nodes, ¬ (m.equiv m')),
+  trace (result.map node.to_string),
+  return result
 
-meta def rewrite_search_core (rs : list (expr × bool)) : list node → list node → tactic (option node)
+structure rewrite_search_config :=
+  (trace : bool := ff)
+
+meta def rewrite_search_core (rs : list (expr × bool)) (cfg : rewrite_search_config := {}) : list node → list node → tactic (option node)
 | old_nodes active_nodes := match select_next active_nodes with
             | none := none
-            | some (n, r) := match n.distance with
+            | some (n, r) := 
+              do
+                if cfg.trace then trace format!"considering node: {n.lhs_pp} = {n.rhs_pp}, distance: {n.distance.to_string}" else skip, -- FIXME
+                match n.distance with
                 | (exactly _ _ 0) := return (some n)
                 | (exactly _ _ k) := do
                                        nn ← new_nodes rs old_nodes n,
@@ -97,19 +117,19 @@ meta def rewrite_search_core (rs : list (expr × bool)) : list node → list nod
                 end
             end
 
-meta def rewrite_search' (rs : list (expr × bool)) (lhs rhs : expr) : tactic (expr_delta × expr_delta) :=
+meta def rewrite_search (rs : list (expr × bool)) (cfg : rewrite_search_config := {}) (lhs rhs : expr) : tactic (expr_delta × expr_delta) :=
 do  first_node ← node.mk'' lhs rhs,
-    result ← rewrite_search_core rs [] [first_node],
+    result ← rewrite_search_core rs cfg [] [first_node],
     match result with 
     | (some n) := return (n.lhs, n.rhs)
     | _        := failed
     end
 
-meta def rewrite_search (rs : list (expr × bool)) : tactic unit :=
+meta def rewrite_search_target (rs : list (expr × bool)) (cfg : rewrite_search_config := {}) : tactic unit :=
 do t ← target,
    match t with
    | `(%%lhs = %%rhs) := do
-                           (r1, r2) ← rewrite_search' rs lhs rhs,
+                           (r1, r2) ← rewrite_search rs cfg lhs rhs,
                            prf2 ← mk_eq_symm r2.proof,
                            prf ← mk_eq_trans r1.proof prf2,
                            exact prf
@@ -120,13 +140,23 @@ end tidy.rewrite_search
 
 namespace tactic.interactive
 
+open tidy.rewrite_search
 open interactive interactive.types expr
 
-meta def rewrite_search (rs: parse rw_rules) : tactic unit :=
+meta def rewrite_search (rs: parse rw_rules) (cfg : rewrite_search_config := {}) : tactic unit :=
 do rs ← rs.rules.mmap (λ r, do e ← to_expr' r.rule, pure (e, r.symm)),
-   tidy.rewrite_search.rewrite_search rs
+   rewrite_search_target rs cfg
 
 end tactic.interactive
 
 -- TODO test!
 -- TODO make sure all_rewrites_list is cached?
+
+axiom foo : [6] = [7]
+axiom bar : [[6],[6]] = [[5],[5]]
+
+example : [[7],[6]] = [[5],[5]] :=
+begin
+success_if_fail { rewrite_search [] },
+rewrite_search [←foo, bar] {trace:=tt},
+end
