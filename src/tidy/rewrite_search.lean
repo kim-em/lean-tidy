@@ -101,7 +101,7 @@ do
 
 structure rewrite_search_config :=
   (trace        : bool := ff)
-  (trace_result : bool := tt)
+  (trace_result : bool := ff)
 
 meta def rewrite_search_core (rs : list (expr × bool)) (cfg : rewrite_search_config := {}) : list node → list node → tactic (option node)
 | old_nodes active_nodes := match select_next active_nodes with
