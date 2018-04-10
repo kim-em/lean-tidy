@@ -13,15 +13,15 @@ private structure C :=
 
  private def test_terminal_goal : C :=
  begin
- fsplit,
- success_if_fail { terminal_goal },
- exact ℕ,
- terminal_goal,
- exact [],
- success_if_fail { terminal_goal },
- exact bool,
- terminal_goal,
- exact (0, tt)
+    fsplit,
+    success_if_fail { terminal_goal },
+    exact ℕ,
+    terminal_goal,
+    exact [],
+    success_if_fail { terminal_goal },
+    exact bool,
+    terminal_goal,
+    exact (0, tt)
  end     
 
  -- verifying that terminal_goal correctly considers all propositional goals as terminal?
@@ -32,13 +32,13 @@ private structure foo :=
 open tactic
 private lemma bar : ∃ F : foo, F = ⟨ 0, by refl ⟩ := 
 begin
-split,
-swap,
-split,
-terminal_goal,
-swap,
-success_if_fail { terminal_goal },
-exact 0,
-refl,
-refl,
+    split,
+    swap,
+    split,
+    terminal_goal,
+    swap,
+    success_if_fail { terminal_goal },
+    exact 0,
+    refl,
+    refl,
 end
