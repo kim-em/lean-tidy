@@ -113,7 +113,7 @@ do
    if continue then               
     do
       results ← chain numbered_tactics cfg.to_chain_cfg,
-      try tactic.interactive.resetI, -- FIXME reset the typeclass inference cache, since `dsimp at *` may have spoiled it: https://github.com/leanprover/lean/issues/1920
+      try tactic.interactive.resetI,
       if cfg.show_hints ∨ ¬ cfg.hints.empty then
         let hints := results.map (λ p, p.2) in
         interaction_monad.trace ("tidy {hints:=" ++ hints.to_string ++ "}")
@@ -121,22 +121,24 @@ do
         tactic.skip,
       if cfg.trace_result then
         let result_strings := results.map (λ p, p.1) in
-        interaction_monad.trace ("chain tactic used: " ++ result_strings.to_string)
+        interaction_monad.trace ("chain tactic used:\n---\n" ++ (",\n".intercalate result_strings) ++ "\n---")
       else
         tactic.skip
    else
      tactic.skip
 
-
 meta def obviously_tactics : list (tactic string) :=
 [
-  -- force ( smt_eblast) >> pure "smt_eblast",
-  `[rewrite_search_using `ematch] >> pure "rewrite_search_using `ematch"
+  tactic.interactive.rewrite_search_using `search
 ]
 
-meta def obviously := abstract (
+meta def obviously : tactic unit := all_goals ( abstract ( -- TODO this is a bit gross
   tidy { extra_tactics := obviously_tactics }
-)
+))
+
+meta def obviously' : tactic unit := all_goals ( abstract (
+  tidy { extra_tactics := obviously_tactics, trace_result :=tt }
+))
 
 -- TODO obviously!, which uses solve_by_elim even on unsafe goals
 

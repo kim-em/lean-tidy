@@ -25,7 +25,7 @@ namespace tactic
      x ← mk_local_def `x ty,
      fields ← fields.mmap $ λ f, to_expr (pexpr.mk_field_macro (pexpr.of_expr x) f),
      proof_ty ← mk_app ``eq [ctor.mk_app fields, x],
-     prod.snd <$> solve_aux (pis [x] proof_ty) (do x ← intro `_, cases x, reflexivity)
+     prod.snd <$> ((pis [x] proof_ty) >>= λ e, solve_aux e (do x ← intro `_, cases x, reflexivity))
 end tactic
 
 namespace tactic.interactive
