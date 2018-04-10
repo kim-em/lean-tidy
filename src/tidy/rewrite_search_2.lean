@@ -82,10 +82,10 @@ meta def find_first_at : list node → ℕ → (option node) × list node
 
 meta def select_next_aux : list node → ℕ → option (node × (list node))
 | [] _    := none
-| nodes k := trace (to_string k) (match find_first_at nodes k with
+| nodes k := match find_first_at nodes k with
                 | (some n, r) := some (n, r)
                 | (none, r)   := select_next_aux r (k+1)
-             end)
+             end
 
 meta def select_next (nodes: list node) : option (node × (list node)) := select_next_aux nodes 0
 
@@ -96,18 +96,17 @@ do
   rhs_rewrites ← all_rewrites_list rs n.rhs.current,
   rhs_new_nodes ← rhs_rewrites.mmap $ λ rhs', (do prf ← mk_eq_trans n.rhs.proof rhs'.2, node.mk' n.lhs ⟨ rhs'.1, prf ⟩),
   let result := ((lhs_new_nodes ++ rhs_new_nodes).filter $ λ m, ∀ m' ∈ old_nodes, ¬ (m.equiv m')),
-  trace (result.map node.to_string),
   return result
 
 structure rewrite_search_config :=
-  (trace : bool := ff)
+  (trace : bool := tt)
 
 meta def rewrite_search_core (rs : list (expr × bool)) (cfg : rewrite_search_config := {}) : list node → list node → tactic (option node)
 | old_nodes active_nodes := match select_next active_nodes with
             | none := none
             | some (n, r) := 
               do
-                if cfg.trace then trace format!"considering node: {n.lhs_pp} = {n.rhs_pp}, distance: {n.distance.to_string}" else skip, -- FIXME
+                if cfg.trace then trace format!"considering node: {n.lhs_pp} = {n.rhs_pp}, distance: {n.distance.to_string}" else skip,
                 match n.distance with
                 | (exactly _ _ 0) := return (some n)
                 | (exactly _ _ k) := do
@@ -141,22 +140,20 @@ end tidy.rewrite_search
 namespace tactic.interactive
 
 open tidy.rewrite_search
-open interactive interactive.types expr
+open interactive interactive.types expr tactic
 
 meta def rewrite_search (rs: parse rw_rules) (cfg : rewrite_search_config := {}) : tactic unit :=
 do rs ← rs.rules.mmap (λ r, do e ← to_expr' r.rule, pure (e, r.symm)),
    rewrite_search_target rs cfg
 
+meta def rewrite_search_using (a : name) (cfg : rewrite_search_config := {}) : tactic unit :=
+do names ← attribute.get_instances a,
+   exprs ← names.mmap $ mk_const,
+   hyps ← local_context,
+   let exprs := exprs ++ hyps,
+   let pairs := exprs.map (λ e, (e, ff)) ++ exprs.map (λ e, (e, tt)),
+   rewrite_search_target pairs cfg
+
 end tactic.interactive
 
--- TODO test!
 -- TODO make sure all_rewrites_list is cached?
-
-axiom foo : [6] = [7]
-axiom bar : [[6],[6]] = [[5],[5]]
-
-example : [[7],[6]] = [[5],[5]] :=
-begin
-success_if_fail { rewrite_search [] },
-rewrite_search [←foo, bar] {trace:=tt},
-end
