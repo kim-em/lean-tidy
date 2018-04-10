@@ -33,4 +33,9 @@ begin
     rewrite_search_using `search {trace:=tt},
 end
 
+private example : [[0],[0]] = [[4],[4]] :=
+begin
+    rewrite_search_using `search {trace:=tt},
+end
+
 end tidy.rewrite_search.testing

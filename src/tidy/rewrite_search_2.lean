@@ -26,7 +26,7 @@ meta structure node :=
 meta def node.to_string (n : node) := n.lhs_pp ++ " = " ++ n.rhs_pp.
 
 -- TODO perhaps also store a hash in node, and compare on that first?
-meta def node.equiv (a b : node) : Prop := a.lhs_pp = b.lhs_pp ∧ a.rhs_pp = b.lhs_pp
+meta def node.equiv (a b : node) : Prop := a.lhs_pp = b.lhs_pp ∧ a.rhs_pp = b.rhs_pp
 
 -- set_option trace.class_instances true
 meta instance : decidable_rel node.equiv := λ a b,
@@ -89,13 +89,13 @@ meta def select_next_aux : list node → ℕ → option (node × (list node))
 
 meta def select_next (nodes: list node) : option (node × (list node)) := select_next_aux nodes 0
 
-meta def new_nodes (rs : list (expr × bool)) (old_nodes : list node) (n : node) : tactic (list node) := 
+meta def new_nodes (rs : list (expr × bool)) (seen_nodes : list node) (n : node) : tactic (list node) := 
 do 
   lhs_rewrites ← all_rewrites_list rs n.lhs.current,
   lhs_new_nodes ← lhs_rewrites.mmap $ λ lhs', (do prf ← mk_eq_trans n.lhs.proof lhs'.2, node.mk' ⟨ lhs'.1, prf ⟩ n.rhs),
   rhs_rewrites ← all_rewrites_list rs n.rhs.current,
   rhs_new_nodes ← rhs_rewrites.mmap $ λ rhs', (do prf ← mk_eq_trans n.rhs.proof rhs'.2, node.mk' n.lhs ⟨ rhs'.1, prf ⟩),
-  let result := ((lhs_new_nodes ++ rhs_new_nodes).filter $ λ m, ∀ m' ∈ old_nodes, ¬ (m.equiv m')),
+  let result := ((lhs_new_nodes ++ rhs_new_nodes).filter $ λ m, ∀ m' ∈ seen_nodes, ¬ (m.equiv m')),
   return result
 
 structure rewrite_search_config :=
@@ -110,7 +110,7 @@ meta def rewrite_search_core (rs : list (expr × bool)) (cfg : rewrite_search_co
                 match n.distance with
                 | (exactly _ _ 0) := return (some n)
                 | (exactly _ _ k) := do
-                                       nn ← new_nodes rs old_nodes n,
+                                       nn ← new_nodes rs (old_nodes ++ active_nodes) n,
                                        rewrite_search_core (n :: old_nodes) (r ++ nn)
                 | _ := none --- unreachable code!
                 end
@@ -131,6 +131,7 @@ do t ← target,
                            (r1, r2) ← rewrite_search rs cfg lhs rhs,
                            prf2 ← mk_eq_symm r2.proof,
                            prf ← mk_eq_trans r1.proof prf2,
+                           trace prf,
                            exact prf
    | _ := fail "target is not an equation"
    end

@@ -67,6 +67,12 @@ end
 
 @[ematch] private axiom qux' : [[1], [2]] = [[6], [7]]
 @[ematch] private axiom qux'' : [6] = [7]
+
+private example : [[0],[0]] = [[4],[4]] :=
+begin
+rewrite_search_using `ematch,
+end
+
 private example : [[1], [1]] = [[7], [7]] :=
 begin
 rewrite_search_using `ematch {trace_result:=tt},
