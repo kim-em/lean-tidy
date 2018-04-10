@@ -99,7 +99,7 @@ do
   return result
 
 structure rewrite_search_config :=
-  (trace : bool := tt)
+  (trace : bool := ff)
 
 meta def rewrite_search_core (rs : list (expr × bool)) (cfg : rewrite_search_config := {}) : list node → list node → tactic (option node)
 | old_nodes active_nodes := match select_next active_nodes with
@@ -131,7 +131,7 @@ do t ← target,
                            (r1, r2) ← rewrite_search rs cfg lhs rhs,
                            prf2 ← mk_eq_symm r2.proof,
                            prf ← mk_eq_trans r1.proof prf2,
-                           trace prf,
+                          --  trace prf,
                            exact prf
    | _ := fail "target is not an equation"
    end
