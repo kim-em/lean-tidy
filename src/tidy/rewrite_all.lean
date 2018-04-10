@@ -97,8 +97,10 @@ def remove_adjacent_duplicates {α β} (f : α → β) [decidable_eq β] : list 
 
 meta def all_rewrites (r : expr × bool) (e : expr) : tactic (list (expr × expr)) :=
 do 
+   goals ← get_goals,
    results ← rewrite_fold (rewrite_F r) e [],
    let results : list (expr × expr) := remove_adjacent_duplicates (λ p, p.1) results,
+   set_goals goals,
    pure results
 
 -- return a list of (e', prf, n, k) where 
@@ -128,7 +130,7 @@ do names ← attribute.get_instances a,
 namespace tactic.interactive
 
 private meta def perform_nth_rewrite' (q : parse rw_rules) (n : ℕ) (e : expr) : tactic (expr × expr) := 
-do rewrites ← q.rules.mmap $ λ p : rw_rule, to_expr p.rule >>= λ r, all_rewrites (r, p.symm) e,
+do rewrites ← q.rules.mmap $ λ p : rw_rule, to_expr p.rule tt ff >>= λ r, all_rewrites (r, p.symm) e,
    let rewrites := rewrites.join,
    rewrites.nth n
 
@@ -140,14 +142,14 @@ do e ← target,
 
 meta def replace_target_lhs (new_lhs prf: expr) : tactic unit :=
 do `(%%lhs = %%rhs) ← target,
-   new_target ← to_expr ``(%%new_lhs = %%rhs),
-   prf' ← to_expr ``(congr_arg (λ L, L = %%rhs) %%prf) ff,
+   new_target ← to_expr ``(%%new_lhs = %%rhs) tt ff,
+   prf' ← to_expr ``(congr_arg (λ L, L = %%rhs) %%prf) tt ff,
    replace_target new_target prf'
 
 meta def replace_target_rhs (new_rhs prf: expr) : tactic unit :=
 do `(%%lhs = %%rhs) ← target,
-   new_target ← to_expr ``(%%lhs = %%new_rhs),
-   prf' ← to_expr ``(congr_arg (λ R, %%lhs = R) %%prf) ff,
+   new_target ← to_expr ``(%%lhs = %%new_rhs) tt ff,
+   prf' ← to_expr ``(congr_arg (λ R, %%lhs = R) %%prf) tt ff,
    replace_target new_target prf'
 
 meta def perform_nth_rewrite_lhs (q : parse rw_rules) (n : ℕ) : tactic unit := 
