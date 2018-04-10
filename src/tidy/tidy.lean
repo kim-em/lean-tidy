@@ -121,7 +121,7 @@ do
         tactic.skip,
       if cfg.trace_result then
         let result_strings := results.map (λ p, p.1) in
-        interaction_monad.trace ("chain tactic used: " ++ result_strings.to_string)
+        interaction_monad.trace ("chain tactic used:\n---\n" ++ (",\n".intercalate result_strings) ++ "\n---")
       else
         tactic.skip
    else
