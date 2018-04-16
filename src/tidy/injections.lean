@@ -7,4 +7,5 @@ import tidy.at_least_one
 open tactic
 meta def injections_and_clear : tactic unit :=
 do l ← local_context,
-   at_least_one $ l.map $ λ e, injection e >> clear e
+   at_least_one $ l.map $ λ e, injection e >> clear e,
+   skip
