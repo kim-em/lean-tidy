@@ -136,7 +136,7 @@ do
 
 meta def obviously_tactics : list (tactic string) :=
 [
-  tactic.interactive.rewrite_search_using `search
+  tactic.interactive.rewrite_search_using `ematch -- TODO should switch this back to search eventually
 ]
 
 meta def obviously : tactic unit := all_goals ( abstract ( -- TODO this is a bit gross
