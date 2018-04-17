@@ -13,9 +13,7 @@ import tactic.interactive
 
 import data.list
 
-open tactic
-
-universe variable u
+universe variables u v
 
 attribute [reducible] cast
 attribute [reducible] lift_t coe_t coe_b has_coe_to_fun.coe
@@ -25,15 +23,25 @@ attribute [ematch] subtype.property
 meta def dsimp' := `[dsimp {unfold_reducible := tt, md := semireducible}]
 meta def dsimp_all' := `[dsimp at * {unfold_reducible := tt, md := semireducible}]
 
+-- Perhaps there's a better way to manage this, but for now it's just a [simp] lemma.
+@[simp] lemma funext_simp {α : Type u} {Z : α → Type v} {f g : Π a : α, Z a} : (f = g) = ∀ a : α, f a = g a :=
+begin
+  apply propext,
+  split,
+  { intro w, intro, rw w },
+  { intro w, apply funext, assumption }
+end 
+
+open tactic
+
 -- TODO I'd love to do some profiling here, and find how much time is spent inside each tactic,
 -- also divided up between successful and unsuccessful calls.
 
 -- TODO also find tactics which are never used!
 
-meta def my_solve_by_elim (asms : option (list expr) := none)  : opt_param ℕ 3 → tactic unit
-| 0 := tactic.done
-| (n+1) :=
-tactic.interactive.apply_assumption asms $ cc <|> my_solve_by_elim n -- TODO does cc really help here? if not, just use solve_by_elim
+meta def cc_solve_by_elim (asms : option (list expr) := none)  : opt_param ℕ 3 → tactic unit
+| 0     := tactic.done
+| (n+1) := cc <|> (tactic.interactive.apply_assumption asms $ cc_solve_by_elim n)
 
 
 meta def tidy_tactics : list (tactic string) :=
@@ -51,7 +59,7 @@ meta def tidy_tactics : list (tactic string) :=
   `[simp!]                                    >> pure "simp!",
   `[simp! at *]                               >> pure "simp! at *",
   injections_and_clear                        >> pure "injections_and_clear",
-  terminal_goal >> (cc <|> my_solve_by_elim)  >> pure "solve_by_elim",
+  terminal_goal >> (cc <|> cc_solve_by_elim)  >> pure "cc_solve_by_elim",
   dsimp_all'                                  >> pure "dsimp_all'",
   run_tidy_tactics
 ]
@@ -128,7 +136,7 @@ do
 
 meta def obviously_tactics : list (tactic string) :=
 [
-  tactic.interactive.rewrite_search_using `search
+  tactic.interactive.rewrite_search_using `ematch -- TODO should switch this back to search eventually
 ]
 
 meta def obviously : tactic unit := all_goals ( abstract ( -- TODO this is a bit gross
@@ -139,7 +147,7 @@ meta def obviously' : tactic unit := all_goals ( abstract (
   tidy { extra_tactics := obviously_tactics, trace_result :=tt }
 ))
 
--- TODO obviously!, which uses solve_by_elim even on unsafe goals
+-- PROJECT obviously!, which uses solve_by_elim even on unsafe goals
 
 example : 1 = 1 := by obviously
 

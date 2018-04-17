@@ -8,8 +8,7 @@ axiom bar' : [[6],[6]] = [[5],[5]]
 example : [[7],[6]] = [[5],[5]] :=
 begin
  success_if_fail { rewrite_search [] },
--- perform_nth_rewrite_lhs [←foo'] 0,
--- perform_nth_rewrite_lhs [bar'] 0,
+-- rw [←foo', bar']
  rewrite_search [←foo', bar'],
 end
 

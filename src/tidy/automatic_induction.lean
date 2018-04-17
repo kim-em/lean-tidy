@@ -4,33 +4,41 @@
 
 import .pempty
 import .at_least_one 
+import .pretty_print
 
 open tactic
 
 -- FIXME this is somehow too aggressive?
--- meta def induction_at (e :expr) := tactic.interactive.induction (none, to_pexpr e) none [] none
+-- meta def induction_at (e : expr) := tactic.interactive.induction (none, to_pexpr e) none [] none
 
-meta def automatic_induction_at (h : expr) : tactic unit :=
-do t' ← infer_type h,
---    t ← whnf t',
-match t' with
-| `(unit)      := cases h >> skip
-| `(punit)     := cases h >> skip
-| `(false)     := cases h >> skip
-| `(empty)     := cases h >> skip
-| `(pempty)    := cases h >> skip
-| `(ulift _)   := cases h >> skip
-| `(plift _)   := cases h >> skip
-| `(eq _ _)    := induction h >> skip  
-| `(prod _ _)  := cases h >> skip
-| `(and _ _)   := cases h >> skip
-| `(sigma _)   := cases h >> skip
-| `(subtype _) := cases h >> skip
-| `(Exists _)  := cases h >> skip
-| `(fin 0)     := cases h >> skip 
-| _            := failed
-end
+meta def automatic_induction_at (h : expr) : tactic string :=
+do
+t' ← infer_type h,
+let use_cases := match t' with
+| `(unit)      := tt
+| `(punit)     := tt
+| `(false)     := tt
+| `(empty)     := tt
+| `(pempty)    := tt
+| `(ulift _)   := tt
+| `(plift _)   := tt
+| `(prod _ _)  := tt
+| `(and _ _)   := tt
+| `(sigma _)   := tt
+| `(subtype _) := tt
+| `(Exists _)  := tt
+| `(fin 0)     := tt
+| _            := ff
+end,
+if use_cases then
+  do cases h, pp ← pretty_print h, return ("cases " ++ pp)
+else
+  match t' with
+  | `(eq _ _)    := do induction h, pp ← pretty_print h, return ("induction " ++ pp)
+  | _            := failed
+  end
 
-meta def automatic_induction : tactic unit :=
+meta def automatic_induction : tactic string :=
 do l ← local_context,
-   at_least_one (l.reverse.map(λ h, automatic_induction_at h))
+   results ← at_least_one (l.reverse.map(λ h, automatic_induction_at h)),
+   return (string.intercalate ", " results)
