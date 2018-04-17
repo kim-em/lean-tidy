@@ -43,7 +43,7 @@ meta def tidy_tactics : list (tactic string) :=
   semiapplicable                              >>= λ n, pure ("fapply " ++ n.to_string),
   applicable                                  >>= λ n, pure ("fapply " ++ n.to_string),
   intro_at_least_one                          >> pure "intros",
-  automatic_induction                         >> pure "automatic_induction",
+  automatic_induction,
   force (fsplit)                              >> pure "fsplit", 
   `[apply_auto_param]                         >> pure "apply_auto_param",
   `[dsimp]                                    >> pure "dsimp",
@@ -52,7 +52,6 @@ meta def tidy_tactics : list (tactic string) :=
   `[simp! at *]                               >> pure "simp! at *",
   injections_and_clear                        >> pure "injections_and_clear",
   terminal_goal >> (cc <|> my_solve_by_elim)  >> pure "solve_by_elim",
-  -- dsimp'                                      >> pure "dsimp'",
   dsimp_all'                                  >> pure "dsimp_all'",
   run_tidy_tactics
 ]
