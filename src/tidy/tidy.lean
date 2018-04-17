@@ -8,8 +8,7 @@ import .reducible_abstract
 import .rewrite_search
 import .injections
 import .simplify_proof
-
-import tactic.interactive
+import .solve_by_elim
 
 import data.list
 
@@ -39,11 +38,6 @@ open tactic
 
 -- TODO also find tactics which are never used!
 
-meta def cc_solve_by_elim (asms : option (list expr) := none)  : opt_param ℕ 3 → tactic unit
-| 0     := tactic.done
-| (n+1) := tactic.interactive.apply_assumption asms $ cc <|> cc_solve_by_elim n -- TODO does cc really help here? if not, just use solve_by_elim
-
-
 meta def tidy_tactics : list (tactic string) :=
 [
   force (reflexivity)                         >> pure "refl", 
@@ -59,7 +53,7 @@ meta def tidy_tactics : list (tactic string) :=
   `[simp!]                                    >> pure "simp!",
   `[simp! at *]                               >> pure "simp! at *",
   injections_and_clear                        >> pure "injections_and_clear",
-  terminal_goal >> (cc <|> cc_solve_by_elim)  >> pure "solve_by_elim",
+  terminal_goal >> (solve_by_elim' none cc)   >> pure "solve_by_elim' none cc",
   dsimp_all'                                  >> pure "dsimp_all'",
   run_tidy_tactics
 ]
