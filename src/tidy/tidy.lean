@@ -45,7 +45,7 @@ meta def tidy_tactics : list (tactic string) :=
   semiapplicable                              >>= λ n, pure ("fapply " ++ n.to_string),
   applicable                                  >>= λ n, pure ("fapply " ++ n.to_string),
   intro_at_least_one                          >> pure "intros",
-  automatic_induction                         >> pure "automatic_induction",
+  automatic_induction,
   force (fsplit)                              >> pure "fsplit", 
   `[apply_auto_param]                         >> pure "apply_auto_param",
   `[dsimp]                                    >> pure "dsimp",
