@@ -132,7 +132,7 @@ let rhs_steps := p.2.rewrites.reverse.map $ λ q, "perform_nth_rewrite_rhs [" ++
 string.intercalate ",\n" (lhs_steps ++ rhs_steps)
 
 meta def explain_proof_concisely (rs : list string) (p : expr_delta × expr_delta) : string :=
-"rw [" ++ (string.intercalate ", " ((p.1.rewrites.reverse ++ p.2.rewrites.reverse).map $ λ q, (rs.nth q.1).iget)) ++ "]"
+"erw [" ++ (string.intercalate ", " ((p.1.rewrites.reverse ++ p.2.rewrites.reverse).map $ λ q, (rs.nth q.1).iget)) ++ "]"
 
 meta def check_if_simple_rewrite_succeeds (rs : list (expr × bool)) (p : expr_delta × expr_delta) : tactic unit :=
 lock_tactic_state $
