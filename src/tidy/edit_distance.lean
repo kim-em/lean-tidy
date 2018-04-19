@@ -66,10 +66,9 @@ variables {l₁: list α} {l₂: list α}
 
 open edit_distance_progress
 
--- FIXME get this out of meta
-meta def edit_distance_progress.to_string : edit_distance_progress l₁ l₂ → string
-| (exactly _ _ k)    := (format!"= {k}").to_string
-| (at_least _ _ k _) := (format!"≥ {k}").to_string
+def edit_distance_progress.to_string : edit_distance_progress l₁ l₂ → string
+| (exactly _ _ k)    := "= " ++ (to_string k)
+| (at_least _ _ k _) := "≥ " ++ (to_string k)
 
 def triples (p : partial_edit_distance_data α) (l₂ : list α): list (ℕ × ℕ × α) := p.distances.zip ((p.prefix_length :: p.distances).zip l₂)
 
@@ -77,8 +76,10 @@ def update_edit_distance_one_step : edit_distance_progress l₁ l₂ → edit_di
 | (exactly l₁ l₂ n)    := exactly l₁ l₂ n
 | (at_least l₁ l₂ n p) := match p.suffix with
   | []       := exactly l₁ l₂ p.distances.ilast
-  | (h :: t) := let new_distances : ℕ × list ℕ := (triples p l₂).foldl (λ n : ℕ × list ℕ, λ t : ℕ × ℕ × α, let m := (if h = t.2.2 then t.2.1 else 1 + min (min (t.2.1) (t.1)) n.2.head) in (if m < n.1 then m else n.1, m :: n.2)) (p.prefix_length + 1, [p.prefix_length + 1]) in
-                at_least l₁ l₂ new_distances.1 ⟨ p.prefix_length + 1, t, new_distances.2.reverse.drop 1 ⟩
+  | (h :: t) := let new_distances : ℕ × list ℕ := (triples p l₂).foldl (λ n : ℕ × list ℕ, λ t : ℕ × ℕ × α,
+                                                                        let m := (if h = t.2.2 then t.2.1 else 1 + min (min (t.2.1) (t.1)) n.2.head) in 
+                                                                        (if m < n.1 then m else n.1, m :: n.2)) (p.prefix_length + 1, [p.prefix_length + 1]) in
+                  at_least l₁ l₂ new_distances.1 ⟨ p.prefix_length + 1, t, new_distances.2.reverse.drop 1 ⟩
 end 
 
 -- PROJECT for the enthusiastic: show these inductions are well-founded, and remove the metas
