@@ -131,6 +131,20 @@ let lhs_steps := p.1.rewrites.reverse.map $ λ q, "perform_nth_rewrite_lhs [" ++
 let rhs_steps := p.2.rewrites.reverse.map $ λ q, "perform_nth_rewrite_rhs [" ++ (rs.nth q.1).iget ++ "] " ++ (to_string q.2) in
 string.intercalate ",\n" (lhs_steps ++ rhs_steps)
 
+meta def explain_proof_concisely (rs : list string) (p : expr_delta × expr_delta) : string :=
+"erw [" ++ (string.intercalate ", " ((p.1.rewrites.reverse ++ p.2.rewrites.reverse).map $ λ q, (rs.nth q.1).iget)) ++ "]"
+
+meta def check_if_simple_rewrite_succeeds (rs : list (expr × bool)) (p : expr_delta × expr_delta) : tactic unit :=
+lock_tactic_state $
+focus1 $
+do
+  t ← target,
+  let lhs_rewrites : list (expr × bool) := p.1.rewrites.reverse.map $ λ a, (rs.nth a.1).iget,
+  list.mfoldl (λ e : unit, λ q : expr × bool, rewrite_target q.1 {symm := q.2, md := semireducible}) unit.star lhs_rewrites,
+  let rhs_rewrites : list (expr × bool) := p.2.rewrites.reverse.map $ λ a, (rs.nth a.1).iget,
+  list.mfoldl (λ e : unit, λ q : expr × bool, rewrite_target q.1 {symm := q.2, md := semireducible}) unit.star rhs_rewrites,
+  reflexivity.
+
 meta def rewrite_search_target (rs : list (expr × bool)) (cfg : rewrite_search_config := {}) : tactic string :=
 do t ← target,
    match t with
@@ -142,7 +156,9 @@ do t ← target,
                              do trace "rewrite_search found proof:", trace prf
                            else skip,
                            rs_strings ← rs.mmap (λ p, (do pp ← pretty_print p.1, return (if p.2 then ("←" ++ pp) else pp))),
-                           let explanation := explain_proof rs_strings (r1, r2),
+                           explanation ← (do 
+                             check_if_simple_rewrite_succeeds rs (r1, r2),
+                              return (explain_proof_concisely rs_strings (r1, r2))) <|> return (explain_proof rs_strings (r1, r2)),
                            if cfg.trace_result then trace explanation
                            else skip,
                            exact prf,
