@@ -104,8 +104,11 @@ structure rewrite_search_config :=
   (trace_result : bool := ff)
 
 meta def attempt_refl (lhs rhs : expr) : tactic unit :=
+lock_tactic_state $
 do
   gs ← get_goals,
+  ng ← to_expr ``(%%lhs = %%rhs),
+  set_goals [ng],
   refl ← mk_const `eq.refl,
   result ← try_core (tactic.apply_core refl {new_goals := new_goals.non_dep_only}),
   set_goals gs,
