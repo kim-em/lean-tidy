@@ -138,7 +138,7 @@ meta def obviously : tactic unit := all_goals ( abstract ( -- TODO this is a bit
 ))
 
 meta def obviously' : tactic unit := all_goals ( abstract (
-  tidy { extra_tactics := obviously_tactics }
+  tidy { extra_tactics := obviously_tactics, trace_result := tt }
 ))
 
 -- PROJECT obviously!, which uses solve_by_elim even on unsafe goals
