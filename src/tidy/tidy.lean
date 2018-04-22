@@ -122,7 +122,7 @@ do
         tactic.skip,
       if cfg.trace_result then
         let result_strings := results.map (λ p, p.1) in
-        interaction_monad.trace ("chain tactic used:\n---\n" ++ (",\n".intercalate result_strings) ++ "\n---")
+        interaction_monad.trace ("---\n" ++ (",\n".intercalate result_strings) ++ "\n---")
       else
         tactic.skip
    else
@@ -138,7 +138,7 @@ meta def obviously : tactic unit := all_goals ( abstract ( -- TODO this is a bit
 ))
 
 meta def obviously' : tactic unit := all_goals ( abstract (
-  tidy { extra_tactics := obviously_tactics, trace_result :=tt }
+  tidy { extra_tactics := obviously_tactics }
 ))
 
 -- PROJECT obviously!, which uses solve_by_elim even on unsafe goals
