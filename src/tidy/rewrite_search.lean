@@ -111,7 +111,6 @@ do
   set_goals [m],
   refl ← mk_const `eq.refl,
   result ← try_core (tactic.apply_core refl {new_goals := new_goals.non_dep_only}),
-  trace result,
   set_goals gs,
   guard result.is_some
 
