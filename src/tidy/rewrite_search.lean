@@ -103,6 +103,14 @@ structure rewrite_search_config :=
   (trace        : bool := ff)
   (trace_result : bool := ff)
 
+meta def attempt_refl (lhs rhs : expr) : tactic unit :=
+do
+  gs ← get_goals,
+  refl ← mk_const `eq.refl,
+  result ← try_core (tactic.apply_core refl {new_goals := new_goals.non_dep_only}),
+  set_goals gs,
+  guard result.is_some
+
 meta def rewrite_search_core (rs : list (expr × bool)) (cfg : rewrite_search_config := {}) : list node → list node → tactic (option node)
 | old_nodes active_nodes := match select_next active_nodes with
             | none := none
@@ -112,8 +120,10 @@ meta def rewrite_search_core (rs : list (expr × bool)) (cfg : rewrite_search_co
                 match n.distance with
                 | (exactly _ _ 0) := return (some n)
                 | (exactly _ _ k) := do
-                                       nn ← new_nodes rs (old_nodes ++ active_nodes) n,
-                                       rewrite_search_core (n :: old_nodes) (r ++ nn)
+                                       (attempt_refl n.lhs.current n.rhs.current >> return (some n)) <|>
+                                       do
+                                        nn ← new_nodes rs (old_nodes ++ active_nodes) n,
+                                        rewrite_search_core (n :: old_nodes) (r ++ nn)
                 | _ := none --- unreachable code!
                 end
             end
