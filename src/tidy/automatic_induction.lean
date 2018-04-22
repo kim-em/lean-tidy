@@ -14,6 +14,7 @@ open tactic
 meta def automatic_induction_at (h : expr) : tactic string :=
 do
 t' ← infer_type h,
+t' ← whnf t',
 let use_cases := match t' with
 | `(unit)      := tt
 | `(punit)     := tt
