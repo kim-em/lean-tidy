@@ -107,10 +107,11 @@ meta def attempt_refl (lhs rhs : expr) : tactic unit :=
 lock_tactic_state $
 do
   gs ← get_goals,
-  ng ← to_expr ``(%%lhs = %%rhs),
-  set_goals [ng],
+  m ← to_expr ``(%%lhs = %%rhs) >>= mk_meta_var,
+  set_goals [m],
   refl ← mk_const `eq.refl,
   result ← try_core (tactic.apply_core refl {new_goals := new_goals.non_dep_only}),
+  trace result,
   set_goals gs,
   guard result.is_some
 
