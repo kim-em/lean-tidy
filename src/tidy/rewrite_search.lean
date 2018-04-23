@@ -127,7 +127,7 @@ meta def rewrite_search_core (rs : list (expr × bool)) (cfg : rewrite_search_co
                                        do
                                         if k > initial_distance + cfg.max_extra_distance then
                                         do
-                                          if cfg.trace then trace format!"max_extra_distance exceeding during rewrite_search" else skip,
+                                          trace format!"max_extra_distance exceeding during rewrite_search",
                                           return none
                                         else
                                         do 
