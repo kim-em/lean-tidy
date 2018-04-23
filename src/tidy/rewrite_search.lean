@@ -101,7 +101,7 @@ do
 structure rewrite_search_config :=
   (trace        : bool := ff)
   (trace_result : bool := ff)
-  (max_extra_distance : ℕ := 5)
+  (max_extra_distance : ℕ := 12)
 
 meta def attempt_refl (lhs rhs : expr) : tactic unit :=
 lock_tactic_state $
