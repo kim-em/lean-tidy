@@ -29,7 +29,6 @@ meta def node.to_string (n : node) := n.lhs_pp ++ " = " ++ n.rhs_pp.
 -- TODO perhaps also store a hash in node, and compare on that first?
 meta def node.equiv (a b : node) : Prop := a.lhs_pp = b.lhs_pp ∧ a.rhs_pp = b.rhs_pp
 
--- set_option trace.class_instances true
 meta instance : decidable_rel node.equiv := λ a b,
 begin
     dunfold node.equiv,
@@ -102,6 +101,7 @@ do
 structure rewrite_search_config :=
   (trace        : bool := ff)
   (trace_result : bool := ff)
+  (max_extra_distance : ℕ := 5)
 
 meta def attempt_refl (lhs rhs : expr) : tactic unit :=
 lock_tactic_state $
@@ -114,7 +114,7 @@ do
   set_goals gs,
   guard result.is_some
 
-meta def rewrite_search_core (rs : list (expr × bool)) (cfg : rewrite_search_config := {}) : list node → list node → tactic (option node)
+meta def rewrite_search_core (rs : list (expr × bool)) (cfg : rewrite_search_config := {}) (initial_distance : ℕ) : list node → list node → tactic (option node)
 | old_nodes active_nodes := match select_next active_nodes with
             | none := none
             | some (n, r) := 
@@ -125,15 +125,21 @@ meta def rewrite_search_core (rs : list (expr × bool)) (cfg : rewrite_search_co
                 | (exactly _ _ k) := do
                                        (attempt_refl n.lhs.current n.rhs.current >> return (some n)) <|>
                                        do
-                                        nn ← new_nodes rs (old_nodes ++ active_nodes) n,
-                                        rewrite_search_core (n :: old_nodes) (r ++ nn)
+                                        if k > initial_distance + cfg.max_extra_distance then
+                                        do
+                                          if cfg.trace then trace format!"max_extra_distance exceeding during rewrite_search" else skip,
+                                          return none
+                                        else
+                                        do 
+                                          nn ← new_nodes rs (old_nodes ++ active_nodes) n,
+                                          rewrite_search_core (n :: old_nodes) (r ++ nn)
                 | _ := none --- unreachable code!
                 end
             end
 
 meta def rewrite_search (rs : list (expr × bool)) (cfg : rewrite_search_config := {}) (lhs rhs : expr) : tactic (expr_delta × expr_delta) :=
 do  first_node ← node.mk'' lhs rhs,
-    result ← rewrite_search_core rs cfg [] [first_node],
+    result ← rewrite_search_core rs cfg (edit_distance_core first_node.distance) [] [first_node],
     match result with 
     | (some n) := return (n.lhs, n.rhs)
     | _        := failed
