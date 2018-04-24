@@ -150,10 +150,12 @@ let lhs_steps := p.1.rewrites.reverse.map $ λ q, "perform_nth_rewrite_lhs [" ++
 let rhs_steps := p.2.rewrites.reverse.map $ λ q, "perform_nth_rewrite_rhs [" ++ (rs.nth q.1).iget ++ "] " ++ (to_string q.2) in
 string.intercalate ",\n" (lhs_steps ++ rhs_steps)
 
-meta def explain_proof_concisely (rs : list string) (p : expr_delta × expr_delta) : string :=
-"erw [" ++ (string.intercalate ", " ((p.1.rewrites.reverse ++ p.2.rewrites.reverse).map $ λ q, (rs.nth q.1).iget)) ++ "]"
+meta def explain_proof_concisely (rs : list string) (p : expr_delta × expr_delta) (needs_refl : bool) : string :=
+"erw [" ++ (string.intercalate ", " ((p.1.rewrites.reverse ++ p.2.rewrites.reverse).map $ λ q, (rs.nth q.1).iget)) ++ "]" ++ (if needs_refl then ", refl" else "")
 
-meta def check_if_simple_rewrite_succeeds (rs : list (expr × bool)) (p : expr_delta × expr_delta) : tactic unit :=
+-- fails if we can't just use rewrite
+-- otherwise, returns 'tt' if we need a `refl` at the end
+meta def check_if_simple_rewrite_succeeds (rs : list (expr × bool)) (p : expr_delta × expr_delta) : tactic bool :=
 lock_tactic_state $
 focus1 $
 do
@@ -162,7 +164,8 @@ do
   list.mfoldl (λ e : unit, λ q : expr × bool, rewrite_target q.1 {symm := q.2, md := semireducible}) unit.star lhs_rewrites,
   let rhs_rewrites : list (expr × bool) := p.2.rewrites.reverse.map $ λ a, (rs.nth a.1).iget,
   list.mfoldl (λ e : unit, λ q : expr × bool, rewrite_target q.1 {symm := q.2, md := semireducible}) unit.star rhs_rewrites,
-  reflexivity.
+  (reflexivity reducible >> return ff) <|> (reflexivity >> return tt)
+  .
 
 meta def rewrite_search_target (rs : list (expr × bool)) (cfg : rewrite_search_config := {}) : tactic string :=
 do t ← target,
@@ -176,8 +179,8 @@ do t ← target,
                            else skip,
                            rs_strings ← rs.mmap (λ p, (do pp ← pretty_print p.1, return (if p.2 then ("←" ++ pp) else pp))),
                            explanation ← (do 
-                             check_if_simple_rewrite_succeeds rs (r1, r2),
-                              return (explain_proof_concisely rs_strings (r1, r2))) <|> return (explain_proof rs_strings (r1, r2)),
+                             needs_refl ← check_if_simple_rewrite_succeeds rs (r1, r2),
+                              return (explain_proof_concisely rs_strings (r1, r2) needs_refl)) <|> return (explain_proof rs_strings (r1, r2)),
                            if cfg.trace_result then trace explanation
                            else skip,
                            exact prf,
