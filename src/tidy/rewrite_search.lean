@@ -1,6 +1,6 @@
 -- Copyright (c) 2018 Scott Morrison. All rights reserved.
 -- Released under Apache 2.0 license as described in the file LICENSE.
--- Authors: Daniel Barter, Louis Carlin, Scott Morrison, Sam Quinn
+-- Authors: Daniel Barter, Louis Carlin, Scott Morrison, Sam Quinn, Simon Hudon
 
 import data.list
 import data.option
