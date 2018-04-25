@@ -9,6 +9,7 @@ import .rewrite_search
 import .injections
 import .simplify_proof
 import .solve_by_elim
+import tactic.interactive
 
 import data.list
 
@@ -53,8 +54,7 @@ meta def tidy_tactics : list (tactic string) :=
   `[simp!]                                    >> pure "simp!",
   `[simp! at *]                               >> pure "simp! at *",
   injections_and_clear                        >> pure "injections_and_clear",
-  terminal_goal >> (solve_by_elim' cc)   >> pure "solve_by_elim' cc",
-  -- dsimp_all'                                  >> pure "dsimp_all'",
+  terminal_goal >> (`[solve_by_elim `[cc]])   >> pure "solve_by_elim `[cc]",
   run_tidy_tactics
 ]
 
