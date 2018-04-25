@@ -32,10 +32,9 @@ if use_cases then
   do cases h, pp ← pretty_print h, return ("cases " ++ pp)
 else
   match t' with
-  | `(eq _ _)       := do induction h, pp ← pretty_print h, return ("induction " ++ pp)
-  | `(quotient _)   := do induction h, pp ← pretty_print h, return ("induction " ++ pp)
-  | `(setoid.r _ _) := do induction h, pp ← pretty_print h, return ("induction " ++ pp)
-  | _               := failed
+  | `(eq _ _)        := do induction h, pp ← pretty_print h, return ("induction " ++ pp)
+  | `(quot _)        := do induction h, pp ← pretty_print h, return ("induction " ++ pp)
+  | _                := failed
   end
 
 meta def automatic_induction : tactic string :=
