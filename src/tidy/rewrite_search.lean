@@ -69,16 +69,13 @@ meta def find_first_node_at_distance : list node → ℕ → (option node) × li
                   match h.distance with
                   | exactly _ _ _ := (some h, t)
                   | at_least _ _ _ d := 
-                      match update_edit_distance h.distance with
-                      | exactly _ _ k' := if k = k' then (some { h with distance := exactly _ _ k }, t) else 
-                                            match find_first_node_at_distance t k with
-                                            | (o, l) := (o, { h with distance := exactly _ _ k' } :: l)
-                                            end
-                      | ed            := 
-                          match find_first_node_at_distance t k with
+                      let ed := update_edit_distance h.distance in
+                      if ed = exactly _ _ k then
+                        (some { h with distance := exactly _ _ k }, t)
+                      else
+                        match find_first_node_at_distance t k with
                           | (o, l) := (o, { h with distance := ed } :: l)
-                          end
-                      end
+                          end                      
                   end
                 else
                   match find_first_node_at_distance t k with
