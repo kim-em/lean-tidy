@@ -68,7 +68,10 @@ meta def find_first_at : list node → ℕ → (option node) × list node
                   | exactly _ _ _ := (some h, t)
                   | at_least _ _ _ d := 
                       match update_edit_distance h.distance with
-                      | exactly _ _ k := (some { h with distance := exactly _ _ k }, t)
+                      | exactly _ _ k' := if k = k' then (some { h with distance := exactly _ _ k }, t) else 
+                                            match find_first_at t k with
+                                            | (o, l) := (o, { h with distance := exactly _ _ k' } :: l)
+                                            end
                       | ed            := 
                           match find_first_at t k with
                           | (o, l) := (o, { h with distance := ed } :: l)
@@ -102,7 +105,8 @@ structure rewrite_search_config :=
   (trace        : bool := ff)
   (trace_result : bool := ff)
   (trace_rules  : bool := ff)
-  (max_extra_distance : ℕ := 50)
+  (max_steps          : option ℕ := none)
+  (max_extra_distance : option ℕ := some 50)
 
 meta def attempt_refl (lhs rhs : expr) : tactic unit :=
 lock_tactic_state $
@@ -116,27 +120,35 @@ do
   guard result.is_some
 
 meta def rewrite_search_core (rs : list (expr × bool)) (cfg : rewrite_search_config := {}) (initial_distance : ℕ) : list node → list node → tactic (option node)
-| old_nodes active_nodes := match select_next active_nodes with
-            | none := none
-            | some (n, r) := 
+| old_nodes active_nodes := 
+   if cfg.max_steps.is_some ∧ old_nodes.length ≥ cfg.max_steps.get_or_else 0 then
+   do
+     trace "max_steps exceeded during rewrite_search",
+     active_nodes.mmap' $ λ m, trace (m.lhs_pp ++ " = " ++ m.rhs_pp ++ ", distance ≥ " ++ (to_string m.distance_bound)),
+     return none
+   else
+      match select_next active_nodes with
+      | none := none
+      | some (n, r) := 
+        do
+          if cfg.trace then trace format!"rewrite_search considering node: {n.lhs_pp} = {n.rhs_pp}, distance: {n.distance.to_string}" else skip,
+          match n.distance with
+          | (exactly _ _ 0) := return (some n)
+          | (exactly _ _ k) := 
+            do
+              (attempt_refl n.lhs.current n.rhs.current >> return (some n)) <|>
               do
-                if cfg.trace then trace format!"rewrite_search considering node: {n.lhs_pp} = {n.rhs_pp}, distance: {n.distance.to_string}" else skip,
-                match n.distance with
-                | (exactly _ _ 0) := return (some n)
-                | (exactly _ _ k) := do
-                                       (attempt_refl n.lhs.current n.rhs.current >> return (some n)) <|>
-                                       do
-                                        if k > initial_distance + cfg.max_extra_distance then
-                                        do
-                                          trace format!"max_extra_distance exceeding during rewrite_search",
-                                          return none
-                                        else
-                                        do 
-                                          nn ← new_nodes rs (old_nodes ++ active_nodes) n,
-                                          rewrite_search_core (n :: old_nodes) (r ++ nn)
-                | _ := none --- unreachable code!
-                end
-            end
+                if cfg.max_extra_distance.is_some ∧ k > initial_distance + cfg.max_extra_distance.get_or_else 0 then
+                do
+                  trace "max_extra_distance exceeded during rewrite_search",
+                  return none
+                else
+                do 
+                  nn ← new_nodes rs (old_nodes ++ active_nodes) n,
+                  rewrite_search_core (n :: old_nodes) (r ++ nn)
+          | _ := none --- unreachable code!
+          end
+      end
 
 meta def rewrite_search (rs : list (expr × bool)) (cfg : rewrite_search_config := {}) (lhs rhs : expr) : tactic (expr_delta × expr_delta) :=
 do  first_node ← node.mk'' lhs rhs,
@@ -176,7 +188,7 @@ do t ← target,
    | `(%%lhs = %%rhs) := do
                            if cfg.trace_rules then
                              do rs_strings ← pp_rules rs,
-                                trace ("rewrite_search using:\n---\n" ++ (string.intercalate "\n" rs_strings) ++ "---")
+                                trace ("rewrite_search using:\n---\n" ++ (string.intercalate "\n" rs_strings) ++ "\n---")
                            else skip,
                            (r1, r2) ← rewrite_search rs cfg lhs rhs,
                            prf2 ← mk_eq_symm r2.proof,
@@ -206,8 +218,23 @@ meta def rewrite_search (rs: parse rw_rules) (cfg : rewrite_search_config := {})
 do rs ← rs.rules.mmap (λ r, do e ← to_expr' r.rule, pure (e, r.symm)),
    rewrite_search_target rs cfg
 
+meta def apps (e : expr) (F : list expr) : tactic (list expr) :=
+lock_tactic_state $
+do l ← F.mmap $ λ f, (do r ← try_core (to_expr ```(%%e %%f)), return r.to_list), return l.join
+ 
+-- axiom f : ℕ → Type
+-- def g (n : ℕ) {k : ℕ} (x : f k) := n
+
+-- set_option pp.implicit true
+-- example : true :=
+-- begin
+--   do e ← to_expr ```(g),
+--      f ← to_expr ```(57),
+--      to_expr ```(%%e %%f) >>= pp >>= trace
+-- end
+
 meta def pairwise_apps (E F : list expr) : tactic (list expr) :=
-(E.mmap $ λ e, F.mmap $ λ f, try_core (to_expr ``(%%e %%f))) >>= λ A, return (A.join.map option.to_list).join
+(E.mmap $ λ e, apps e F) >>= λ l, return l.join
 
 meta def close_under_apps_aux : list expr → list expr → tactic (list expr) 
 | old []  := return old
@@ -218,12 +245,18 @@ meta def close_under_apps_aux : list expr → list expr → tactic (list expr)
 
 meta def close_under_apps (E : list expr) : tactic (list expr) := close_under_apps_aux [] E
 
+meta def is_eq_after_binders : expr → bool
+| (expr.pi n bi d b) := is_eq_after_binders b
+| `(%%a = %%b)       := tt
+| _                  := ff
+
 meta def rewrite_search_using (a : name) (cfg : rewrite_search_config := {}) : tactic string :=
 do names ← attribute.get_instances a,
    exprs ← names.mmap $ mk_const,
    hyps ← local_context,
    let exprs := exprs ++ hyps,
    rules ← close_under_apps exprs,
+   rules ← rules.mfilter $ λ r, (do t ← infer_type r, return (is_eq_after_binders t)),
    let pairs := rules.map (λ e, (e, ff)) ++ rules.map (λ e, (e, tt)),
    rewrite_search_target pairs cfg
 
@@ -235,5 +268,22 @@ meta def search_attribute : user_attribute := {
 }
 
 run_cmd attribute.register `search_attribute
+
+-- structure cat :=
+--   (O : Type)
+--   (H : O → O → Type)
+--   (i : Π o : O, H o o)
+--   (c : Π {X Y Z : O} (f : H X Y) (g : H Y Z), H X Z)
+--   (li : Π {X Y : O} (f : H X Y), c (i X) f = f)
+--   (ri : Π {X Y : O} (f : H X Y), c f (i Y) = f)
+--   (a : Π {W X Y Z : O} (f : H W X) (g : H X Y) (h : H Y Z), c (c f g) h = c f (c g h))
+
+-- attribute [search] cat.li cat.a
+
+-- private example (C : cat) (X Y Z : C.O) (f : C.H X Y) (g : C.H Y X) (w : C.c g f = C.i Y) (h k : C.H Y Z) (p : C.c f h = C.c f k) : h = k := 
+-- begin
+-- rewrite_search_using `search {trace := tt, trace_rules:=tt},
+-- end
+
 
 -- PROJECT cache all_rewrites_list?
