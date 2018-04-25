@@ -8,9 +8,6 @@ import .pretty_print
 
 open tactic
 
--- FIXME this is somehow too aggressive?
--- meta def induction_at (e : expr) := tactic.interactive.induction (none, to_pexpr e) none [] none
-
 meta def automatic_induction_at (h : expr) : tactic string :=
 do
 t' ← infer_type h,
@@ -35,8 +32,10 @@ if use_cases then
   do cases h, pp ← pretty_print h, return ("cases " ++ pp)
 else
   match t' with
-  | `(eq _ _)    := do induction h, pp ← pretty_print h, return ("induction " ++ pp)
-  | _            := failed
+  | `(eq _ _)       := do induction h, pp ← pretty_print h, return ("induction " ++ pp)
+  | `(quotient _)   := do induction h, pp ← pretty_print h, return ("induction " ++ pp)
+  | `(setoid.r _ _) := do induction h, pp ← pretty_print h, return ("induction " ++ pp)
+  | _               := failed
   end
 
 meta def automatic_induction : tactic string :=
