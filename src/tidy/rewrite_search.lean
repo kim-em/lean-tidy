@@ -101,6 +101,7 @@ do
 structure rewrite_search_config :=
   (trace        : bool := ff)
   (trace_result : bool := ff)
+  (trace_rules  : bool := ff)
   (max_extra_distance : ℕ := 50)
 
 meta def attempt_refl (lhs rhs : expr) : tactic unit :=
@@ -167,17 +168,23 @@ do
   (reflexivity reducible >> return ff) <|> (reflexivity >> return tt)
   .
 
+meta def pp_rules (rs : list (expr × bool)) : tactic (list string) := rs.mmap (λ p, (do pp ← pretty_print p.1, return (if p.2 then ("←" ++ pp) else pp)))
+
 meta def rewrite_search_target (rs : list (expr × bool)) (cfg : rewrite_search_config := {}) : tactic string :=
 do t ← target,
    match t with
    | `(%%lhs = %%rhs) := do
+                           if cfg.trace_rules then
+                             do rs_strings ← pp_rules rs,
+                                trace ("rewrite_search using:\n---\n" ++ (string.intercalate "\n" rs_strings) ++ "---")
+                           else skip,
                            (r1, r2) ← rewrite_search rs cfg lhs rhs,
                            prf2 ← mk_eq_symm r2.proof,
                            prf ← mk_eq_trans r1.proof prf2,
                            if cfg.trace then
                              do trace "rewrite_search found proof:", trace prf
                            else skip,
-                           rs_strings ← rs.mmap (λ p, (do pp ← pretty_print p.1, return (if p.2 then ("←" ++ pp) else pp))),
+                           rs_strings ← pp_rules rs,
                            explanation ← (do 
                              needs_refl ← check_if_simple_rewrite_succeeds rs (r1, r2),
                               return (explain_proof_concisely rs_strings (r1, r2) needs_refl)) <|> return (explain_proof rs_strings (r1, r2)),
