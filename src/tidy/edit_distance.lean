@@ -51,6 +51,7 @@ def word_edit_distance (s₁ s₂ : string) := edit_distance (s₁.split_on ' ')
 
 variables {α : Type} [decidable_eq α]
 
+@[derive decidable_eq]
 structure partial_edit_distance_data (α : Type) :=
 (prefix_length : ℕ)
 (suffix    : list α)
@@ -58,6 +59,7 @@ structure partial_edit_distance_data (α : Type) :=
 
 def empty_partial_edit_distance_data {α : Type} (l₁ l₂: list α) : partial_edit_distance_data α := ⟨ 0, l₁, (list.range l₂.length).map(λ n, n+1) ⟩
 
+@[derive decidable_eq]
 inductive edit_distance_progress (l₁: list α) (l₂: list α)
 | exactly : ℕ → edit_distance_progress
 | at_least : ℕ → partial_edit_distance_data α → edit_distance_progress

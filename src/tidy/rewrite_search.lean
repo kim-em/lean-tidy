@@ -217,20 +217,35 @@ meta def rewrite_search (rs: parse rw_rules) (cfg : rewrite_search_config := {})
 do rs ← rs.rules.mmap (λ r, do e ← to_expr' r.rule, pure (e, r.symm)),
    rewrite_search_target rs cfg
 
-meta def apps (e : expr) (F : list expr) : tactic (list expr) :=
-lock_tactic_state $
-do l ← F.mmap $ λ f, (do r ← try_core (to_expr ```(%%e %%f)), return r.to_list), return l.join
- 
--- axiom f : ℕ → Type
--- def g (n : ℕ) {k : ℕ} (x : f k) := n
+meta def mk_app_aux : expr → expr → expr → tactic expr
+ | f (expr.pi n binder_info.default d b) arg := do
+   infer_type arg >>= unify d,
+   return $ f arg
+ | f (expr.pi n _ d b) arg := do
+   v ← mk_meta_var d,
+   t ← whnf (b.instantiate_var v),
+   mk_app_aux (f v) t arg
+ | e _ _ := failed
 
--- set_option pp.implicit true
--- example : true :=
--- begin
---   do e ← to_expr ```(g),
---      f ← to_expr ```(57),
---      to_expr ```(%%e %%f) >>= pp >>= trace
--- end
+meta def mk_app' (f arg : expr) : tactic expr :=
+do --trace f, trace arg,
+   t ← infer_type f >>= whnf,
+   mk_app_aux f t arg
+
+meta def apps (e : expr) (F : list expr) : tactic (list expr) :=
+-- lock_tactic_state $
+do l ← F.mmap $ λ f, (do r ← try_core (mk_app' e f), return r.to_list), return l.join
+ 
+axiom f : ℕ → Type
+def g (n : ℕ) {k : ℕ} (x : f k) := n
+
+set_option pp.implicit true
+example : true :=
+begin
+  do e ← to_expr ```(g),
+     f ← to_expr ```(57),
+     mk_app' e f >>= pp >>= trace
+end
 
 meta def pairwise_apps (E F : list expr) : tactic (list expr) :=
 (E.mmap $ λ e, apps e F) >>= λ l, return l.join
@@ -240,7 +255,7 @@ meta def close_under_apps_aux : list expr → list expr → tactic (list expr)
 | old new := do oldnew ← pairwise_apps old new,
                 newold ← pairwise_apps new old,
                 newnew ← pairwise_apps new new,
-                close_under_apps_aux (old ++ new) (oldnew ++ newold ++ newnew).
+                close_under_apps_aux (old ++ new) (oldnew ++ newold ++ newnew)
 
 meta def close_under_apps (E : list expr) : tactic (list expr) := close_under_apps_aux [] E
 
@@ -254,8 +269,9 @@ do names ← attribute.get_instances a,
    exprs ← names.mmap $ mk_const,
    hyps ← local_context,
    let exprs := exprs ++ hyps,
-   rules ← close_under_apps exprs,
+   rules ← close_under_apps exprs, -- TODO don't do this for everything, it's too expensive: only for specially marked lemmas
    rules ← rules.mfilter $ λ r, (do t ← infer_type r, return (is_eq_after_binders t)),
+   rules.mmap' $ λ r, (do pp_r ← pretty_print r tt, trace pp_r),
    let pairs := rules.map (λ e, (e, ff)) ++ rules.map (λ e, (e, tt)),
    rewrite_search_target pairs cfg
 
@@ -268,21 +284,21 @@ meta def search_attribute : user_attribute := {
 
 run_cmd attribute.register `search_attribute
 
--- structure cat :=
---   (O : Type)
---   (H : O → O → Type)
---   (i : Π o : O, H o o)
---   (c : Π {X Y Z : O} (f : H X Y) (g : H Y Z), H X Z)
---   (li : Π {X Y : O} (f : H X Y), c (i X) f = f)
---   (ri : Π {X Y : O} (f : H X Y), c f (i Y) = f)
---   (a : Π {W X Y Z : O} (f : H W X) (g : H X Y) (h : H Y Z), c (c f g) h = c f (c g h))
+structure cat :=
+  (O : Type)
+  (H : O → O → Type)
+  (i : Π o : O, H o o)
+  (c : Π {X Y Z : O} (f : H X Y) (g : H Y Z), H X Z)
+  (li : Π {X Y : O} (f : H X Y), c (i X) f = f)
+  (ri : Π {X Y : O} (f : H X Y), c f (i Y) = f)
+  (a : Π {W X Y Z : O} (f : H W X) (g : H X Y) (h : H Y Z), c (c f g) h = c f (c g h))
 
--- attribute [search] cat.li cat.a
+attribute [search] cat.li cat.a
 
--- private example (C : cat) (X Y Z : C.O) (f : C.H X Y) (g : C.H Y X) (w : C.c g f = C.i Y) (h k : C.H Y Z) (p : C.c f h = C.c f k) : h = k := 
--- begin
--- rewrite_search_using `search {trace := tt, trace_rules:=tt},
--- end
+private example (C : cat) (X Y Z : C.O) (f : C.H X Y) (g : C.H Y X) (w : C.c g f = C.i Y) (h k : C.H Y Z) (p : C.c f h = C.c f k) : h = k := 
+begin
+rewrite_search_using `search {trace := tt, trace_rules:=tt},
+end
 
 
 -- PROJECT cache all_rewrites_list?
