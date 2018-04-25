@@ -61,7 +61,9 @@ do
 
 open list
 
-meta def find_first_at : list node → ℕ → (option node) × list node
+/- `find_first_node_at_distance nodes k` returns the first node in `nodes` that is at distance exactly `k`, if there is one,
+   along with a list of all the other nodes, possibly with their distance bounds improved. -/
+meta def find_first_node_at_distance : list node → ℕ → (option node) × list node
 | nil k      := (none, nil)
 | (h :: t) k := if h.distance_bound = k then
                   match h.distance with
@@ -69,23 +71,23 @@ meta def find_first_at : list node → ℕ → (option node) × list node
                   | at_least _ _ _ d := 
                       match update_edit_distance h.distance with
                       | exactly _ _ k' := if k = k' then (some { h with distance := exactly _ _ k }, t) else 
-                                            match find_first_at t k with
+                                            match find_first_node_at_distance t k with
                                             | (o, l) := (o, { h with distance := exactly _ _ k' } :: l)
                                             end
                       | ed            := 
-                          match find_first_at t k with
+                          match find_first_node_at_distance t k with
                           | (o, l) := (o, { h with distance := ed } :: l)
                           end
                       end
                   end
                 else
-                  match find_first_at t k with
+                  match find_first_node_at_distance t k with
                   | (o, l) := (o, h :: l)
                   end
 
 meta def select_next_aux : list node → ℕ → option (node × (list node))
 | [] _    := none
-| nodes k := match find_first_at nodes k with
+| nodes k := match find_first_node_at_distance nodes k with
                 | (some n, r) := some (n, r)
                 | (none, r)   := select_next_aux r (k+1)
              end
