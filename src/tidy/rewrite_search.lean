@@ -199,12 +199,25 @@ meta def rewrite_search (rs: parse rw_rules) (cfg : rewrite_search_config := {})
 do rs ← rs.rules.mmap (λ r, do e ← to_expr' r.rule, pure (e, r.symm)),
    rewrite_search_target rs cfg
 
+meta def pairwise_apps (E F : list expr) : tactic (list expr) :=
+(E.mmap $ λ e, F.mmap $ λ f, try_core (to_expr ``(%%e %%f))) >>= λ A, return (A.join.map option.to_list).join
+
+meta def close_under_apps_aux : list expr → list expr → tactic (list expr) 
+| old []  := return old
+| old new := do oldnew ← pairwise_apps old new,
+                newold ← pairwise_apps new old,
+                newnew ← pairwise_apps new new,
+                close_under_apps_aux (old ++ new) (oldnew ++ newold ++ newnew).
+
+meta def close_under_apps (E : list expr) : tactic (list expr) := close_under_apps_aux [] E
+
 meta def rewrite_search_using (a : name) (cfg : rewrite_search_config := {}) : tactic string :=
 do names ← attribute.get_instances a,
    exprs ← names.mmap $ mk_const,
    hyps ← local_context,
    let exprs := exprs ++ hyps,
-   let pairs := exprs.map (λ e, (e, ff)) ++ exprs.map (λ e, (e, tt)),
+   rules ← close_under_apps exprs,
+   let pairs := rules.map (λ e, (e, ff)) ++ rules.map (λ e, (e, tt)),
    rewrite_search_target pairs cfg
 
 end tactic.interactive
