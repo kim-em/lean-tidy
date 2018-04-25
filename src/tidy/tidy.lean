@@ -51,8 +51,8 @@ meta def tidy_tactics : list (tactic string) :=
   `[apply_auto_param]                         >> pure "apply_auto_param",
   `[dsimp]                                    >> pure "dsimp",
   `[dsimp at *]                               >> pure "dsimp at *",
-  `[simp!]                                    >> pure "simp!",
-  `[simp! at *]                               >> pure "simp! at *",
+  `[simp]                                     >> pure "simp",
+  `[simp at *]                                >> pure "simp at *",
   injections_and_clear                        >> pure "injections_and_clear",
   terminal_goal >> (`[solve_by_elim `[cc]])   >> pure "solve_by_elim `[cc]",
   run_tidy_tactics
