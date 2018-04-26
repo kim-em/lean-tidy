@@ -261,7 +261,6 @@ do names ← attribute.get_instances a,
   --  rules ← close_under_apps exprs, -- TODO don't do this for everything, it's too expensive: only for specially marked lemmas
    let rules := exprs,
    rules ← rules.mfilter $ λ r, (do t ← infer_type r, return (is_eq_after_binders t)),
-  --  rules.mmap' $ λ r, (do pp_r ← pretty_print r tt, trace pp_r),
    let pairs := rules.map (λ e, (e, ff)) ++ rules.map (λ e, (e, tt)),
    rewrite_search_target pairs cfg
 

@@ -73,7 +73,7 @@ do gs ← get_goals,
    any_later_goals_core tac gs.tail [] [] ff
 
 meta def tactics_on_later_goals (tactics : list (tactic string)) :=
-tactics.map(λ t, any_later_goals t >>= λ s, pure ("tactic.focus [ " ++ ((((none :: s).map(λ o, option.get_or_else (option.map (λ m, "`[" ++ m ++ "]") o) "tactic.skip")).intersperse ", ").foldl append "") ++ "]"))
+tactics.map(λ t, any_later_goals t >>= λ s, pure ("tactic.focus [" ++ ((((none :: s).map(λ o, option.get_or_else (option.map (λ m, "`[" ++ m ++ "]") o) "tactic.skip")).intersperse ", ").foldl append "") ++ "]"))
 
 meta structure tidy_cfg extends chain_cfg :=
 ( trace_result : bool    := ff )
