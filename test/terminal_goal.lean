@@ -42,3 +42,18 @@ begin
     refl,
     refl,
 end
+
+private structure D :=
+ ( w : ℕ → Type )
+ ( x : list (w 0) )
+ 
+ private def test_terminal_goal : D :=
+ begin
+    split,
+    swap,
+    success_if_fail { terminal_goal },
+    intros,
+    success_if_fail { terminal_goal },
+    exact ℕ,
+    exact []
+ end     

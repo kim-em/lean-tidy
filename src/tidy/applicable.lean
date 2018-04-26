@@ -37,12 +37,12 @@ meta def applicable : tactic name :=
 do cs ← attribute.get_instances `applicable,
    (any_apply cs) <|> fail "no @[applicable] lemmas could be applied"
 
--- PROJECT semiapplicable could use safe tactics, such as `terminal_goal >> solve_by_elim`
 meta def semiapplicable : tactic name :=
 do cs ← attribute.get_instances `semiapplicable,
    (any_apply_no_new_goals cs) <|> fail "no @[semiapplicable] lemmas could be applied"
 
 attribute [applicable] funext
+attribute [applicable] set.ext   -- Order matters here: putting the attribute on set.ext after funext makes applicable prefer set.ext
 attribute [applicable] propext
 attribute [applicable] subtype.eq
 attribute [applicable] proof_irrel
@@ -80,4 +80,7 @@ attribute [applicable] subsingleton.elim
 @[applicable] definition decidable_true  : decidable true  := is_true  dec_trivial
 @[applicable] definition decidable_false : decidable false := is_false dec_trivial
 
-attribute [applicable] quotient.mk quotient.sound eqv_gen.rel
+attribute [applicable] quotient.mk quotient.sound
+attribute [semiapplicable] eqv_gen.rel
+
+attribute [semiapplicable] Exists.intro
