@@ -19,7 +19,7 @@ meta def lock_tactic_state {α} (t : tactic α) : tactic α
        end
 
 meta def rewrite_without_new_mvars (r : expr) (e : expr) (cfg : rewrite_cfg := {}) : tactic (expr × expr) :=
--- lock_tactic_state $ -- Sorry I don't have a MWE example, but without this natural_transformation.lean fails.
+lock_tactic_state $ -- Sorry I don't have a MWE example, but without this natural_transformation.lean fails.
 do n_before ← num_goals,
    (new_t, prf, metas) ← rewrite_core r e cfg,
    try_apply_opt_auto_param cfg.to_apply_cfg metas,
