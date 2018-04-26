@@ -273,21 +273,21 @@ meta def search_attribute : user_attribute := {
 
 run_cmd attribute.register `search_attribute
 
-structure cat :=
-  (O : Type)
-  (H : O → O → Type)
-  (i : Π o : O, H o o)
-  (c : Π {X Y Z : O} (f : H X Y) (g : H Y Z), H X Z)
-  (li : Π {X Y : O} (f : H X Y), c (i X) f = f)
-  (ri : Π {X Y : O} (f : H X Y), c f (i Y) = f)
-  (a : Π {W X Y Z : O} (f : H W X) (g : H X Y) (h : H Y Z), c (c f g) h = c f (c g h))
+-- structure cat :=
+--   (O : Type)
+--   (H : O → O → Type)
+--   (i : Π o : O, H o o)
+--   (c : Π {X Y Z : O} (f : H X Y) (g : H Y Z), H X Z)
+--   (li : Π {X Y : O} (f : H X Y), c (i X) f = f)
+--   (ri : Π {X Y : O} (f : H X Y), c f (i Y) = f)
+--   (a : Π {W X Y Z : O} (f : H W X) (g : H X Y) (h : H Y Z), c (c f g) h = c f (c g h))
 
-attribute [search] cat.li cat.a
+-- attribute [search] cat.li cat.a
 
-private example (C : cat) (X Y Z : C.O) (f : C.H X Y) (g : C.H Y X) (w : C.c g f = C.i Y) (h k : C.H Y Z) (p : C.c f h = C.c f k) : h = k := 
-begin
-rewrite_search_using `search {trace := tt, trace_rules:=tt},
-end
+-- private example (C : cat) (X Y Z : C.O) (f : C.H X Y) (g : C.H Y X) (w : C.c g f = C.i Y) (h k : C.H Y Z) (p : C.c f h = C.c f k) : h = k := 
+-- begin
+-- rewrite_search_using `search {trace := tt, trace_rules:=tt},
+-- end
 
 
 -- PROJECT cache all_rewrites_list?
