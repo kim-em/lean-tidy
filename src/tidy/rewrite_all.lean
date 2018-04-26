@@ -19,12 +19,13 @@ meta def lock_tactic_state {α} (t : tactic α) : tactic α
        end
 
 meta def rewrite_without_new_mvars (r : expr) (e : expr) (cfg : rewrite_cfg := {}) : tactic (expr × expr) :=
-lock_tactic_state $ -- Sorry I don't have a MWE example, but without this natural_transformation.lean fails.
+lock_tactic_state $ -- This makes sure that we forget everything in between rewrites; otherwise we don't correctly find everything!
 do n_before ← num_goals,
    (new_t, prf, metas) ← rewrite_core r e cfg,
    try_apply_opt_auto_param cfg.to_apply_cfg metas,
    n_after ← num_goals,
    guard (n_before = n_after),
+   prf ← instantiate_mvars prf, -- This is necessary because of the locked tactic state.
    return (new_t, prf)
 
 open tactic.interactive
@@ -77,7 +78,7 @@ meta def rewrite_F (r : expr × bool) (l : expr_lens) (e : expr) (state : list (
 do 
   -- pp_e ← pretty_print e,
   -- pp_r ← pretty_print r.1,
-  -- tactic.trace ("attempting rewrite on " ++ pp_e ++ " using " ++ pp_r),
+  -- tactic.trace ("attempting rewrite on " ++ pp_e ++ " using " ++ (if r.2 then "←" else "") ++ pp_r),
   (v, pr) ← rewrite_without_new_mvars r.1 e {symm := r.2, md := semireducible},
   -- pp_v ← pretty_print v,
   -- tactic.trace pp_v,
