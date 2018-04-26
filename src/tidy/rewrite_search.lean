@@ -235,17 +235,6 @@ do --trace f, trace arg,
 meta def apps (e : expr) (F : list expr) : tactic (list expr) :=
 -- lock_tactic_state $
 do l ← F.mmap $ λ f, (do r ← try_core (mk_app' e f), return r.to_list), return l.join
- 
-axiom f : ℕ → Type
-def g (n : ℕ) {k : ℕ} (x : f k) := n
-
-set_option pp.implicit true
-example : true :=
-begin
-  do e ← to_expr ```(g),
-     f ← to_expr ```(57),
-     mk_app' e f >>= pp >>= trace
-end
 
 meta def pairwise_apps (E F : list expr) : tactic (list expr) :=
 (E.mmap $ λ e, apps e F) >>= λ l, return l.join
