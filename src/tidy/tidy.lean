@@ -8,7 +8,6 @@ import .reducible_abstract
 import .rewrite_search
 import .injections
 import .simplify_proof
-import .solve_by_elim
 import tactic.interactive
 
 import data.list
@@ -153,3 +152,4 @@ instance subsingleton_punit : subsingleton punit :=
 begin
   tidy,
 end
+
