@@ -5,13 +5,13 @@
 import tidy.recover
 import tidy.fsplit
 
-private structure C :=
+structure C :=
  ( w : Type )
  ( x : list w )
  ( y : Type )
  ( z : prod w y )
 
- private def test_terminal_goal : C :=
+def test_terminal_goal : C :=
  begin
     fsplit,
     success_if_fail { terminal_goal },
@@ -25,12 +25,12 @@ private structure C :=
  end     
 
  -- verifying that terminal_goal correctly considers all propositional goals as terminal?
-private structure foo :=
+structure foo :=
 (x : ℕ)
 (p : x = 0)
 
 open tactic
-private lemma bar : ∃ F : foo, F = ⟨ 0, by refl ⟩ := 
+lemma bar : ∃ F : foo, F = ⟨ 0, by refl ⟩ := 
 begin
     split,
     swap,
@@ -43,11 +43,11 @@ begin
     refl,
 end
 
-private structure D :=
+structure D :=
  ( w : ℕ → Type )
  ( x : list (w 0) )
  
- private def test_terminal_goal : D :=
+def test_terminal_goal : D :=
  begin
     split,
     swap,

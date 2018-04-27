@@ -20,6 +20,10 @@ meta def terminal_goal : tactic unit :=
      other_goals.mmap' $ λ g, (do t ← infer_type g, d ← kdepends_on t current_goal,
                                   monad.whenb d $ pp t >>= λ s, fail ("This is not a terminal goal: " ++ s.to_string ++ " depends on it."))
 
+-- meta def terminal_goal : tactic unit :=
+-- do g :: gs ← get_goals,
+--    gs.for_each $ λ g', guard (¬ g.occurs g')
+
 meta def done_no_metavariables : tactic unit :=
 do done,
    mvars ← metavariables,
