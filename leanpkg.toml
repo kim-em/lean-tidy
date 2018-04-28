@@ -1,8 +1,8 @@
 [package]
 name = "lean-tidy"
 version = "0.1"
-lean_version = "master"
+lean_version = "nightly-2018-04-20"
 path = "src"
 
 [dependencies]
-mathlib = {git = "https://github.com/leanprover/mathlib", rev = "5717986f4949d4c0838b894d655bc57e3618accb"}
+mathlib = {git = "https://github.com/leanprover/mathlib", rev = "5df2ee70cfd576e6fa11359496a8a06c029151c9"}
