@@ -40,7 +40,7 @@ meta def tidy_tactics : list (tactic string) :=
 [
   force (reflexivity)                         >> pure "refl", 
   `[exact dec_trivial]                        >> pure "exact dec_trivial",
-  semiapplicable                              >>= λ n, pure ("fapply " ++ n.to_string),
+  semiapplicable                              >>= λ n, pure ("apply " ++ n.to_string ++ " ; assumption"),
   applicable                                  >>= λ n, pure ("fapply " ++ n.to_string),
   intro_at_least_one                          >> pure "intros",
   automatic_induction                         >> pure "automatic_induction",
