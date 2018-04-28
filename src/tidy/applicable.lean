@@ -21,14 +21,14 @@ run_cmd attribute.register `semiapplicable_attribute
 /- Try to apply one of the given lemmas, it succeeds if one of them succeeds. -/
 meta def any_apply : list name → tactic name
 | []      := failed
-| (c::cs) := (mk_const c >>= fapply >> pure c) <|> any_apply cs
+| (c::cs) := (mk_const c >>= apply >> pure c) <|> any_apply cs
 
 /- Try to apply one of the given lemmas, fulfilling all new goals using existing hypotheses. It succeeds if one of them succeeds. -/
 meta def any_apply_no_new_goals : list name → tactic name
 | []      := failed
 | (c::cs) := (do n ← num_goals,
                  t ← mk_const c,
-                 r ← seq (fapply t >> skip) assumption,
+                 r ← seq (apply t >> skip) assumption,
                  n' ← num_goals,
                  guard (n = n' + 1),
                  pure c) <|> any_apply_no_new_goals cs
