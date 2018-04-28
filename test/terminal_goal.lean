@@ -47,7 +47,7 @@ structure D :=
  ( w : ℕ → Type )
  ( x : list (w 0) )
  
-def test_terminal_goal : D :=
+def test_terminal_goal' : D :=
  begin
     split,
     swap,
@@ -57,3 +57,28 @@ def test_terminal_goal : D :=
     exact ℕ,
     exact []
  end     
+
+def f : unit → Type := λ _, ℕ 
+
+def test_terminal_goal'' : Σ x : unit, f x :=
+ begin
+    split,
+    terminal_goal,
+    swap,
+    terminal_goal,
+    exact (),
+    dsimp [f],
+    exact 0
+ end     
+
+def test_subsingleton_goal : 0 = 0 :=
+begin
+ subsingleton_goal,
+ refl
+end
+
+def test_subsingleton_goal' : list ℕ :=
+begin
+ success_if_fail { subsingleton_goal },
+ exact []
+end
