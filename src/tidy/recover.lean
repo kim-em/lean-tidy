@@ -31,7 +31,7 @@ do goals ← get_goals,
    let current_goal := goals.head,
    other_goals ← metavariables,
    let other_goals := other_goals.erase current_goal,
-   other_goals.mmap' $ λ g, (do t ← infer_type g, t ← instantiate_mvars t, trace t, d ← kdepends_on t current_goal,
+   other_goals.mmap' $ λ g, (do t ← infer_type g, t ← instantiate_mvars t, d ← kdepends_on t current_goal,
                                 monad.whenb d $ pp t >>= λ s, fail ("This is not a terminal goal: " ++ s.to_string ++ " depends on it."))
 
 
