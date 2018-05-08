@@ -71,21 +71,21 @@ attribute [search] cat.li cat.a
 
 private example (C : cat) (X Y Z : C.O) (f : C.H X Y) (g : C.H Y X) (w : C.c g f = C.i Y) (h k : C.H Y Z) (p : C.c f h = C.c f k) : h = k := 
 begin
-rewrite_search_using `search {trace := tt, trace_rules:=tt},
-perform_nth_rewrite [← C.li Y Z h] 0,
+-- rewrite_search_using `search {trace := tt, trace_rules:=tt}, -- not quite there, we haven't activated intense search
+perform_nth_rewrite [← @cat.li C Y Z h] 0,
 perform_nth_rewrite [← w] 0,
 perform_nth_rewrite [C.a] 0,
 perform_nth_rewrite [p] 0,
 perform_nth_rewrite [← C.a] 0,
 perform_nth_rewrite [w] 0,
-perform_nth_rewrite [C.li Y Z k] 0,
+perform_nth_rewrite [@cat.li C Y Z k] 0,
 -- PROJECT automate this!
-rw [← C.li Y Z h],
-rw [← C.li Y Z k],
-rw [← w],
-rw [C.a],
-rw [C.a],
-rw [p],
+-- rw [← C.li Y Z h],
+-- rw [← C.li Y Z k],
+-- rw [← w],
+-- rw [C.a],
+-- rw [C.a],
+-- rw [p],
 end
 
 end tidy.rewrite_search.testing
