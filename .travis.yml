@@ -1,37 +1,6 @@
-# this first block is copied from https://github.com/leanprover/lean/blob/master/.travis.yml
-
-# language: cpp
-# sudo: true
-# cache: apt
-# addons:
-#   apt:
-#     sources: &apt_sources
-#       - ubuntu-toolchain-r-test
-#       - sourceline: 'ppa:kalakris/cmake' # cmake 2.8 for precise
-#       - sourceline: 'ppa:adrozdoff/cmake' # cmake 3 for trusty
-#       - sourceline: 'ppa:h-rayflood/llvm'
-#       - sourceline: ppa:hvr/z3   # z3 for the smt interface package
-#     packages: &default_packages
-#       - cmake
-#       - libgmp-dev
-#       - libgoogle-perftools-dev
-#       - g++-4.9
-#       - clang-3.4
-
-# env:
-#        CMAKE_CXX_COMPILER=g++-4.9
-
-# install:
-#   - git clone https://github.com/leanprover/lean.git $TRAVIS_BUILD_DIR/../lean
-#   - cd $TRAVIS_BUILD_DIR/../lean && mkdir -p build/release && cd build/release && cmake -DCMAKE_CXX_COMPILER=$CMAKE_CXX_COMPILER ../../src && make
-#   - export PATH=$TRAVIS_BUILD_DIR/../lean/bin:$PATH
-#   - cd $TRAVIS_BUILD_DIR
-
 install:
-  - LEAN_VERSION="lean-3.4.1"
-  - NIGHTLY="nightly-2018-05-01"
-  - curl https://github.com/leanprover/lean-nightly/releases/download/$NIGHTLY/$LEAN_VERSION-$NIGHTLY-linux.tar.gz -L | tar xz -C ..
-  - export PATH=../$LEAN_VERSION-$NIGHTLY-linux/bin:$PATH
+  - curl https://raw.githubusercontent.com/Kha/elan/master/elan-init.sh -sSf | sh -s -- --default-toolchain none -y
+  - source ~/.elan/env
 
 script:
   - leanpkg test
