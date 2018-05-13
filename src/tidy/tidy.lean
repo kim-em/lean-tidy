@@ -56,6 +56,7 @@ meta def tidy_tactics : list (tactic string) :=
   injections_and_clear                        >> pure "injections_and_clear",
   terminal_goal >> (`[solve_by_elim `[cc]])   >> pure "solve_by_elim `[cc]",
   `[simp only [funext_simp] at *]             >> pure "simp only [funext_simp] at *",
+  `[dsimp {unfold_reducible:=tt}]             >> pure "dsimp {unfold_reducible:=tt}",
   run_tidy_tactics
 ]
 
