@@ -54,7 +54,7 @@ meta def tidy_tactics : list (tactic string) :=
   `[simp at *]                                >> pure "simp at *",
   force (fsplit)                              >> pure "fsplit", 
   injections_and_clear                        >> pure "injections_and_clear",
-  terminal_goal >> (`[solve_by_elim {discharger := cc}])  >> pure "solve_by_elim {discharger := cc}",
+  terminal_goal >> (`[solve_by_elim {discharger := `[cc]}])  >> pure "solve_by_elim {discharger := `[cc]}",
   `[simp only [funext_simp] at *]             >> pure "simp only [funext_simp] at *",
   `[dsimp {unfold_reducible:=tt}]             >> pure "dsimp {unfold_reducible:=tt}",
   run_tidy_tactics
