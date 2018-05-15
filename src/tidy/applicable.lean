@@ -23,6 +23,9 @@ meta def any_apply : list name → tactic name
 | []      := failed
 | (c::cs) := (mk_const c >>= apply >> pure c) <|> any_apply cs
 
+-- TODO
+-- meta def apply_no_new_goals := sorry
+
 /- Try to apply one of the given lemmas, fulfilling all new goals using existing hypotheses. It succeeds if one of them succeeds. -/
 meta def any_apply_no_new_goals : list name → tactic name
 | []      := failed
