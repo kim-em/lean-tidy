@@ -60,8 +60,8 @@ meta def tidy_tactics : list (tactic string) :=
   run_tidy_tactics
 ]
 
-private meta def any_later_goals_core { α : Type } (tac : tactic α) : list expr → list expr → list (option α) → bool → tactic (list (option α))
-| []        ac results progress := guard progress >> set_goals ac >> pure results.reverse
+private meta def any_later_goals_core { α : Type } (tac : tactic α) (first_goal : expr) : list expr → list expr → list (option α) → bool → tactic (list (option α))
+| []        ac results progress := guard progress >> set_goals (first_goal :: ac) >> pure results.reverse
 | (g :: gs) ac results progress :=
   do set_goals [g],
      succeeded ← try_core tac,
@@ -72,7 +72,7 @@ private meta def any_later_goals_core { α : Type } (tac : tactic α) : list exp
    tac succeeds for at least one goal. -/
 meta def any_later_goals { α : Type } (tac : tactic α ) : tactic (list (option α)) :=
 do gs ← get_goals,
-   any_later_goals_core tac gs.tail [] [] ff
+   any_later_goals_core tac gs.head gs.tail [] [] ff
 
 meta def tactics_on_later_goals (tactics : list (tactic string)) :=
 tactics.map(λ t, any_later_goals t >>= λ s, pure ("tactic.focus [" ++ ((((none :: s).map(λ o, option.get_or_else (option.map (λ m, "`[" ++ m ++ "]") o) "tactic.skip")).intersperse ", ").foldl append "") ++ "]"))
