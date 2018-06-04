@@ -38,7 +38,7 @@ open tactic
 
 -- TODO also find tactics which are never used!
 
-meta def tidy_tactics : list (tactic string) :=
+meta def default_tidy_tactics : list (tactic string) :=
 [
   force (reflexivity)                         >> pure "refl", 
   `[exact dec_trivial]                        >> pure "exact dec_trivial",
@@ -82,7 +82,7 @@ meta structure tidy_cfg extends chain_cfg :=
 ( show_hints   : bool    := ff )
 ( hints        : list ℕ  := [] )
 ( later_goals  : bool    := tt )
-( extra_tactics : list (tactic string) := [] )
+( tactics : list (tactic string) := default_tidy_tactics )
 
 private meta def number_tactics { α : Type } ( tactics : list (tactic α) ) : list ( tactic (α × ℕ) ) :=
 tactics.map₂ ( λ t, λ n, (do r ← t, pure (r, n))) (list.range tactics.length)
@@ -95,7 +95,7 @@ private meta def apply_hints { α : Type } ( tactics : list (tactic α) ) : list
                end
 
 meta def tidy ( cfg : tidy_cfg := {} ) : tactic unit :=
-let tactics := tidy_tactics ++ cfg.extra_tactics in
+let tactics := cfg.tactics in
 let tactics := tactics
                      ++ (if cfg.later_goals then tactics_on_later_goals tactics else []) in
 let numbered_tactics := number_tactics tactics in
@@ -136,14 +136,12 @@ meta def obviously_tactics : list (tactic string) :=
 ]
 
 meta def obviously : tactic unit := all_goals ( abstract ( -- TODO this is a bit gross
-  tidy { extra_tactics := obviously_tactics }
+  tidy { tactics := default_tidy_tactics ++ obviously_tactics }
 ))
 
 meta def obviously' : tactic unit := all_goals ( abstract (
-  tidy { extra_tactics := obviously_tactics, trace_result := tt }
+  tidy { tactics := default_tidy_tactics ++ obviously_tactics, trace_result := tt }
 ))
-
--- PROJECT obviously!, which uses solve_by_elim even on unsafe goals
 
 example : 1 = 1 := by obviously
 
