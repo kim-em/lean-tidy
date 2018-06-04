@@ -2,7 +2,7 @@
 -- Released under Apache 2.0 license as described in the file LICENSE.
 -- Authors: Scott Morrison
 
-import .force .applicable .congr_assumptions .fsplit .automatic_induction .tidy_attributes .intro_at_least_one
+import .force .applicable .fsplit .automatic_induction .tidy_attributes .intro_at_least_one
 import .monadic_chain
 import .reducible_abstract
 import .rewrite_search
