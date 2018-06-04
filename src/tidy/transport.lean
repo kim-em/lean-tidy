@@ -67,3 +67,21 @@ end
 
 @[simp] lemma {u} eq.rec.refl {α : Sort u} (a : α) (p : true = (a = a)): @eq.rec Prop true (λ (_x : Prop), _x) trivial (@eq α a a) p = eq.refl a := by refl
 
+
+@[simp] lemma eq.mpr.trans {α β γ: Prop} (p : α = β) (q : β = γ) (g : γ) : eq.mpr (eq.trans p q) g = eq.mpr p (eq.mpr q g) :=
+begin
+  induction p,
+  induction q,
+  refl,
+end
+
+@[simp] lemma {u} eq.mpr.propext {α : Sort u} (a : α) : eq.mpr (propext (eq_self_iff_true a)) trivial = eq.refl a :=
+begin
+  refl,
+end
+
+@[simp] lemma {u} eq.mpr.refl {α : Sort u} (a b : α) (p : a = b) : (eq.mpr (congr_fun (congr_arg eq p) b) (eq.refl b)) = p :=
+begin
+  induction p,
+  refl,
+end
