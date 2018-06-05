@@ -10,6 +10,7 @@ variable {α : Type*}
 -- Some instances allowing us to use quotient notation
 local attribute [instance] left_rel normal_subgroup.to_is_subgroup
 
+-- We now prove two lemmas about elements in normal subgroups. I haven't attempted any automation here.
 lemma quotient_group_aux  [group α] (s : set α) [normal_subgroup s] (a b : α) (h : a⁻¹ * b ∈ s) : a * b⁻¹ ∈ s :=
 begin
   rw [← inv_inv a, ← mul_inv_rev],
@@ -23,6 +24,10 @@ begin
   apply (is_subgroup.mul_mem_cancel_right s h₁).2,
   exact is_subgroup.mem_norm_comm h₂
 end
+
+-- PROJECT one could write a tactic proving "all such" lemmas as above:
+-- Given a word in α, write it as a vector in ℤ^α, and similarly write any hypotheses.
+-- Now use Smith normal form (or perhaps Hermite normal form) to determine if there are solutions to the corresponding integer Diophantine equation.
 
 -- Some 'hint' attributes for obviously.
 local attribute [reducible] setoid_has_equiv left_rel
