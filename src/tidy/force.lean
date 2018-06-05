@@ -12,6 +12,4 @@ do
   guard (goals ≠ goals') <|> fail "force tactic failed",
   return result
 
-namespace tactic.interactive
-  meta def force (t : itactic) : tactic unit := _root_.force t
-end tactic.interactive
+run_cmd add_interactive [`force]
