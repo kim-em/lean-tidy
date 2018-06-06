@@ -4,6 +4,9 @@
 
 open tactic
 
+-- This has been PR'd to mathlib; remove when it's merged.
+-- https://github.com/leanprover/mathlib/pull/125
+
 meta def metavariables : tactic (list expr) :=
 do r ← result,
    pure (r.fold [] $ λ e _ l,
