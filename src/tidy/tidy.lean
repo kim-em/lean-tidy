@@ -45,6 +45,7 @@ meta def default_tidy_tactics : list (tactic string) :=
   `[exact dec_trivial]                        >> pure "exact dec_trivial",
   semiapplicable                              >>= λ n, pure ("apply " ++ n.to_string ++ " ; assumption"),
   applicable                                  >>= λ n, pure ("apply " ++ n.to_string),
+  force `[ext]                                >> pure "ext",
   intro_at_least_one                          >> pure "intros",
   automatic_induction,
   `[apply_auto_param]                         >> pure "apply_auto_param",

@@ -23,9 +23,6 @@ meta def any_apply : list name → tactic name
 | []      := failed
 | (c::cs) := (mk_const c >>= apply >> pure c) <|> any_apply cs
 
--- TODO
--- meta def apply_no_new_goals := sorry
-
 /- Try to apply one of the given lemmas, fulfilling all new goals using existing hypotheses. It succeeds if one of them succeeds. -/
 meta def any_apply_no_new_goals : list name → tactic name
 | []      := failed
@@ -52,34 +49,26 @@ attribute [applicable] proof_irrel
 
 universes u₁ u₂
 
-@[applicable] definition empty_exfalso (x : false) : empty := begin exfalso, trivial end
-@[applicable] definition pempty_exfalso (x : false) : pempty := begin exfalso, trivial end
+@[extensionality] definition empty.ext (x : false) : empty := begin exfalso, trivial end
+@[extensionality] definition pempty.ext (x : false) : pempty := begin exfalso, trivial end
 
-@[applicable] lemma punits_equal (a b : punit.{u₁}): a = b := by induction a; induction b; refl
-@[applicable] lemma ulifts_equal {α : Type u₁} (X Y : ulift.{u₂} α) (w : X.down = Y.down) : X = Y :=
+@[extensionality] lemma punit.ext (a b : punit.{u₁}): a = b := by induction a; induction b; refl
+@[extensionality] lemma ulift.ext {α : Type u₁} (X Y : ulift.{u₂} α) (w : X.down = Y.down) : X = Y :=
 begin
-  induction X,
-  induction Y,
-  dsimp at w,
-  rw w,
+  induction X, induction Y, dsimp at w, rw w,
 end
-@[applicable] lemma sigmas_equal {α : Type u₁} (Z : α → Type u₂) (X Y : Σ a : α, Z a) (w1 : X.1 = Y.1) (w2 : @eq.rec_on _ X.1 _ _ w1 X.2 = Y.2) : X = Y :=
+@[extensionality] lemma sigma.ext {α : Type u₁} (Z : α → Type u₂) (X Y : Σ a : α, Z a) (w1 : X.1 = Y.1) (w2 : @eq.rec_on _ X.1 _ _ w1 X.2 = Y.2) : X = Y :=
 begin
-  induction X,
-  induction Y,
-  dsimp at w1,
-  dsimp at w2,
-  induction w1,
-  induction w2,
-  refl,
+  induction X, induction Y, dsimp at w1, dsimp at w2, induction w1, induction w2, refl,
 end
-@[applicable] lemma pairs_equal {α : Type u₁} {β : Type u₁} {X Y : α × β} (p1 : X.1 = Y.1) (p2 : X.2 = Y.2) : X = Y := 
+@[extensionality] lemma pair.ext {α : Type u₁} {β : Type u₁} {X Y : α × β} (p1 : X.1 = Y.1) (p2 : X.2 = Y.2) : X = Y := 
 begin
   induction X, induction Y, dsimp at *, rw p1, rw p2,
 end
 
-attribute [applicable] subsingleton.elim
+attribute [extensionality] subsingleton.elim
 
+-- TODO should `apply_instance` be in tidy? If so, these shouldn't be needed.
 @[applicable] definition decidable_true  : decidable true  := is_true  dec_trivial
 @[applicable] definition decidable_false : decidable false := is_false dec_trivial
 
