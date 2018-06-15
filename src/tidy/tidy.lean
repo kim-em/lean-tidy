@@ -3,7 +3,8 @@
 -- Authors: Scott Morrison
 
 import .force .applicable .fsplit .automatic_induction .tidy_attributes .intro_at_least_one
-import .monadic_chain
+import .chain
+import .recover
 import .reducible_abstract
 import .rewrite_search
 import .injections
@@ -107,8 +108,8 @@ do
                      if ¬ r then
                       /- hints were broken ... -/     
                         do
-                          interaction_monad.trace "hints for 'tidy' tactic were invalid!",
-                          interaction_monad.failed -- this will be trapped a moment later
+                          trace "hints for 'tidy' tactic were invalid!",
+                          failed -- this will be trapped a moment later
                      else
                         pure ff
                 else
@@ -119,12 +120,12 @@ do
       try tactic.interactive.resetI,
       if cfg.show_hints ∨ ¬ cfg.hints.empty then
         let hints := results.map (λ p, p.2) in
-        interaction_monad.trace ("tidy {hints:=" ++ hints.to_string ++ "}")
+        trace ("tidy {hints:=" ++ hints.to_string ++ "}")
       else 
         tactic.skip,
       if cfg.trace_result then
         let result_strings := results.map (λ p, p.1) in
-        interaction_monad.trace ("---\n" ++ (",\n".intercalate result_strings) ++ "\n---")
+        trace ("---\n" ++ (",\n".intercalate result_strings) ++ "\n---")
       else
         tactic.skip
    else

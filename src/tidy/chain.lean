@@ -2,8 +2,6 @@
 -- Released under Apache 2.0 license as described in the file LICENSE.
 -- Authors: Scott Morrison
 
--- this is a fancy version of chain.lean, but not particularly necessary
-
 import .if_then_else
 import .recover
 
