@@ -9,6 +9,7 @@ import .reducible_abstract
 import .rewrite_search
 import .injections
 import .simplify_proof
+import .if_then_else
 import tactic.interactive
 
 import data.list
@@ -23,7 +24,6 @@ attribute [ematch] subtype.property
 meta def dsimp' := `[dsimp {unfold_reducible := tt, md := semireducible}]
 meta def dsimp_all' := `[dsimp at * {unfold_reducible := tt, md := semireducible}]
 
--- Perhaps there's a better way to manage this, but for now it's just a [simp] lemma.
 lemma funext_simp {α : Type u} {Z : α → Type v} {f g : Π a : α, Z a} : (f = g) = ∀ a : α, f a = g a :=
 begin
   apply propext,
@@ -97,8 +97,7 @@ private meta def apply_hints { α : Type } ( tactics : list (tactic α) ) : list
 
 meta def tidy ( cfg : tidy_cfg := {} ) : tactic unit :=
 let tactics := cfg.tactics in
-let tactics := tactics
-                     ++ (if cfg.later_goals then tactics_on_later_goals tactics else []) in
+let tactics := tactics ++ (if cfg.later_goals then tactics_on_later_goals tactics else []) in
 let numbered_tactics := number_tactics tactics in
 do
    /- first apply hints -/
@@ -116,7 +115,7 @@ do
                   pure tt) <|> pure tt,
    if continue then               
     do
-      results ← chain numbered_tactics cfg.to_chain_cfg,
+      results ← chain cfg.to_chain_cfg numbered_tactics,
       try tactic.interactive.resetI,
       if cfg.show_hints ∨ ¬ cfg.hints.empty then
         let hints := results.map (λ p, p.2) in
@@ -146,12 +145,5 @@ meta def obviously' : tactic unit := all_goals ( abstract (
 
 example : 1 = 1 := by obviously
 
-instance subsingleton_pempty : subsingleton pempty :=
-begin
-  tidy,
-end
-instance subsingleton_punit : subsingleton punit :=
-begin
-  tidy,
-end
-
+instance subsingleton_pempty : subsingleton pempty := by tidy
+instance subsingleton_punit  : subsingleton punit  := by tidy
