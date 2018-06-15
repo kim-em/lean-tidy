@@ -8,6 +8,7 @@ import .pretty_print
 
 open tactic
 
+/- Attempts to apply `cases` or `induction` if it seems reasonable to do so. -/
 meta def automatic_induction_at (h : expr) : tactic string :=
 do
 t' ← infer_type h,
