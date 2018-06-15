@@ -44,7 +44,7 @@ do
 meta def trace_output { α : Type } [ has_to_format α ] ( t : tactic α ) : tactic α :=
 do r ← t,
    name ← decl_name,
-   trace format!"chain succeeded during elaboration of {name} with result: {r}",
+   trace format!"chain successfully applied a tactic during elaboration of {name} with result: {r}",
    pure r
 
 private meta def chain_handle_trace
