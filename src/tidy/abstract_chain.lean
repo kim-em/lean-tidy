@@ -1,6 +1,7 @@
 import .chain
 import .repeat_at_least_once
 import .recover
+import .fsplit
 
 open tactic
 
@@ -102,6 +103,7 @@ do gs ← get_goals,
    | _ := do r ← instantiate_mvars m,
              unify r gs.head
    end,
+   result >>= trace,
    return as.join
 
 meta def abstract_chain_core (cfg : chain_cfg) (tactics : list (tactic α)) : tactic (list α) := 
@@ -128,17 +130,36 @@ do sequence ← abstract_chain_handle_trace cfg tactics,
 instance : has_focus unit :=
 { work_on_goal := λ _ _, unit.star}
 
-lemma F : 1 = 1 ∧ 2 = 2:=
+def F : 1 = 1 ∧ 2 = 2:=
 begin
   abstract_chain {trace_steps:=tt} [`[refl], `[split]],
 end
 
 #print F
+#print F._aux_3
 
-lemma G : ℕ × ℕ :=
+def G : ℕ × ℕ :=
 begin
   abstract_chain {trace_steps:=tt} [`[split]],
   abstract_chain {trace_steps:=tt} [`[exact 0]],
 end
 
 #print G
+#print G._aux_1
+
+open tactic
+
+structure C :=
+(a : ℕ)
+(b : a > 0)
+(c : array a ℕ)
+
+def H : C :=
+begin
+abstract foo { split, rotate 2, exact 1, abstract { exact dec_trivial }, split, abstract bar { intros, exact 0 } }
+end
+
+set_option pp.proofs true
+#print H   -- theorem H : C := {a := 1, b := of_as_true trivial, c := {data := λ (i : fin 1), 0}}
+#print H.foo -- 'unknown identifier foo'
+#print H.bar -- 'unknown identifier bar'
