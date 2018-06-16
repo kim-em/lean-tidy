@@ -7,40 +7,26 @@ import tidy.tidy
 open nat
 
 def odd : ℕ → ℕ := λ i, 2 * i + 1
-def square : ℕ → ℕ := λ i, i ^ 2
+def square : ℕ → ℕ := λ i, i * i
 @[ematch] theorem odd_square_inductive_step (d : ℕ) :
-  square d + odd d = square (succ d) :=
-begin dsimp [square, odd], rw [succ_eq_add_one], ring, end
+   odd d + square d = square (d+1) :=
+begin dsimp [square, odd], ring, end
 
 namespace def1
 
 definition my_sum_to_n (summand : ℕ → ℕ) : ℕ → ℕ
-| 0 := 0
-| (succ n) := my_sum_to_n n + summand n
+| 0     := 0
+| (n+1) := my_sum_to_n n + summand n
 
-theorem my_zero_theorem (summand : ℕ → ℕ) :
-  my_sum_to_n summand 0 = 0 :=
-rfl
-
-theorem my_successor_theorem (summand : ℕ → ℕ) (n : ℕ) :
-  my_sum_to_n summand (succ n) = my_sum_to_n summand n + summand n :=
+-- TODO do we really need this? Can we write a tactic that unfolds a definition if it matches a case?
+@[simp] theorem my_successor_theorem (summand : ℕ → ℕ) (n : ℕ) :
+  my_sum_to_n summand (n+1) = my_sum_to_n summand n + summand n :=
 by obviously
 
-structure S :=
-   (f : ℕ → ℕ)
-
-definition s : S := {
-  f := λ n, n + 1
-}
-
-example (n m : ℕ) : s.f n = m :=
-begin
-  dsimp {unfold_reducible:=tt, md:=semireducible},
-end
-
+-- FIXME can't use obviously here: `abstract` causes problems.
 theorem my_odd_square_theorem : ∀ (n : ℕ), my_sum_to_n odd n = square n
-| 0        := rfl
-| (succ n) := begin unfold my_sum_to_n, simp!, dsimp_all',/-tidy{trace_result:=tt},-/ rw [my_odd_square_theorem n], exact odd_square_inductive_step n, end
+| 0     := rfl
+| (n+1) := begin tidy { tactics := default_tidy_tactics ++ obviously_tactics, trace_result:=tt } end
 
 end def1
 
@@ -59,7 +45,7 @@ by unfold my_sum_to_n; simp [list.range_concat]
 
 theorem my_odd_square_theorem : ∀ (n : ℕ), my_sum_to_n odd n = square n
 | 0        := rfl
-| (succ n) := by rw [my_successor_theorem, my_odd_square_theorem n]; exact odd_square_inductive_step n
+| (succ n) := by rw [my_successor_theorem, my_odd_square_theorem n]; simp; exact odd_square_inductive_step n
 
 end def2
 
@@ -78,7 +64,7 @@ by unfold my_sum_to_n; simp
 
 theorem my_odd_square_theorem : ∀ (n : ℕ), my_sum_to_n odd n = square n
 | 0        := rfl
-| (succ n) := by rw [my_successor_theorem, my_odd_square_theorem n]; exact odd_square_inductive_step n
+| (succ n) := by rw [my_successor_theorem, my_odd_square_theorem n]; simp; exact odd_square_inductive_step n
 
 end def3
 
@@ -111,7 +97,7 @@ rw [← chris _ _ _ (λ _, rfl), ← chris _ _ _ (λ _, rfl)]; simp
 
 theorem my_odd_square_theorem : ∀ (n : ℕ), my_sum_to_n odd n = square n
 | 0        := rfl
-| (succ n) := by rw [my_successor_theorem, my_odd_square_theorem n]; exact odd_square_inductive_step n
+| (succ n) := by rw [my_successor_theorem, my_odd_square_theorem n]; simp; exact odd_square_inductive_step n
 
 end def4
 

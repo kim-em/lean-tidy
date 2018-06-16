@@ -2,9 +2,7 @@
 -- Released under Apache 2.0 license as described in the file LICENSE.
 -- Authors: Scott Morrison
 
-import .pempty
 import .at_least_one 
-import .pretty_print
 
 open tactic
 
@@ -13,12 +11,18 @@ meta def automatic_induction_at (h : expr) : tactic string :=
 do
 t' ← infer_type h,
 t' ← whnf t',
+(do
+   n ← num_goals,
+   cases h,
+   n' ← num_goals,
+   guard (n' < n),
+   pp ← pp h, 
+   return ("cases " ++ pp.to_string)
+) <|>
+(do
 let use_cases := match t' with
 | `(unit)      := tt
 | `(punit)     := tt
-| `(false)     := tt
-| `(empty)     := tt
-| `(pempty)    := tt
 | `(ulift _)   := tt
 | `(plift _)   := tt
 | `(prod _ _)  := tt
@@ -30,13 +34,14 @@ let use_cases := match t' with
 | _            := ff
 end,
 if use_cases then
-  do cases h, pp ← pretty_print h, return ("cases " ++ pp)
+  do cases h, pp ← pp h, return ("cases " ++ pp.to_string)
 else
   match t' with
-  | `(eq _ _)        := do induction h, pp ← pretty_print h, return ("induction " ++ pp)
-  | `(quot _)        := do induction h, pp ← pretty_print h, return ("induction " ++ pp)
+  | `(eq _ _)        := do induction h, pp ← pp h, return ("induction " ++ pp.to_string)
+  | `(quot _)        := do induction h, pp ← pp h, return ("induction " ++ pp.to_string)
   | _                := failed
   end
+)
 
 /- Applies `cases` or `induction` fairly aggressively on hypotheses. -/
 meta def automatic_induction : tactic string :=

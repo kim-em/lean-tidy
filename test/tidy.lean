@@ -23,7 +23,7 @@ begin
 end
 def tidy_test_2 (a : string): ∀ x : unit, x = unit.star := 
 begin
-  tidy {hints := [4,1]}
+  tidy {hints := [5,1]}
 end
 def tidy_test_3 (a : string): ∀ x : unit, x = unit.star := 
 begin
