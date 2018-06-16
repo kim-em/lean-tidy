@@ -14,9 +14,8 @@ meta def simplify_proof {α} (tac : tactic α) : tactic α :=
     pure (a, g, dr) in
 match tac1 s with
 | result.success (a, g, r) s' := match (result >>= unify r >> set_goals g >> pp r >>= trace >> pure a) s with
-  | result.success a s := result.success a s
+  | result.success a s'' := result.success a s''
   | result.exception msg _ _ := result.success a s' -- if unification fails for some reason, just discard the simplification
   end
 | result.exception msg e s' := result.exception msg e s'
 end
-
