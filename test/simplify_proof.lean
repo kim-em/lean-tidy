@@ -10,7 +10,7 @@ structure P :=
 
 set_option pp.proofs true
 
-lemma g : P :=
+def g : P :=
 begin
 simplify_proof split,
 simplify_proof intros,
