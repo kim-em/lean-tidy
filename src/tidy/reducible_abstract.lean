@@ -11,7 +11,7 @@ namespace tactic
 private meta def mk_aux_decl_name : option name → tactic name
 | none          := new_aux_decl_name
 | (some suffix) := do p ← decl_name, return $ p ++ suffix
-
+#check abstract
 -- this is the same as `abstract`, but if it is not a proposition we mark it reducible
 meta def reducible_abstract (tac : tactic unit) (suffix : option name := none) (zeta_reduce := tt) : tactic unit :=
 do fail_if_no_goals,

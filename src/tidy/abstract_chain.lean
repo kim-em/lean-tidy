@@ -1,20 +1,18 @@
 import .chain
 import .repeat_at_least_once
+import .recover
 
 open tactic
 
+inductive tactic_descriptor (α : Type)
+| skip {} : tactic_descriptor
+| and_then (a : α) (t : tactic_descriptor) : tactic_descriptor
+| focus (n : ℕ) (t : tactic_descriptor) : tactic_descriptor
+
 variable {α : Type}
 
--- meta def focus_i (i : nat) (t : tactic α) : tactic α :=
--- do goals ← get_goals,
---    earlier_goals ← return (goals.take i),
---    later_goals ← return (goals.drop (i+1)),
---    some goal ← return (goals.nth i),
---    set_goals [goal],
---    r ← t,
---    new_goals ← get_goals,
---    set_goals (earlier_goals ++ new_goals ++ later_goals),
---    pure r
+class has_focus (α : Type) :=
+(work_on_goal : ℕ → list α → α)
 
 meta def prepend_goal (g : expr) : tactic unit :=
 do goals ← get_goals,
@@ -40,15 +38,41 @@ meta def some_goal (t : tactic α) : tactic (ℕ × α) :=
 do goals ← get_goals,
    some_goal_aux t 0 goals
 
+variable (single_goal_tactic : tactic (list α))
+variable [has_focus α]
+
 /-
 We repeatedly apply `abstract_chain_single_goal` to the first goal on which it succeeds.
 -/
-meta def abstract_chain_multiple_goals (cfg : chain_cfg) (single_goal_tactic : list (tactic α) → tactic (list α)) (tactics : list (tactic α)) : tactic (list (ℕ × α)) :=
-do r ← repeat_at_least_once (some_goal (single_goal_tactic tactics)),
-   -- FIXME work out return values
-   return []
-    
+meta def abstract_chain_multiple_goals : tactic (list α) :=
+do (p, q) ← repeat_at_least_once (some_goal single_goal_tactic),
+   return ((p :: q).map $ λ x, has_focus.work_on_goal x.1 x.2)
 
+variable (abstraction : tactic unit)
+
+meta def abstract_chain_single_goal_aux (tactics : list (tactic α)) : tactic (list α) :=
+do ng ← num_goals,
+   match ng with
+   | 0 := fail "no goals left"
+   | 1 := first tactics >>= λ a, return [a]
+   | _ := abstract_chain_multiple_goals single_goal_tactic
+   end
+
+private meta def mk_aux_decl_name : option name → tactic name
+| none          := new_aux_decl_name
+| (some suffix) := do p ← decl_name, return $ p ++ suffix
+
+meta def close_goal_with_declaration (goal : expr) (type : expr) (metavar : expr) (is_lemma : bool) : tactic unit :=
+do set_goals [goal],
+   val ← instantiate_mvars metavar >>= zeta,
+   c   ← mk_aux_decl_name none,
+   e   ← add_aux_decl c type val is_lemma,
+   trace format!"closing goal using {e}",
+   if ¬ is_lemma then 
+     set_basic_attribute `reducible c tt
+   else
+     tactic.skip,
+   exact e
 /-
 This tactic requires that we start with a single goal.
 We first make a synthetic copy of the goal, as a new metavariable.
@@ -63,14 +87,30 @@ We then follow these steps:
    Without making any declaration (?), we unify the partial solution we've found to the synthetic goal with the original goal,
    and return.
 -/
-meta def abstract_chain_single_goal (cfg : chain_cfg) (tactics : list (tactic α)) : tactic (list α) := sorry
+meta def abstract_chain_single_goal (cfg : chain_cfg) (tactics : list (tactic α)) : tactic (list α) :=
+do gs ← get_goals,
+   guard (gs.length = 1),
+   type ← target >>= zeta,
+   is_lemma ← is_prop type,
+   m ← mk_meta_var type,
+   set_goals [m],
+   as ← repeat_with_results (abstract_chain_single_goal_aux abstract_chain_single_goal tactics),
+   guard (as.length > 0),
+   ng ← num_goals,
+   match ng with
+   | 0 := close_goal_with_declaration gs.head type m is_lemma
+   | _ := do r ← instantiate_mvars m,
+             unify r gs.head
+   end,
+   return as.join
 
-
-/-
--- We begin with some list of goals.
--- 
--/
-meta def abstract_chain_core (cfg : chain_cfg) (tactics : list (tactic α)) : tactic (list α) := sorry
+meta def abstract_chain_core (cfg : chain_cfg) (tactics : list (tactic α)) : tactic (list α) := 
+do ng ← num_goals,
+   match ng with
+   | 0 := fail "no goals!"
+   | 1 := abstract_chain_single_goal cfg tactics
+   | _ := abstract_chain_multiple_goals (abstract_chain_single_goal cfg tactics)
+   end
 
 variable [has_to_format α]
 
@@ -84,3 +124,21 @@ meta def abstract_chain (cfg : chain_cfg) (tactics : list (tactic α)) : tactic 
 do sequence ← abstract_chain_handle_trace cfg tactics,
    guard (sequence.length > 0) <|> fail "chain tactic made no progress",
    pure sequence.reverse
+
+instance : has_focus unit :=
+{ work_on_goal := λ _ _, unit.star}
+
+lemma F : 1 = 1 ∧ 2 = 2:=
+begin
+  abstract_chain {trace_steps:=tt} [`[refl], `[split]],
+end
+
+#print F
+
+lemma G : ℕ × ℕ :=
+begin
+  abstract_chain {trace_steps:=tt} [`[split]],
+  abstract_chain {trace_steps:=tt} [`[exact 0]],
+end
+
+#print G
