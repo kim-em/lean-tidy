@@ -5,11 +5,6 @@ import .fsplit
 
 open tactic
 
-inductive tactic_descriptor (α : Type)
-| skip {} : tactic_descriptor
-| and_then (a : α) (t : tactic_descriptor) : tactic_descriptor
-| focus (n : ℕ) (t : tactic_descriptor) : tactic_descriptor
-
 variable {α : Type}
 
 class has_focus (α : Type) :=
@@ -68,7 +63,7 @@ do set_goals [goal],
    val ← instantiate_mvars metavar >>= zeta,
    c   ← mk_aux_decl_name none,
    e   ← add_aux_decl c type val is_lemma,
-   trace format!"closing goal using {e}",
+  --  trace format!"closing goal using {e}",
    if ¬ is_lemma then 
      set_basic_attribute `reducible c tt
    else
@@ -83,10 +78,35 @@ We then follow these steps:
    the result for the synthetic goal, and then close the original goal using that, and return. (Like `abstract`.)
 2) Check how many goals remain:
 2a) If there is just a single goal, attempt to execute a tactic from the list, and if this succeeds return to 1).
-2b) If there are multiple goals, run `abstract_chain_multiple_goals`, and if this succeeds return to 1).
+2b) If there are multiple goals, run `abstract_chain_multiple_goals` 
+    (which will recursively call back into this function, making a new synthetic copy of each goal), 
+    and if this succeeds return to 1).
 3) At this point, we have one or more goals, which we can't make any further progress on.
-   Without making any declaration (?), we unify the partial solution we've found to the synthetic goal with the original goal,
+   Without making any declaration (TODO: should we make a declaration with parameters?), we unify the partial solution we've found to the synthetic goal with the original goal,
    and return.
+-/
+/-
+All this effort pays off --- here's some timing data:
+
+old chain (did not automatically abstract intermediate results)
+cumulative profiling times:
+	compilation 396ms
+	decl post-processing 6.77ms
+	elaboration 51.6s
+	elaboration: tactic compilation 140ms
+	elaboration: tactic execution 16.8s
+	parsing 234ms
+	type checking 20.5ms
+
+new chain:
+cumulative profiling times:
+	compilation 377ms
+	decl post-processing 7.26ms
+	elaboration 14.1s
+	elaboration: tactic compilation 135ms
+	elaboration: tactic execution 9.57s
+	parsing 231ms
+	type checking 19.9ms
 -/
 meta def abstract_chain_single_goal (cfg : chain_cfg) (tactics : list (tactic α)) : tactic (list α) :=
 do gs ← get_goals,
@@ -103,7 +123,6 @@ do gs ← get_goals,
    | _ := do r ← instantiate_mvars m,
              unify r gs.head
    end,
-   result >>= trace,
    return as.join
 
 meta def abstract_chain_core (cfg : chain_cfg) (tactics : list (tactic α)) : tactic (list α) := 
@@ -129,6 +148,9 @@ do sequence ← abstract_chain_handle_trace cfg tactics,
 
 instance : has_focus unit :=
 { work_on_goal := λ _ _, unit.star}
+
+instance has_focus_fallback {α} [inhabited α] : has_focus α :=
+{ work_on_goal := λ _ as, as.head }
 
 def F : 1 = 1 ∧ 2 = 2:=
 begin

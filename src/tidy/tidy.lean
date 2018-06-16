@@ -3,7 +3,7 @@
 -- Authors: Scott Morrison
 
 import .force .applicable .fsplit .automatic_induction .tidy_attributes .intro_at_least_one
-import .chain
+import .chain .abstract_chain
 import .recover
 import .reducible_abstract
 import .rewrite_search
@@ -116,7 +116,7 @@ do
                   pure tt) <|> pure tt,
    if continue then               
     do
-      results ← chain cfg.to_chain_cfg numbered_tactics,
+      results ← abstract_chain cfg.to_chain_cfg numbered_tactics,
       try tactic.interactive.resetI,
       if cfg.show_hints ∨ ¬ cfg.hints.empty then
         let hints := results.map (λ p, p.2) in
