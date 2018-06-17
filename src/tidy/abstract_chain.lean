@@ -155,5 +155,9 @@ do sequence ← abstract_chain_handle_trace cfg tactics,
 instance : has_focus unit :=
 { work_on_goal := λ _ _, unit.star}
 
+instance : has_focus string :=
+{ work_on_goal := λ n ts, 
+   "work_on_goal " ++ (to_string n) ++ " {\n  " ++ ((ts.intersperse ",\n  ").foldl append "") ++ "\n}" }
+
 instance has_focus_fallback {α} [inhabited α] : has_focus α :=
 { work_on_goal := λ _ as, as.head }
