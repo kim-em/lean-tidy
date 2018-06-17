@@ -60,7 +60,7 @@ private meta def mk_aux_decl_name : option name → tactic name
 
 meta def close_goal_with_declaration (goal : expr) (type : expr) (metavar : expr) (is_lemma : bool) : tactic unit :=
 do set_goals [goal],
-   val ← instantiate_mvars metavar >>= zeta,
+   val ← instantiate_mvars metavar,
    c   ← mk_aux_decl_name none,
    e   ← add_aux_decl c type val is_lemma,
   --  trace format!"closing goal using {e}",
@@ -68,7 +68,8 @@ do set_goals [goal],
      set_basic_attribute `reducible c tt
    else
      tactic.skip,
-   exact e
+   exact e,
+   append_goals e.metavariables
 /-
 This tactic requires that we start with a single goal.
 We first make a synthetic copy of the goal, as a new metavariable.
@@ -121,7 +122,12 @@ do gs ← get_goals,
    match ng with
    | 0 := close_goal_with_declaration gs.head type m is_lemma
    | _ := do r ← instantiate_mvars m,
-             unify r gs.head
+             -- We attempt to report our partial answer using unification.
+             unify r gs.head <|>
+             -- but sometimes that fails, while exact does the job:
+             (do set_goals gs,
+                 exact r,
+                 append_goals r.metavariables)
    end,
    return as.join
 
@@ -151,37 +157,3 @@ instance : has_focus unit :=
 
 instance has_focus_fallback {α} [inhabited α] : has_focus α :=
 { work_on_goal := λ _ as, as.head }
-
-def F : 1 = 1 ∧ 2 = 2:=
-begin
-  abstract_chain {trace_steps:=tt} [`[refl], `[split]],
-end
-
-#print F
-#print F._aux_3
-
-def G : ℕ × ℕ :=
-begin
-  abstract_chain {trace_steps:=tt} [`[split]],
-  abstract_chain {trace_steps:=tt} [`[exact 0]],
-end
-
-#print G
-#print G._aux_1
-
-open tactic
-
-structure C :=
-(a : ℕ)
-(b : a > 0)
-(c : array a ℕ)
-
-def H : C :=
-begin
-abstract foo { split, rotate 2, exact 1, abstract { exact dec_trivial }, split, abstract bar { intros, exact 0 } }
-end
-
-set_option pp.proofs true
-#print H   -- theorem H : C := {a := 1, b := of_as_true trivial, c := {data := λ (i : fin 1), 0}}
-#print H.foo -- 'unknown identifier foo'
-#print H.bar -- 'unknown identifier bar'

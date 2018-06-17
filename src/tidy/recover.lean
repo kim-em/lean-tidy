@@ -7,13 +7,16 @@ open tactic
 -- This has been PR'd to mathlib; remove when it's merged.
 -- https://github.com/leanprover/mathlib/pull/125
 
+meta def expr.metavariables (r : expr) : list expr := 
+r.fold [] $ λ e _ l,
+  match e with
+  | expr.mvar _ _ _ := insert e l
+  | _ := l
+  end
+
 meta def metavariables : tactic (list expr) :=
 do r ← result,
-   pure (r.fold [] $ λ e _ l,
-     match e with
-     | expr.mvar _ _ _ := insert e l
-     | _ := l
-     end)
+   pure r.metavariables
 
 meta def propositional_goal : tactic unit :=
 do goals ← get_goals,
