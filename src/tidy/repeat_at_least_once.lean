@@ -9,13 +9,13 @@ variable {α : Type}
 private meta def repeat_with_results_aux (t : tactic α) : list α → tactic (list α)
 | L := do r ← try_core t,
           match r with
-          | none := return L.reverse
+          | none := return L
           | (some r) := repeat_with_results_aux (r :: L)
           end
 
 meta def repeat_with_results (t : tactic α) : tactic (list α) := repeat_with_results_aux t []
 
-meta def repeat_at_least_once ( t : tactic α ) : tactic (α × list α) :=
+meta def repeat_at_least_once (t : tactic α) : tactic (α × list α) :=
 do r ← t,
    L ← repeat_with_results t,
    return (r, L)
