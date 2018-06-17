@@ -157,7 +157,7 @@ instance : has_focus unit :=
 
 instance : has_focus string :=
 { work_on_goal := λ n ts, 
-   "work_on_goal " ++ (to_string n) ++ " {\n  " ++ ((ts.intersperse ",\n  ").foldl append "") ++ "\n}" }
+   "work_on_goal " ++ (to_string n) ++ " {\n  " ++ (",\n  ".intercalate ts) ++ "\n}" }
 
 instance has_focus_fallback {α} [inhabited α] : has_focus α :=
 { work_on_goal := λ _ as, as.head }
