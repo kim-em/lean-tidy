@@ -1,40 +1,33 @@
--- Copyright (c) 2017 Scott Morrison. All rights reserved.
--- Released under Apache 2.0 license as described in the file LICENSE.
--- Authors: Scott Morrison
+import tidy.chain
 
-import tidy.monadic_chain
+def F : 1 = 1 ∧ 2 = 2 :=
+begin
+  chain {trace_steps:=tt} [`[refl], `[split]],
+end
+
+#print F
+#print F._aux_3
+
+def G : ℕ × ℕ :=
+begin
+  chain {trace_steps:=tt} [`[split]],
+  chain {trace_steps:=tt} [`[exact 0]],
+end
+
+#print G
+#print G._aux_1
 
 open tactic
 
-namespace tidy.test
+structure C :=
+(a : ℕ)
+(b : a > 0)
+(c : array a ℕ)
 
-meta def interactive_simp := `[simp]
-
-def chain_test_simp_succeeded : 1 = 1 :=
+def H : C :=
 begin
-  chain [ interactive_simp ]
+abstract foo { split, rotate 2, exact 1, abstract { exact dec_trivial }, split, abstract bar { intros, exact 0 } }
 end
 
-def chain_test_without_loop_detection_skip_does_nothing : 1 = 1 :=
-begin
-  success_if_fail { chain [ skip ] { fail_on_loop := ff, fail_on_max_steps := tt } }, -- fails because 'chain iteration limit exceeded'
-  refl
-end
-
-def chain_test_without_loop_detection_skip_does_nothing' : 1 = 1 :=
-begin
-  success_if_fail { chain [ skip, interactive_simp ] { fail_on_loop := ff, fail_on_max_steps := tt } }, -- fails because 'chain iteration limit exceeded'
-  refl
-end
-
-def chain_test_loop_detection : 1 = 1 :=
-begin
-  chain [ skip, interactive_simp ] { fail_on_loop := tt } 
-end
-
-def chain_test_loop_detection' : 1 = 1 :=
-begin
-  chain [ skip, interactive_simp ] { fail_on_loop := tt, allowed_collisions := 5, trace_steps := tt }
-end
-
-end tidy.test
+set_option pp.proofs true
+#print H   -- def H : C := H.foo

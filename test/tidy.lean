@@ -19,15 +19,11 @@ begin
 end
 def tidy_test_1 (a : string): ∀ x : unit, x = unit.star := 
 begin
-  tidy {show_hints := tt}
+  tidy
 end
 def tidy_test_2 (a : string): ∀ x : unit, x = unit.star := 
 begin
-  tidy {hints := [5,1]}
-end
-def tidy_test_3 (a : string): ∀ x : unit, x = unit.star := 
-begin
-  tidy {trace_steps:=tt}
+  tidy {trace_steps:=tt, trace_result:=tt}
 end
 
 end tidy.test
