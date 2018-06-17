@@ -3,12 +3,10 @@
 -- Authors: Scott Morrison
 
 import .force .applicable .fsplit .automatic_induction .tidy_attributes .intro_at_least_one
-import .abstract_chain
+import .chain
 import .recover
-import .reducible_abstract
 import .rewrite_search
 import .injections
-import .simplify_proof
 import .if_then_else
 import tactic.interactive
 
