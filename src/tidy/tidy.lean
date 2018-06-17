@@ -80,13 +80,9 @@ meta def obviously_tactics : list (tactic string) :=
   tactic.interactive.rewrite_search_using `ematch -- TODO should switch this back to search eventually
 ]
 
-meta def obviously : tactic unit := all_goals ( abstract ( -- TODO this is a bit gross
-  tidy { tactics := default_tidy_tactics ++ obviously_tactics }
-))
+meta def obviously : tactic unit := tidy { tactics := default_tidy_tactics ++ obviously_tactics }
 
-meta def obviously' : tactic unit := all_goals ( abstract (
-  tidy { tactics := default_tidy_tactics ++ obviously_tactics, trace_result := tt }
-))
+meta def obviously' : tactic unit := tidy { tactics := default_tidy_tactics ++ obviously_tactics, trace_result := tt }
 
 example : 1 = 1 := by obviously
 
