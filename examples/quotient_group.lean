@@ -24,6 +24,10 @@ begin
   apply (is_subgroup.mul_mem_cancel_right s h₁).2,
   exact is_subgroup.mem_norm_comm h₂
 end
+lemma quotient_group_aux'' [group α] (s : set α) [normal_subgroup s] (a b c d : α) (h₁ : a * b ∈ s) (h₂ : c * d ∈ s) : c * a * (b * d) ∈ s :=
+begin
+sorry
+end
 
 -- PROJECT one could write a tactic proving "all such" lemmas as above:
 -- Given a word in α, write it as a vector in ℤ^α, and similarly write any hypotheses.
@@ -32,7 +36,7 @@ end
 -- Some 'hint' attributes for obviously.
 local attribute [reducible] setoid_has_equiv left_rel
 local attribute [applicable] is_submonoid.one_mem  -- `applicable` means the lemma should be applied whenever relevant
-local attribute [semiapplicable] quotient_group_aux quotient_group_aux' -- `semiapplicable` means the lemma should be applied if all its hypotheses can be satisfied from the context
+local attribute [semiapplicable] quotient_group_aux quotient_group_aux' quotient_group_aux'' -- `semiapplicable` means the lemma should be applied if all its hypotheses can be satisfied from the context
 local attribute [simp] mul_assoc
 
 instance quotient_group' [group α] (s : set α) [normal_subgroup s] : group (left_cosets s) :=

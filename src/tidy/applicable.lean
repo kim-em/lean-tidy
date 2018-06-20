@@ -10,18 +10,25 @@ meta def applicable_attribute : user_attribute := {
   name := `applicable,
   descr := "A lemma that should be applied to a goal whenever possible."
 }
-meta def semiapplicable_attribute : user_attribute := {
-  name := `semiapplicable,
-  descr := "A lemma that should be applied to a goal whenever possible, as long as it create no new goals."
-}
 
 run_cmd attribute.register `applicable_attribute
-run_cmd attribute.register `semiapplicable_attribute
 
 /- Try to apply one of the given lemmas, it succeeds if one of them succeeds. -/
 meta def any_apply : list name → tactic name
 | []      := failed
 | (c::cs) := (mk_const c >>= apply >> pure c) <|> any_apply cs
+
+/- Try to apply any lemma marked with the attribute @[applicable] -/
+meta def applicable : tactic name :=
+do cs ← attribute.get_instances `applicable,
+   (any_apply cs) <|> fail "no @[applicable] lemmas could be applied"
+
+meta def semiapplicable_attribute : user_attribute := {
+  name := `semiapplicable,
+  descr := "A lemma that should be applied to a goal whenever possible, as long as it create no new goals."
+}
+
+run_cmd attribute.register `semiapplicable_attribute
 
 /- Try to apply one of the given lemmas, fulfilling all new goals using existing hypotheses. It succeeds if one of them succeeds. -/
 meta def any_apply_no_new_goals : list name → tactic name
@@ -33,40 +40,36 @@ meta def any_apply_no_new_goals : list name → tactic name
                  guard (n = n' + 1),
                  pure c) <|> any_apply_no_new_goals cs
 
-meta def applicable : tactic name :=
-do cs ← attribute.get_instances `applicable,
-   (any_apply cs) <|> fail "no @[applicable] lemmas could be applied"
-
+/- Try to apply any lemma marked with the attribute @[semiapplicable], as long as all hypotheses of that lemma can be satisfied immediately from hypotheses. -/
 meta def semiapplicable : tactic name :=
 do cs ← attribute.get_instances `semiapplicable,
    (any_apply_no_new_goals cs) <|> fail "no @[semiapplicable] lemmas could be applied"
+
+attribute [applicable] subsingleton.elim
 
 attribute [applicable] funext
 attribute [applicable] set.ext   -- Order matters here: putting the attribute on set.ext after funext makes applicable prefer set.ext
 attribute [applicable] propext
 attribute [applicable] subtype.eq
-attribute [applicable] proof_irrel
 
 universes u₁ u₂
 
-@[extensionality] definition empty.ext (x : false) : empty := begin exfalso, trivial end
-@[extensionality] definition pempty.ext (x : false) : pempty := begin exfalso, trivial end
+@[applicable] definition empty_exfalso (x : false) : empty := begin exfalso, trivial end
+@[applicable] definition pempty_exfalso (x : false) : pempty := begin exfalso, trivial end
 
-@[extensionality] lemma punit.ext (a b : punit.{u₁}): a = b := by induction a; induction b; refl
-@[extensionality] lemma ulift.ext {α : Type u₁} (X Y : ulift.{u₂} α) (w : X.down = Y.down) : X = Y :=
+@[applicable] lemma punit.ext (a b : punit.{u₁}): a = b := by induction a; induction b; refl
+@[applicable] lemma ulift.ext {α : Type u₁} (X Y : ulift.{u₂} α) (w : X.down = Y.down) : X = Y :=
 begin
   induction X, induction Y, dsimp at w, rw w,
 end
-@[extensionality] lemma sigma.ext {α : Type u₁} (Z : α → Type u₂) (X Y : Σ a : α, Z a) (w1 : X.1 = Y.1) (w2 : @eq.rec_on _ X.1 _ _ w1 X.2 = Y.2) : X = Y :=
+@[applicable] lemma sigma.ext {α : Type u₁} (Z : α → Type u₂) (X Y : Σ a : α, Z a) (w1 : X.1 = Y.1) (w2 : @eq.rec_on _ X.1 _ _ w1 X.2 = Y.2) : X = Y :=
 begin
   induction X, induction Y, dsimp at w1, dsimp at w2, induction w1, induction w2, refl,
 end
-@[extensionality] lemma pair.ext {α : Type u₁} {β : Type u₁} {X Y : α × β} (p1 : X.1 = Y.1) (p2 : X.2 = Y.2) : X = Y := 
+@[applicable] lemma pair.ext {α : Type u₁} {β : Type u₂} {X Y : α × β} (p1 : X.1 = Y.1) (p2 : X.2 = Y.2) : X = Y := 
 begin
   induction X, induction Y, dsimp at *, rw p1, rw p2,
 end
-
-attribute [extensionality] subsingleton.elim
 
 -- TODO should `apply_instance` be in tidy? If so, these shouldn't be needed.
 @[applicable] definition decidable_true  : decidable true  := is_true  dec_trivial
