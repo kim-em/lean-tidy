@@ -37,13 +37,15 @@ open tactic
 
 -- TODO also find tactics which are never used!
 
+-- TODO split _ifs?
+-- TODO refine_struct?
 meta def default_tidy_tactics : list (tactic string) :=
 [
   force (reflexivity)                         >> pure "refl", 
   `[exact dec_trivial]                        >> pure "exact dec_trivial",
   semiapplicable                              >>= λ n, pure ("apply " ++ n.to_string ++ " ; assumption"),
   applicable                                  >>= λ n, pure ("apply " ++ n.to_string),
-  force `[ext]                                >> pure "ext",
+  `[ext]                                      >> pure "ext",
   intro_at_least_one                          >> pure "intros",
   automatic_induction,
   `[apply_auto_param]                         >> pure "apply_auto_param",
