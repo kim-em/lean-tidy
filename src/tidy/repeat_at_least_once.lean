@@ -16,7 +16,7 @@ private meta def repeat_with_results_aux (t : tactic α) : list α → tactic (l
 meta def repeat_with_results (t : tactic α) : tactic (list α) := repeat_with_results_aux t []
 
 meta def repeat_at_least_once (t : tactic α) : tactic (α × list α) :=
-do r ← t,
+do r ← t | fail "repeat_at_least_once failed: tactic did not succeed",
    L ← repeat_with_results t,
    return (r, L)
 

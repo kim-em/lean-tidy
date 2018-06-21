@@ -20,7 +20,7 @@ variable [has_focus α]
 We repeatedly apply `chain_single_goal` to the first goal on which it succeeds.
 -/
 meta def chain_multiple_goals : tactic (list α) :=
-do (p, q) ← repeat_at_least_once (some_goal single_goal_tactic),
+do (p, q) ← repeat_at_least_once (some_goal single_goal_tactic) <|> fail "chain did not find any goal where progress could be made",
    return ((p :: q).map $ λ x, has_focus.work_on_goal x.1 x.2)
 
 variable (abstraction : tactic unit)
@@ -95,17 +95,19 @@ do gs ← get_goals,
    m ← mk_meta_var type,
    set_goals [m],
    as ← repeat_with_results (chain_single_goal_aux chain_single_goal tactics),
-   guard (as.length > 0),
+   guard (as.length > 0) <|> fail "chain tactic made no progress",
    ng ← num_goals,
    match ng with
    | 0 := close_goal_with_declaration gs.head type m is_lemma
-   | _ := do r ← instantiate_mvars m,
-             -- We attempt to report our partial answer using unification.
-             unify r gs.head <|>
-             -- but sometimes that fails, while exact does the job:
-             (do set_goals gs,
-                 exact r,
-                 append_goals r.metavariables)
+   | _ := -- We attempt to report our partial answer using unification.
+          -- (do r ← instantiate_mvars m,              
+          --     unify r gs.head >> trace "via unification") <|>
+          -- but sometimes that fails, while exact does the job:
+          (do r ← instantiate_mvars m,
+              set_goals gs,
+              exact r,
+              append_goals r.metavariables,
+              trace "via exact") <|> fail "Could not close goal using solution to synthetic goal!"
    end,
    return as.join
 
