@@ -5,8 +5,9 @@
 import .some_goal
 import .repeat_at_least_once
 import .recover
+import data.option
 
-open tactic
+namespace tactic
 
 variable {α : Type}
 
@@ -61,11 +62,12 @@ We then follow these steps:
     (which will recursively call back into this function, making a new synthetic copy of each goal), 
     and if this succeeds return to 1).
 3) At this point, we have one or more goals, which we can't make any further progress on.
-   Without making any declaration (TODO: should we make a declaration with parameters?), we unify the partial solution we've found to the synthetic goal with the original goal,
+   Without making any declaration, we use exact (which is more robust than unify) 
+   to substitute the partial solution we've found to the synthetic goal into the original goal,
    and return.
 -/
 /-
-All this effort pays off --- here's some timing data:
+All this effort pays off --- here's some timing data from an (artificial!) example:
 
 old chain (did not automatically abstract intermediate results)
 cumulative profiling times:
@@ -99,15 +101,10 @@ do gs ← get_goals,
    ng ← num_goals,
    match ng with
    | 0 := close_goal_with_declaration gs.head type m is_lemma
-   | _ := -- We attempt to report our partial answer using unification.
-          -- (do r ← instantiate_mvars m,              
-          --     unify r gs.head >> trace "via unification") <|>
-          -- but sometimes that fails, while exact does the job:
-          (do r ← instantiate_mvars m,
+   | _ := (do r ← instantiate_mvars m,
               set_goals gs,
               exact r,
-              append_goals r.metavariables,
-              trace "via exact") <|> fail "Could not close goal using solution to synthetic goal!"
+              append_goals r.metavariables) <|> fail "bug: could not close goal using solution to synthetic goal!"
    end,
    return as.join
 
@@ -144,9 +141,19 @@ do sequence ← chain_handle_trace cfg tactics,
 instance : has_focus unit :=
 { work_on_goal := λ _ _, unit.star}
 
-instance : has_focus string :=
+instance string_has_docus : has_focus string :=
 { work_on_goal := λ n ts, 
    "work_on_goal " ++ (to_string n) ++ " {\n  " ++ (",\n  ".intercalate ts) ++ "\n}" }
 
--- instance has_focus_fallback {α} [inhabited α] : has_focus α :=
--- { work_on_goal := λ _ as, as.head }
+namespace interactive
+meta def work_on_goal : ℕ → itactic → tactic unit
+| n t := do goals ← get_goals,
+            let earlier_goals := goals.take n,
+            let later_goals := goals.drop (n+1),
+            set_goals (goals.nth n).to_list,
+            t,
+            new_goals ← get_goals,
+            set_goals (earlier_goals ++ new_goals ++ later_goals)
+end interactive
+
+end tactic
