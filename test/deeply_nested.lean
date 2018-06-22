@@ -1,3 +1,25 @@
+/-
+old chain (did not automatically abstract intermediate results)
+cumulative profiling times:
+	compilation 396ms
+	decl post-processing 6.77ms
+	elaboration 51.6s
+	elaboration: tactic compilation 140ms
+	elaboration: tactic execution 16.8s
+	parsing 234ms
+	type checking 20.5ms
+
+new chain:
+cumulative profiling times:
+	compilation 377ms
+	decl post-processing 7.26ms
+	elaboration 14.1s
+	elaboration: tactic compilation 135ms
+	elaboration: tactic execution 9.57s
+	parsing 231ms
+	type checking 19.9ms
+-/
+
 import tidy.tidy
 
 namespace deeply_nested
@@ -73,3 +95,4 @@ def f : L := by tidy
 
 #print f
 end deeply_nested
+
