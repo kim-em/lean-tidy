@@ -26,7 +26,7 @@ by obviously
 -- FIXME can't use obviously here: `abstract` causes problems.
 theorem my_odd_square_theorem : ∀ (n : ℕ), my_sum_to_n odd n = square n
 | 0     := rfl
-| (n+1) := begin tidy { tactics := default_tidy_tactics ++ obviously_tactics, trace_result:=tt } end
+| (n+1) := begin obviously'' end
 
 end def1
 

@@ -122,7 +122,7 @@ We then follow these steps:
    and return.
 -/
 
-meta def chain_single_goal (tactics : list (tactic α)) : tactic (list α) :=
+meta def chain_single_goal (make_declarations : bool) (tactics : list (tactic α)) : tactic (list α) :=
 do gs ← get_goals,
    guard (gs.length = 1),
    type ← target >>= zeta,
@@ -131,22 +131,28 @@ do gs ← get_goals,
    as ← repeat_with_results (chain_single_goal_aux chain_single_goal tactics),
    guard (as.length > 0) <|> fail "chain tactic made no progress",
    ng ← num_goals,
-   match ng with
-   | 0 := close_goal_with_declaration gs.head type m
-   | _ := (do r ← instantiate_mvars m,
-              set_goals gs,
-              exact r,
-              append_goals r.metavariables) <|> fail "bug: could not close goal using solution to synthetic goal!"
+   match (ng, make_declarations) with
+   | (0, tt) := close_goal_with_declaration gs.head type m
+   | _       := (do r ← instantiate_mvars m,
+                  set_goals gs,
+                  exact r,
+                  append_goals r.metavariables) <|> fail "bug: could not close goal using solution to synthetic goal!"
    end,
    return as.join
 
-meta def chain_core (tactics : list (tactic α)) : tactic (list α) := 
+structure chain_cfg := 
+( trace_steps        : bool := ff )
+( make_declarations  : bool := tt )
+
+meta def chain_core (cfg : chain_cfg) (tactics : list (tactic α)) : tactic (list α) := 
 do ng ← num_goals,
+   let tac := chain_single_goal cfg.make_declarations tactics,
    match ng with
    | 0 := fail "no goals left"
-   | 1 := chain_single_goal tactics
-   | _ := chain_multiple_goals (chain_single_goal tactics)
+   | 1 := tac
+   | _ := chain_multiple_goals tac
    end
+
 
 variable [has_to_format α]
 
@@ -156,14 +162,11 @@ do r ← t,
    trace format!"chain successfully applied a tactic during elaboration of {name} with result: {r}",
    pure r
 
-structure chain_cfg := 
-( trace_steps        : bool := ff )
-
 private meta def chain_handle_trace (cfg : chain_cfg) (tactics : list (tactic α)) : tactic (list α) :=
 if cfg.trace_steps then
-  chain_core (tactics.map trace_output)
+  chain_core cfg (tactics.map trace_output)
 else 
-  chain_core tactics
+  chain_core cfg tactics
 
 meta def chain (cfg : chain_cfg) (tactics : list (tactic α)) : tactic (list α) :=
 do sequence ← chain_handle_trace cfg tactics,
