@@ -53,10 +53,15 @@ do { exfalso,
 
 -- TODO split_ifs?
 -- TODO refine_struct?
+
+meta def simp_only_funext := `[simp only [funext_simp] at *] >> pure "simp only [funext_simp] at *"
+meta def dsimp_reducible := `[dsimp {unfold_reducible:=tt}] >> pure "dsimp {unfold_reducible:=tt}"
+meta def exact_decidable := `[exact dec_trivial]                        >> pure "exact dec_trivial"
+
 meta def default_tidy_tactics : list (tactic string) :=
 [
   force (reflexivity)                         >> pure "refl", 
-  `[exact dec_trivial]                        >> pure "exact dec_trivial",
+  exact_decidable,
   semiapplicable                              >>= λ n, pure ("apply " ++ n.to_string ++ " ; assumption"),
   applicable                                  >>= λ n, pure ("apply " ++ n.to_string),
   `[ext]                                      >> pure "ext",
@@ -64,15 +69,13 @@ meta def default_tidy_tactics : list (tactic string) :=
   automatic_induction,
   `[apply_auto_param]                         >> pure "apply_auto_param",
   `[unfold_coes]                              >> pure "unfold_coes",
-  `[dsimp]                                    >> pure "dsimp",
   `[dsimp at *]                               >> pure "dsimp at *",
-  `[simp]                                     >> pure "simp",
   `[simp at *]                                >> pure "simp at *",
   fsplit                                      >> pure "fsplit", 
   injections_and_clear                        >> pure "injections_and_clear",
   terminal_goal >> (`[solve_by_elim {discharger := `[symm_apply_assumption]}])  >> pure "solve_by_elim {discharger := `[cc]}",
-  `[simp only [funext_simp] at *]             >> pure "simp only [funext_simp] at *",
-  `[dsimp {unfold_reducible:=tt}]             >> pure "dsimp {unfold_reducible:=tt}",
+  simp_only_funext             ,
+  dsimp_reducible             ,
   run_tidy_tactics
 ]
 
@@ -83,7 +86,7 @@ meta structure tidy_cfg extends chain_cfg :=
 meta def tidy ( cfg : tidy_cfg := {} ) : tactic unit :=
 do
   results ← chain cfg.to_chain_cfg cfg.tactics,
-  try tactic.interactive.resetI,      
+  -- try tactic.interactive.resetI,      
   if cfg.trace_result then
     trace ("---\n" ++ (",\n".intercalate results) ++ "\n---")
   else
