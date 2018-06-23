@@ -32,6 +32,19 @@ end
 
 open tactic
 
+meta def symm_apply (e : expr) (cfg : apply_cfg := {}) : tactic (list (name × expr)) :=
+tactic.apply e cfg <|> (symmetry >> tactic.apply e cfg)
+
+meta def symm_apply_assumption
+  (asms : option (list expr) := none)
+  (tac : tactic unit := return ()) : tactic unit :=
+do { ctx ← asms.to_monad <|> local_context,
+     ctx.any_of (λ H, () <$ symm_apply H ; tac) } <|>
+do { exfalso,
+     ctx ← asms.to_monad <|> local_context,
+     ctx.any_of (λ H, () <$ symm_apply H ; tac) }
+<|> fail "assumption tactic failed"
+
 -- TODO I'd love to do some profiling here, and find how much time is spent inside each tactic,
 -- also divided up between successful and unsuccessful calls.
 
@@ -56,7 +69,7 @@ meta def default_tidy_tactics : list (tactic string) :=
   `[simp at *]                                >> pure "simp at *",
   fsplit                                      >> pure "fsplit", 
   injections_and_clear                        >> pure "injections_and_clear",
-  terminal_goal >> (`[solve_by_elim {discharger := `[cc]}])  >> pure "solve_by_elim {discharger := `[cc]}",
+  terminal_goal >> (`[solve_by_elim {discharger := `[symm_apply_assumption]}])  >> pure "solve_by_elim {discharger := `[cc]}",
   `[simp only [funext_simp] at *]             >> pure "simp only [funext_simp] at *",
   `[dsimp {unfold_reducible:=tt}]             >> pure "dsimp {unfold_reducible:=tt}",
   run_tidy_tactics
