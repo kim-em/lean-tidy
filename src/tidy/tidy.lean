@@ -32,6 +32,7 @@ end
 
 open tactic
 
+-- remove these when https://github.com/leanprover/mathlib/pull/164 is merged
 meta def symm_apply (e : expr) (cfg : apply_cfg := {}) : tactic (list (name × expr)) :=
 tactic.apply e cfg <|> (symmetry >> tactic.apply e cfg)
 
@@ -50,7 +51,7 @@ do { exfalso,
 
 -- TODO also find tactics which are never used!
 
--- TODO split _ifs?
+-- TODO split_ifs?
 -- TODO refine_struct?
 meta def default_tidy_tactics : list (tactic string) :=
 [
