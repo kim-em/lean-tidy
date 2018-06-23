@@ -59,8 +59,7 @@ meta def dsimp_reducible := `[dsimp {unfold_reducible:=tt}] >> pure "dsimp {unfo
 meta def exact_decidable := `[exact dec_trivial]                        >> pure "exact dec_trivial"
 
 meta def default_tidy_tactics : list (tactic string) :=
-[
-  force (reflexivity)                         >> pure "refl", 
+[ force (reflexivity)                         >> pure "refl", 
   exact_decidable,
   semiapplicable                              >>= λ n, pure ("apply " ++ n.to_string ++ " ; assumption"),
   applicable                                  >>= λ n, pure ("apply " ++ n.to_string),
@@ -74,10 +73,9 @@ meta def default_tidy_tactics : list (tactic string) :=
   fsplit                                      >> pure "fsplit", 
   injections_and_clear                        >> pure "injections_and_clear",
   terminal_goal >> (`[solve_by_elim {discharger := `[symm_apply_assumption]}])  >> pure "solve_by_elim {discharger := `[cc]}",
-  simp_only_funext             ,
-  dsimp_reducible             ,
-  run_tidy_tactics
-]
+  simp_only_funext,
+  dsimp_reducible,
+  run_tidy_tactics ]
 
 meta structure tidy_cfg extends chain_cfg :=
 ( trace_result : bool    := ff )
@@ -86,7 +84,6 @@ meta structure tidy_cfg extends chain_cfg :=
 meta def tidy ( cfg : tidy_cfg := {} ) : tactic unit :=
 do
   results ← chain cfg.to_chain_cfg cfg.tactics,
-  -- try tactic.interactive.resetI,      
   if cfg.trace_result then
     trace ("---\n" ++ (",\n".intercalate results) ++ "\n---")
   else
