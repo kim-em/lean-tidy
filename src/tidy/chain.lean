@@ -97,10 +97,10 @@ do set_goals [goal],
    c   ← mk_aux_decl_name none,
    is_lemma ← is_prop type,
    e   ← add_aux_decl c type val is_lemma,
-   if ¬ is_lemma then 
-     set_basic_attribute `reducible c tt
-   else
-     tactic.skip,
+  --  if ¬ is_lemma then 
+  --    set_basic_attribute `reducible c tt
+  --  else
+  --    tactic.skip,
    exact e,
    append_goals e.metavariables
 
