@@ -1,5 +1,7 @@
 import tidy.chain
 
+open tactic
+
 def F : 1 = 1 ∧ 2 = 2 :=
 begin
   chain {trace_steps:=tt} [`[refl], `[split]],
