@@ -217,36 +217,36 @@ meta def rewrite_search (rs: parse rw_rules) (cfg : rewrite_search_config := {})
 do rs ← rs.rules.mmap (λ r, do e ← to_expr' r.rule, pure (e, r.symm)),
    rewrite_search_target rs cfg
 
-meta def mk_app_aux : expr → expr → expr → tactic expr
- | f (expr.pi n binder_info.default d b) arg := do
-   infer_type arg >>= unify d,
-   return $ f arg
- | f (expr.pi n _ d b) arg := do
-   v ← mk_meta_var d,
-   t ← whnf (b.instantiate_var v),
-   mk_app_aux (f v) t arg
- | e _ _ := failed
+-- meta def mk_app_aux : expr → expr → expr → tactic expr
+--  | f (expr.pi n binder_info.default d b) arg := do
+--    infer_type arg >>= unify d,
+--    return $ f arg
+--  | f (expr.pi n _ d b) arg := do
+--    v ← mk_meta_var d,
+--    t ← whnf (b.instantiate_var v),
+--    mk_app_aux (f v) t arg
+--  | e _ _ := failed
 
-meta def mk_app' (f arg : expr) : tactic expr :=
-do --trace f, trace arg,
-   t ← infer_type f >>= whnf,
-   mk_app_aux f t arg
+-- meta def mk_app' (f arg : expr) : tactic expr :=
+-- do --trace f, trace arg,
+--    t ← infer_type f >>= whnf,
+--    mk_app_aux f t arg
 
-meta def apps (e : expr) (F : list expr) : tactic (list expr) :=
--- lock_tactic_state $
-do l ← F.mmap $ λ f, (do r ← try_core (mk_app' e f), return r.to_list), return l.join
+-- meta def apps (e : expr) (F : list expr) : tactic (list expr) :=
+-- -- lock_tactic_state $
+-- do l ← F.mmap $ λ f, (do r ← try_core (mk_app' e f), return r.to_list), return l.join
 
-meta def pairwise_apps (E F : list expr) : tactic (list expr) :=
-(E.mmap $ λ e, apps e F) >>= λ l, return l.join
+-- meta def pairwise_apps (E F : list expr) : tactic (list expr) :=
+-- (E.mmap $ λ e, apps e F) >>= λ l, return l.join
 
-meta def close_under_apps_aux : list expr → list expr → tactic (list expr) 
-| old []  := return old
-| old new := do oldnew ← pairwise_apps old new,
-                newold ← pairwise_apps new old,
-                newnew ← pairwise_apps new new,
-                close_under_apps_aux (old ++ new) (oldnew ++ newold ++ newnew)
+-- meta def close_under_apps_aux : list expr → list expr → tactic (list expr) 
+-- | old []  := return old
+-- | old new := do oldnew ← pairwise_apps old new,
+--                 newold ← pairwise_apps new old,
+--                 newnew ← pairwise_apps new new,
+--                 close_under_apps_aux (old ++ new) (oldnew ++ newold ++ newnew)
 
-meta def close_under_apps (E : list expr) : tactic (list expr) := close_under_apps_aux [] E
+-- meta def close_under_apps (E : list expr) : tactic (list expr) := close_under_apps_aux [] E
 
 meta def is_eq_after_binders : expr → bool
 | (expr.pi n bi d b) := is_eq_after_binders b
