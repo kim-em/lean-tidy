@@ -53,7 +53,7 @@ meta def rewrite_fold_aux {α} (F : expr_lens → expr → α → tactic α) : e
 | l e a := (do a' ← F l e a,
               match e with
               | (expr.app f x) := do a_f ← rewrite_fold_aux (expr_lens.app_arg l x) f a',
-                                            rewrite_fold_aux (expr_lens.app_fun l f) x a_f
+                                           rewrite_fold_aux (expr_lens.app_fun l f) x a_f
               | _ := pure a'
               end) <|> pure a
 . 
@@ -76,24 +76,27 @@ meta def rewrite_is_of_entire : expr → bool
 
 meta def rewrite_F (r : expr × bool) (l : expr_lens) (e : expr) (state : list (expr × expr)) : tactic (list (expr × expr)) := 
 do 
-  -- pp_e ← pretty_print e,
-  -- pp_r ← pretty_print r.1,
-  -- tactic.trace ("attempting rewrite on " ++ pp_e ++ " using " ++ (if r.2 then "←" else "") ++ pp_r),
+  pp_e ← pretty_print e,
+  pp_r ← pretty_print r.1,
+  tactic.trace ("attempting rewrite on " ++ pp_e ++ " using " ++ (if r.2 then "←" else "") ++ pp_r),
   (v, pr) ← rewrite_without_new_mvars r.1 e {symm := r.2, md := semireducible},
-  -- pp_v ← pretty_print v,
-  -- tactic.trace pp_v,
-  -- pp_pr ← pretty_print pr tt,
-  -- tactic.trace pp_pr,
+  pp_v ← pretty_print v,
+  tactic.trace pp_v,
+  pp_pr ← pretty_print pr tt,
+  tactic.trace pp_pr,
   -- Now we determine whether the rewrite transforms the entire expression or not:
   if rewrite_is_of_entire pr then
   do
-    -- tactic.trace ("rewrite succeeded, complete!"),
+    tactic.trace ("rewrite succeeded, complete!"),
     let w' := l.replace v,
-    qr' ← l.congr pr,
-    pure ((w', qr') :: state)
+    qr' ←  try_core (l.congr pr),
+    match qr' with
+    | none       := tactic.trace "Uh oh, expr_lens.congr failed!" >> failed
+    | (some qr') := pure ((w', qr') :: state)
+    end
   else 
   do 
-    -- tactic.trace ("rewrite succeeded, tunneling!"),
+    tactic.trace ("rewrite succeeded, tunneling!"),
     pure state
 
 def remove_adjacent_duplicates {α β} (f : α → β) [decidable_eq β] : list α → list α
@@ -113,6 +116,7 @@ meta def remove_duplicates {α β} (f : α → β) [decidable_eq β] : list α �
 meta def all_rewrites (r : expr × bool) (e : expr) : tactic (list (expr × expr)) :=
 do 
    results ← rewrite_fold (rewrite_F r) e [],
+   tactic.trace results,
    return (remove_adjacent_duplicates (λ p, p.1) results)
 
 -- return a list of (e', prf, n, k) where 
@@ -149,6 +153,8 @@ do rewrites ← q.rules.mmap $ λ p : rw_rule, to_expr p.rule tt ff >>= λ r, al
 meta def perform_nth_rewrite (q : parse rw_rules) (n : ℕ) : tactic unit := 
 do e ← target,
    (new_t, prf) ← perform_nth_rewrite' q n e,
+   trace new_t,
+   trace prf,
    replace_target new_t prf,
    tactic.try tactic.reflexivity
 

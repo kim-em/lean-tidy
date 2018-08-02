@@ -15,7 +15,7 @@ import data.list
 universe variables u v
 
 attribute [reducible] cast
-attribute [reducible] lift_t coe_t coe_b has_coe_to_fun.coe
+-- attribute [reducible] lift_t coe_t coe_b has_coe_to_fun.coe
 attribute [reducible] eq.mpr
 attribute [ematch] subtype.property
 
@@ -55,12 +55,12 @@ meta def default_tidy_tactics : list (tactic string) :=
   `[apply_auto_param]                         >> pure "apply_auto_param",
   `[dsimp at *]                               >> pure "dsimp at *",
   `[simp at *]                                >> pure "simp at *",
-  `[unfold_coes]                              >> pure "unfold_coes",
+  -- `[unfold_coes]                              >> pure "unfold_coes",
   fsplit                                      >> pure "fsplit", 
   injections_and_clear                        >> pure "injections_and_clear",
   terminal_goal >> (`[solve_by_elim])         >> pure "solve_by_elim",
   simp_only_funext,
-  dsimp_reducible,
+  -- dsimp_reducible,
   run_tidy_tactics ]
 
 meta structure tidy_cfg extends chain_cfg :=
