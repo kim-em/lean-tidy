@@ -202,7 +202,9 @@ do t ← target,
                               return (explain_proof_concisely rs_strings (r1, r2) needs_refl)) <|> return (explain_proof rs_strings (r1, r2)),
                            if cfg.trace_result then trace explanation          
                            else skip,
-                           if cfg.trace_summary then trace format!"rewrite_search considered {steps} expressions, and found a chain of {r1.rewrites.length + r2.rewrites.length} rewrites"
+                           if cfg.trace_summary then 
+                             do name ← decl_name,
+                                trace format!"during elaboration of {name}, rewrite_search considered {steps} expressions, and found a chain of {r1.rewrites.length + r2.rewrites.length} rewrites"
                            else skip,
                            exact prf,
                            return explanation
