@@ -114,6 +114,5 @@ constants f g : ℕ → ℕ → ℕ → ℕ
 @[search] axiom f_g : f 0 1 2 = g 2 0 1
 
 lemma test : f 0 0 0 = g 0 0 0 := by rewrite_search_using `search {trace := tt}
-#print test
 
 end tidy.rewrite_search.examples

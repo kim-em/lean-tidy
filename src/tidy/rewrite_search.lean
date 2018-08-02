@@ -101,9 +101,10 @@ do
   return result
 
 structure rewrite_search_config :=
-  (trace        : bool := ff)
-  (trace_result : bool := ff)
-  (trace_rules  : bool := ff)
+  (trace         : bool := ff)
+  (trace_result  : bool := ff)
+  (trace_rules   : bool := ff)
+  (trace_summary : bool := tt)
   (max_steps          : option ℕ := none)
   (max_extra_distance : option ℕ := some 50)
 
@@ -118,13 +119,13 @@ do
   set_goals gs,
   guard result.is_some
 
-meta def rewrite_search_core (rs : list (expr × bool)) (cfg : rewrite_search_config := {}) (initial_distance : ℕ) : list node → list node → tactic (option node)
+meta def rewrite_search_core (rs : list (expr × bool)) (cfg : rewrite_search_config := {}) (initial_distance : ℕ) : list node → list node → tactic (ℕ × option node)
 | old_nodes active_nodes := 
    if cfg.max_steps.is_some ∧ old_nodes.length ≥ cfg.max_steps.get_or_else 0 then
    do
      trace "max_steps exceeded during rewrite_search",
      active_nodes.mmap' $ λ m, trace (m.lhs_pp ++ " = " ++ m.rhs_pp ++ ", distance ≥ " ++ (to_string m.distance_bound)),
-     return none
+     return (old_nodes.length, none)
    else
       match select_next active_nodes with
       | none := none
@@ -132,15 +133,15 @@ meta def rewrite_search_core (rs : list (expr × bool)) (cfg : rewrite_search_co
         do
           if cfg.trace then trace format!"rewrite_search considering node: {n.lhs_pp} = {n.rhs_pp}, distance: {n.distance.to_string}" else skip,
           match n.distance with
-          | (exactly _ _ 0) := return (some n)
+          | (exactly _ _ 0) := return (old_nodes.length, some n)
           | (exactly _ _ k) := 
             do
-              (attempt_refl n.lhs.current n.rhs.current >> return (some n)) <|>
+              (attempt_refl n.lhs.current n.rhs.current >> return (old_nodes.length, some n)) <|>
               do
                 if cfg.max_extra_distance.is_some ∧ k > initial_distance + cfg.max_extra_distance.get_or_else 0 then
                 do
                   trace "max_extra_distance exceeded during rewrite_search",
-                  return none
+                  return (old_nodes.length, none)
                 else
                 do 
                   nn ← new_nodes rs (old_nodes ++ active_nodes) n,
@@ -149,12 +150,12 @@ meta def rewrite_search_core (rs : list (expr × bool)) (cfg : rewrite_search_co
           end
       end
 
-meta def rewrite_search (rs : list (expr × bool)) (cfg : rewrite_search_config := {}) (lhs rhs : expr) : tactic (expr_delta × expr_delta) :=
+meta def rewrite_search (rs : list (expr × bool)) (cfg : rewrite_search_config := {}) (lhs rhs : expr) : tactic (ℕ × expr_delta × expr_delta) :=
 do  first_node ← node.mk'' lhs rhs,
     result ← rewrite_search_core rs cfg (edit_distance_core first_node.distance) [] [first_node],
     match result with 
-    | (some n) := return (n.lhs, n.rhs)
-    | _        := failed
+    | (steps, (some n)) := return (steps, n.lhs, n.rhs)
+    | _                 := failed
     end
 
 meta def explain_proof (rs : list string) (p : expr_delta × expr_delta) : string :=
@@ -189,7 +190,7 @@ do t ← target,
                              do rs_strings ← pp_rules rs,
                                 trace ("rewrite_search using:\n---\n" ++ (string.intercalate "\n" rs_strings) ++ "\n---")
                            else skip,
-                           (r1, r2) ← rewrite_search rs cfg lhs rhs,
+                           (steps, r1, r2) ← rewrite_search rs cfg lhs rhs,
                            prf2 ← mk_eq_symm r2.proof,
                            prf ← mk_eq_trans r1.proof prf2,
                            if cfg.trace then
@@ -199,7 +200,9 @@ do t ← target,
                            explanation ← (do 
                              needs_refl ← check_if_simple_rewrite_succeeds rs (r1, r2),
                               return (explain_proof_concisely rs_strings (r1, r2) needs_refl)) <|> return (explain_proof rs_strings (r1, r2)),
-                           if cfg.trace_result then trace explanation
+                           if cfg.trace_result then trace explanation          
+                           else skip,
+                           if cfg.trace_summary then trace format!"rewrite_search considered {steps} expressions, and found a chain of {r1.rewrites.length + r2.rewrites.length} rewrites"
                            else skip,
                            exact prf,
                            return explanation
