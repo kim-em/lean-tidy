@@ -90,4 +90,30 @@ end
 
 end tidy.rewrite_search.testing
 
+namespace tidy.rewrite_search.examples
 
+constants f g : ℕ → ℕ → ℕ → ℕ 
+@[search] axiom f_0_0 : ∀ a b c : ℕ, f a b c = f 0 b c
+@[search] axiom f_0_1 : ∀ a b c : ℕ, f a b c = f 1 b c
+@[search] axiom f_0_2 : ∀ a b c : ℕ, f a b c = f 2 b c 
+@[search] axiom f_1_0 : ∀ a b c : ℕ, f a b c = f a 0 c
+@[search] axiom f_1_1 : ∀ a b c : ℕ, f a b c = f a 1 c
+@[search] axiom f_1_2 : ∀ a b c : ℕ, f a b c = f a 2 c 
+@[search] axiom f_2_0 : ∀ a b c : ℕ, f a b c = f a b 0
+@[search] axiom f_2_1 : ∀ a b c : ℕ, f a b c = f a b 1
+@[search] axiom f_2_2 : ∀ a b c : ℕ, f a b c = f a b 2
+@[search] axiom g_0_0 : ∀ a b c : ℕ, g a b c = g 0 b c
+@[search] axiom g_0_1 : ∀ a b c : ℕ, g a b c = g 1 b c 
+@[search] axiom g_0_2 : ∀ a b c : ℕ, g a b c = g 2 b c 
+@[search] axiom g_1_0 : ∀ a b c : ℕ, g a b c = g a 0 c 
+@[search] axiom g_1_1 : ∀ a b c : ℕ, g a b c = g a 1 c 
+@[search] axiom g_1_2 : ∀ a b c : ℕ, g a b c = g a 2 c 
+@[search] axiom g_2_0 : ∀ a b c : ℕ, g a b c = g a b 0
+@[search] axiom g_2_1 : ∀ a b c : ℕ, g a b c = g a b 1
+@[search] axiom g_2_2 : ∀ a b c : ℕ, g a b c = g a b 2
+@[search] axiom f_g : f 0 1 2 = g 2 0 1
+
+lemma test : f 0 0 0 = g 0 0 0 := by rewrite_search_using `search {trace := tt}
+#print test
+
+end tidy.rewrite_search.examples
