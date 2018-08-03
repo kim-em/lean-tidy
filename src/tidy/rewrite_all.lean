@@ -51,42 +51,35 @@ do (v,_) ← solve_aux `(true) (do
          return v),
    return v
 
-meta def mk_congr_arg_using_dsimp (G W : expr) (F : name) : tactic expr := 
--- lock_tactic_state $
+-- Sometimes `mk_congr_arg` fails, when the function is 'superficially dependent'.
+-- This hack dsimp's the function before building the `congr_arg` expression.
+-- Unfortunately it creates some dummy hypotheses that I can't work out how to dispose of cleanly.
+meta def mk_congr_arg_using_dsimp (G W : expr) (u : list name) : tactic expr := 
 do
   s ← simp_lemmas.mk_default,
   t ← infer_type G,
-  t' ← s.dsimplify [F] t {fail_if_unchanged := ff},
-  tactic.definev `g t' G,
-  ca ← to_expr ```(congr_arg (g : %%t') %%W),
+  t' ← s.dsimplify u t {fail_if_unchanged := ff},
+  tactic.definev `_mk_congr_arg_aux_1 t' G,
+  ca ← to_expr ```(congr_arg _mk_congr_arg_aux_1 %%W),
   ca_t ← infer_type ca,
-  he ← tactic.definev `h ca_t ca,
-  `[dsimp [g] at h],
+  he ← tactic.definev `_mk_congr_arg_aux_2 ca_t ca,
+  `[dsimp [_mk_congr_arg_aux_1] at _mk_congr_arg_aux_2],
   local_def_value he
 
 meta def expr_lens.congr : expr_lens → expr → tactic expr
 | (app_fun l f) x_eq := do 
-                                         tactic.trace "dsimp'ing f",
-                                         s ← simp_lemmas.mk_default,
-                                         f' ← s.dsimplify [`has_coe_to_fun.F] f {fail_if_unchanged := ff},
-                                         ft ← infer_type f',
-                                         tactic.trace ft,
-                                         ft' ← s.dsimplify [`has_coe_to_fun.F] ft {fail_if_unchanged := ff},
-                                         tactic.trace ft',
-                                         f'' ← to_expr ``(%%f' : %%ft'),
-                                         x_eq_t ← infer_type x_eq,
                           fx_eq ← try_core (
-                                      -- to_expr ```(congr_arg (%%f' : %%ft') %%x_eq)
-                                      mk_congr_arg_using_dsimp f x_eq `has_coe_to_fun.F
+                                      (mk_congr_arg f x_eq) <|>
+                                      (mk_congr_arg_using_dsimp f x_eq [`has_coe_to_fun.F])
                                     ),
                            match fx_eq with
                            | (some fx_eq) := expr_lens.congr l fx_eq
                            | none         := do 
-                                                pp_f ← pretty_print f'' tt,
-                                                pp_ft ← pretty_print ft' tt,
+                                                pp_f ← pretty_print f tt,
+                                                pp_f_t ← (infer_type f >>= λ t, pretty_print t tt),
                                                 pp_x_eq ← pretty_print x_eq tt,
-                                                pp_x_eq_t ← pretty_print x_eq_t tt,
-                                                tactic.trace format!"expr_lens.congr failed on \n{pp_f} : {pp_ft}\n{pp_x_eq} : {pp_x_eq_t}" >> failed
+                                                pp_x_eq_t ←  (infer_type x_eq >>= λ t, pretty_print t tt),
+                                                tactic.trace format!"expr_lens.congr failed on \n{pp_f} : {pp_f_t}\n{pp_x_eq} : {pp_x_eq_t}" >> failed
                            end
 | (app_arg l x) f_eq := do fx_eq ← mk_congr_fun f_eq x,
                                     expr_lens.congr l fx_eq
