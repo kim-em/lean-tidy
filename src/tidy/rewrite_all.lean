@@ -42,6 +42,28 @@ meta def expr_lens.replace : expr_lens → expr → expr
 | (app_arg l x) f := expr_lens.replace l (expr.app f x)
 | entire        e := e 
 
+meta def local_def_value (e : expr) : tactic expr := do
+do (v,_) ← solve_aux `(true) (do
+         lc ← local_context,
+         let e := lc.reverse.head,
+         (expr.elet n t v _) ← (revert e >> target)
+           | fail format!"{e} is not a local definition",
+         return v),
+   return v
+
+meta def mk_congr_arg_using_dsimp (G W : expr) (F : name) : tactic expr := 
+-- lock_tactic_state $
+do
+  s ← simp_lemmas.mk_default,
+  t ← infer_type G,
+  t' ← s.dsimplify [F] t {fail_if_unchanged := ff},
+  tactic.definev `g t' G,
+  ca ← to_expr ```(congr_arg (g : %%t') %%W),
+  ca_t ← infer_type ca,
+  he ← tactic.definev `h ca_t ca,
+  `[dsimp [g] at h],
+  local_def_value he
+
 meta def expr_lens.congr : expr_lens → expr → tactic expr
 | (app_fun l f) x_eq := do 
                                          tactic.trace "dsimp'ing f",
@@ -55,11 +77,12 @@ meta def expr_lens.congr : expr_lens → expr → tactic expr
                                          x_eq_t ← infer_type x_eq,
                           fx_eq ← try_core (
                                       -- to_expr ```(congr_arg (%%f' : %%ft') %%x_eq)
-                                      mk_congr_arg f'' x_eq
+                                      mk_congr_arg_using_dsimp f x_eq `has_coe_to_fun.F
                                     ),
                            match fx_eq with
                            | (some fx_eq) := expr_lens.congr l fx_eq
-                           | none         := do pp_f ← pretty_print f'' tt,
+                           | none         := do 
+                                                pp_f ← pretty_print f'' tt,
                                                 pp_ft ← pretty_print ft' tt,
                                                 pp_x_eq ← pretty_print x_eq tt,
                                                 pp_x_eq_t ← pretty_print x_eq_t tt,
