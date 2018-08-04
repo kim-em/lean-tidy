@@ -59,12 +59,8 @@ do
   s ← simp_lemmas.mk_default,
   t ← infer_type G,
   t' ← s.dsimplify u t {fail_if_unchanged := ff},
-  tactic.definev `_mk_congr_arg_aux_1 t' G,
-  ca ← to_expr ```(congr_arg _mk_congr_arg_aux_1 %%W),
-  ca_t ← infer_type ca,
-  he ← tactic.definev `_mk_congr_arg_aux_2 ca_t ca,
-  `[dsimp [_mk_congr_arg_aux_1] at _mk_congr_arg_aux_2],
-  local_def_value he
+  tactic.definev `_mk_congr_arg_aux t' G,
+  to_expr ```(congr_arg _mk_congr_arg_aux %%W)
 
 meta def expr_lens.congr : expr_lens → expr → tactic expr
 | (app_fun l f) x_eq := do 
