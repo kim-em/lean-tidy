@@ -150,11 +150,11 @@ meta def rewrite_search_core (rs : list (expr × bool)) (cfg : rewrite_search_co
           end
       end
 
-meta def rewrite_search (rs : list (expr × bool)) (cfg : rewrite_search_config := {}) (lhs rhs : expr) : tactic (ℕ × expr_delta × expr_delta) :=
+meta def rewrite_search (rs : list (expr × bool)) (cfg : rewrite_search_config := {}) (lhs rhs : expr) : tactic (ℕ × ℕ × expr_delta × expr_delta) :=
 do  first_node ← node.mk'' lhs rhs,
     result ← rewrite_search_core rs cfg (edit_distance_core first_node.distance) [] [first_node],
     match result with 
-    | (steps, remaining, (some n)) := return (steps, n.lhs, n.rhs)
+    | (steps, remaining, (some n)) := return (steps, remaining, n.lhs, n.rhs)
     | (_, 0, none)                 := fail "rewrite_search exhausted the rewrite graph"
     | (_, _, none)                 := fail "rewrite_search stopped because it exceeded a limit"
     end
@@ -191,7 +191,7 @@ do t ← target,
                              do rs_strings ← pp_rules rs,
                                 trace ("rewrite_search using:\n---\n" ++ (string.intercalate "\n" rs_strings) ++ "\n---")
                            else skip,
-                           (steps, r1, r2) ← rewrite_search rs cfg lhs rhs,
+                           (steps, remaining, r1, r2) ← rewrite_search rs cfg lhs rhs,
                            if cfg.trace then trace "rewrite_search found proof:" else skip,
                            prf2 ← mk_eq_symm r2.proof,
                            prf ← mk_eq_trans r1.proof prf2,
@@ -204,7 +204,7 @@ do t ← target,
                            else skip,
                            if cfg.trace_summary then 
                              do name ← decl_name,
-                                trace format!"during elaboration of {name}, rewrite_search considered {steps} expressions, and found a chain of {r1.rewrites.length + r2.rewrites.length} rewrites"
+                                trace format!"during elaboration of {name}, rewrite_search (saw, searched, used) ({steps+remaining}, {steps}, {r1.rewrites.length + r2.rewrites.length}) rewrites"
                            else skip,
                            exact prf,
                            return explanation
