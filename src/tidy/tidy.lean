@@ -81,7 +81,5 @@ meta def obviously_tactics : list (tactic string) :=
 
 meta def obviously'  : tactic unit := tidy { tactics := default_tidy_tactics ++ obviously_tactics, trace_result := tt }
 
-example : 1 = 1 := by obviously
-
 instance subsingleton_pempty : subsingleton pempty := by tidy
 instance subsingleton_punit  : subsingleton punit  := by tidy
