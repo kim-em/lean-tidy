@@ -23,6 +23,10 @@ meta def applicable : tactic name :=
 do cs ← attribute.get_instances `applicable,
    (any_apply cs) <|> fail "no @[applicable] lemmas could be applied"
 
+meta def get_applicable_lemmas : tactic unit :=
+do cs ← attribute.get_instances `applicable,
+   tactic.trace (list.foldl (λ s n, name.to_string n ++ ", " ++ s) "" cs)
+
 meta def semiapplicable_attribute : user_attribute := {
   name := `semiapplicable,
   descr := "A lemma that should be applied to a goal whenever possible, as long as it create no new goals."

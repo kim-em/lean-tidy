@@ -22,6 +22,10 @@ variables [is_group_hom f₁] [is_group_hom g₁] [is_group_hom h₁] [is_group_
 variables [is_group_hom f₂] [is_group_hom g₂] [is_group_hom h₂] [is_group_hom i₂]
 variables [is_group_hom j] [is_group_hom k] [is_group_hom l] [is_group_hom m] [is_group_hom n]
 
+local attribute [applicable] is_submonoid.one_mem
+local attribute [applicable] is_group_hom.one -- is_group_hom.mem_ker
+local attribute [ematch]     is_group_hom.mem_ker
+
 open is_group_hom
 
 lemma four_lemma₁
@@ -37,23 +41,28 @@ lemma four_lemma₁
 (hm : injective m)
 : injective l :=
 begin
- have := one f₁, have := one g₁, have := one h₁,
- have := one f₂, have := one g₂, have := one h₂,
- have := one j, have := one k, have := one l, have := one m,
- apply inj_of_trivial_ker l,
- apply set.ext,
- intro x,
- split, { -- x ∈ ker l → x = 1
-  intro hx,
-  rw mem_ker at hx,
-  simp,
-  have : (h₂ ∘ l) x = 1,                     unfold comp, cc,
-  have : (m ∘ h₁) x = 1,                     cc,
-  have : m (h₁ x) = 1,                       apply_assumption,
-  have : h₁ x = 1,                           apply_assumption, cc,
-  have : x ∈ ker h₁,                         rwa mem_ker h₁,
-  have : x ∈ im g₁,                          cc,
-  have : ∃ y : B₁, g₁ y = x,                 apply_assumption,
+--  have := one f₁, have := one g₁, have := one h₁,
+--  have := one f₂, have := one g₂, have := one h₂,
+--  have := one j, have := one k, have := one l, have := one m,
+  get_applicable_lemmas,
+  -- applicable,
+  obviously',
+ refine inj_of_trivial_ker _ _,
+ obviously', { -- x = 1 → x ∈ ker l
+  subst x,
+  obviously',
+ }, { -- x ∈ ker l → x = 1
+  rw mem_ker at a,
+  -- simp,
+  have H0 : h₂ 1 = 1,                     { obviously' },
+  have H1 : (h₂ ∘ l) x = 1,               { obviously' },
+  -- have H2 : (m ∘ h₁) x = 1,               { obviously' },
+  have H3 : m (h₁ x) = 1,                 { obviously' },
+  have H3' : m (h₁ x) = m 1,              { have := one m, obviously' },
+  have H4 : h₁ x = 1,                     { obviously' },
+  have H5 : x ∈ ker h₁,                   { rw mem_ker, obviously' },
+  have H6 : x ∈ im g₁,                    { rwa eC₁ /- obviously' -/ },
+  have H7 : ∃ y : B₁, g₁ y = x,                 apply_assumption,
   cases this with y,
   have : (l ∘ g₁) y = 1,                     unfold comp, cc,
   have : (g₂ ∘ k) y = 1,                     cc,
@@ -74,10 +83,6 @@ begin
   have : g₁ y = 1,                           rwa ←mem_ker g₁,
   have : x = 1,                              cc,
   apply_assumption
- }, { -- x = 1 → x ∈ ker l
-  tidy,
-  rw is_group_hom.mem_ker,
-  cc
  }
 end
 
