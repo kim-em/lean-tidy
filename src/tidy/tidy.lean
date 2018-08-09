@@ -47,8 +47,7 @@ meta def exact_decidable := `[exact dec_trivial]             >> pure "exact dec_
 meta def default_tidy_tactics : list (tactic string) :=
 [ force (reflexivity)                         >> pure "refl", 
   exact_decidable,
-  semiapplicable                              >>= λ n, pure ("apply " ++ n.to_string ++ " ; assumption"),
-  applicable                                  >>= λ n, pure ("apply " ++ n.to_string),
+  backwards_reasoning,
   `[ext]                                      >> pure "ext",
   intro_at_least_one                          >> pure "intros",
   automatic_induction,
