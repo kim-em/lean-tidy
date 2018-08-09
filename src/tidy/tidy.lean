@@ -70,7 +70,7 @@ meta def tidy ( cfg : tidy_cfg := {} ) : tactic unit :=
 do
   results ← chain cfg.to_chain_cfg cfg.tactics,
   if cfg.trace_result then
-    trace ("---\n" ++ (",\n".intercalate results) ++ "\n---")
+    trace ("/- obviously says: -/ " ++ (", ".intercalate results))
   else
     tactic.skip
 
