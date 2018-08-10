@@ -3,6 +3,7 @@
 -- Authors: Scott Morrison
 
 import .mk_apps
+import .pretty_print
 
 open tactic
 
@@ -21,17 +22,17 @@ do hyps ← local_context,
 meta def attempt_forwards_reasoning : list expr → tactic string
 | [] := fail "forwards_reasoning failed"
 | (e :: es) := do
-    trace e,
     t ← infer_type e,
     if t.is_pi then
       do hyps ← local_context,
          apps ← mk_apps e hyps,
-         trace apps,
          attempt_forwards_reasoning (apps ++ es)
-    else (do t ← infer_type e,
-             guard_no_duplicate_hypothesis t,
-             definev `this t e,
-             return ("let this : " ++ t.to_string ++ " := " ++ e.to_string)) <|> attempt_forwards_reasoning es
+    else (do guard_no_duplicate_hypothesis t,
+             n ← mk_fresh_name,
+             assertv n t e,
+             t_pp ← pretty_print t,
+             e_pp ← pretty_print e,
+             return ("have " ++ (n.to_string_with_sep "_") ++ " : " ++ t_pp ++ " := " ++ e_pp)) <|> attempt_forwards_reasoning es
 
 /-- Try to deduce any lemma marked with the attribute @[forwards] -/
 meta def forwards_reasoning : tactic string :=

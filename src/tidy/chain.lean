@@ -49,7 +49,7 @@ instance : has_focus unit :=
 
 instance string_has_focus : has_focus string :=
 { work_on_goal := λ n ts, 
-  if n = 0 then
+  if n = 1000 then
     ", ".intercalate ts
   else
    "work_on_goal " ++ (to_string n) ++ " {\n  " ++ (",\n  ".intercalate ts) ++ "\n}" }
