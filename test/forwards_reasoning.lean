@@ -34,7 +34,6 @@ end
 section
 inductive T (n : ℕ)
 | t : ℕ → T
-end
 
 @[forwards] lemma H {n : ℕ} (v : T n) : string := "hello"
 
