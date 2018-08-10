@@ -141,8 +141,8 @@ do gs ← get_goals,
    return as.join
 
 structure chain_cfg := 
-( trace_steps        : bool := ff )
-( make_declarations  : bool := tt )
+(trace_steps        : bool := ff)
+(make_declarations  : bool := tt)
 
 meta def chain_core (cfg : chain_cfg) (tactics : list (tactic α)) : tactic (list α) := 
 do ng ← num_goals,
