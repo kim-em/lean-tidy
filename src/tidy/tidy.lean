@@ -2,7 +2,10 @@
 -- Released under Apache 2.0 license as described in the file LICENSE.
 -- Authors: Scott Morrison
 
-import .force .backwards_reasoning .fsplit .automatic_induction .tidy_attributes .intro_at_least_one
+import .force 
+import .backwards_reasoning 
+import .forwards_reasoning
+import .fsplit .automatic_induction .tidy_attributes .intro_at_least_one
 import .chain
 import .recover
 import .rewrite_search
@@ -47,6 +50,7 @@ meta def exact_decidable := `[exact dec_trivial]             >> pure "exact dec_
 meta def default_tidy_tactics : list (tactic string) :=
 [ force (reflexivity)                         >> pure "refl", 
   exact_decidable,
+  forwards_reasoning,
   backwards_reasoning,
   `[ext]                                      >> pure "ext",
   intro_at_least_one                          >> pure "intros",
