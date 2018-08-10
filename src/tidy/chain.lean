@@ -7,6 +7,8 @@ import .repeat_at_least_once
 import .recover
 import data.option
 
+open interactive
+
 namespace tactic
 
 /-
@@ -53,7 +55,8 @@ instance string_has_focus : has_focus string :=
    "work_on_goal " ++ (to_string n) ++ " {\n  " ++ (",\n  ".intercalate ts) ++ "\n}" }
 
 namespace interactive
-meta def work_on_goal : ℕ → itactic → tactic unit
+open lean.parser
+meta def work_on_goal : parse small_nat → itactic → tactic unit
 | n t := do goals ← get_goals,
             let earlier_goals := goals.take n,
             let later_goals := goals.drop (n+1),
@@ -62,7 +65,6 @@ meta def work_on_goal : ℕ → itactic → tactic unit
             new_goals ← get_goals,
             set_goals (earlier_goals ++ new_goals ++ later_goals)
 end interactive
-
 
 /- 
 The chain tactic is built out of two components,

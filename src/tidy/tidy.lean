@@ -53,7 +53,7 @@ meta def default_tidy_tactics : list (tactic string) :=
   forwards_reasoning,
   backwards_reasoning,
   `[ext]                                      >> pure "ext",
-  intro_at_least_one                          >> pure "intros",
+  intro_at_least_one                          >>= λ ns, pure ("intros " ++ (", ".intercalate ns)),
   automatic_induction,
   `[apply_auto_param]                         >> pure "apply_auto_param",
   `[dsimp at *]                               >> pure "dsimp at *",

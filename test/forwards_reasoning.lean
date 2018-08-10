@@ -1,6 +1,11 @@
 import tidy.forwards_reasoning
 
-@[forwards] lemma G (n : ℕ) : list ℕ := [n]
+lemma G (n : ℕ) : list ℕ := [n]
+lemma F : ℕ := 0
+
+section
+
+local attribute [forwards] G
 
 example : 1 = 1 :=
 begin 
@@ -8,7 +13,7 @@ begin
   refl
 end
 
-@[forwards] lemma F : ℕ := 0
+local attribute [forwards] F
 
 example : 1 = 1 :=
 begin 
@@ -23,4 +28,22 @@ begin
   forwards_reasoning,
   success_if_fail { forwards_reasoning },
   refl
+end
+end
+
+section
+inductive T (n : ℕ)
+| t : ℕ → T
+end
+
+@[forwards] lemma H {n : ℕ} (v : T n) : string := "hello"
+
+example : 1 = 1 :=
+begin
+success_if_fail { forwards_reasoning },
+have p : T 3 := T.t 3 5,
+forwards_reasoning,
+refl
+end
+
 end
