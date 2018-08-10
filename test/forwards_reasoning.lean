@@ -19,6 +19,7 @@ example : 1 = 1 :=
 begin 
   forwards_reasoning,
   forwards_reasoning,
+  success_if_fail { forwards_reasoning },
   refl
 end
 
