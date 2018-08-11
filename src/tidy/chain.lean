@@ -5,6 +5,7 @@
 import .some_goal
 import .repeat_at_least_once
 import .recover
+import .pretty_print
 import data.option
 
 open interactive
@@ -162,9 +163,19 @@ do ng ← num_goals,
 variable [has_to_format α]
 
 meta def trace_output (t : tactic α) : tactic α :=
-do r ← t,
+do tgt ← target,
+   r ← t,
    name ← decl_name,
-   trace format!"chain successfully applied a tactic during elaboration of {name} with result: {r}",
+   trace format!"chain successfully applied a tactic during elaboration of {name}:",
+   tgt ← pretty_print tgt,
+   trace format!"old target: {tgt}",
+   trace format!"tactic:     {r}",
+   tgt ← try_core target,
+   tgt ← match tgt with
+          | (some tgt) := do pretty_print tgt
+          | none       := do return "′no goals′"
+          end,
+   trace format!"new target: {tgt}",
    pure r
 
 private meta def chain_handle_trace (cfg : chain_cfg) (tactics : list (tactic α)) : tactic (list α) :=
