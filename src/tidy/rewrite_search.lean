@@ -102,6 +102,7 @@ do
 
 structure rewrite_search_config :=
   (trace         : bool := ff)
+  (trace_goal    : bool := tt)
   (trace_result  : bool := ff)
   (trace_rules   : bool := ff)
   (trace_summary : bool := tt)
@@ -187,27 +188,31 @@ meta def rewrite_search_target (rs : list (expr × bool)) (cfg : rewrite_search_
 do t ← target,
    match t with
    | `(%%lhs = %%rhs) := do
-                           if cfg.trace_rules then
-                             do rs_strings ← pp_rules rs,
-                                trace ("rewrite_search using:\n---\n" ++ (string.intercalate "\n" rs_strings) ++ "\n---")
-                           else skip,
-                           (steps, remaining, r1, r2) ← rewrite_search rs cfg lhs rhs,
-                           if cfg.trace then trace "rewrite_search found proof:" else skip,
-                           prf2 ← mk_eq_symm r2.proof,
-                           prf ← mk_eq_trans r1.proof prf2,
-                           if cfg.trace then trace prf else skip,
-                           rs_strings ← pp_rules rs,
-                           explanation ← (do 
-                             needs_refl ← check_if_simple_rewrite_succeeds rs (r1, r2),
-                              return (explain_proof_concisely rs_strings (r1, r2) needs_refl)) <|> return (explain_proof rs_strings (r1, r2)),
-                           if cfg.trace_result then trace explanation          
-                           else skip,
-                           if cfg.trace_summary then 
-                             do name ← decl_name,
-                                trace format!"during elaboration of {name}, rewrite_search (saw, searched, used) ({steps+remaining}, {steps}, {r1.rewrites.length + r2.rewrites.length}) rewrites"
-                           else skip,
-                           exact prf,
-                           return explanation
+      if cfg.trace_goal then do
+        t_pp ← pretty_print t,
+        trace ("rewrite_search goal: " ++ t_pp)
+      else skip,
+      if cfg.trace_rules then
+        do rs_strings ← pp_rules rs,
+          trace ("rewrite_search using:\n---\n" ++ (string.intercalate "\n" rs_strings) ++ "\n---")
+      else skip,
+      (steps, remaining, r1, r2) ← rewrite_search rs cfg lhs rhs,
+      if cfg.trace then trace "rewrite_search found proof:" else skip,
+      prf2 ← mk_eq_symm r2.proof,
+      prf ← mk_eq_trans r1.proof prf2,
+      if cfg.trace then trace prf else skip,
+      rs_strings ← pp_rules rs,
+      explanation ← (do 
+        needs_refl ← check_if_simple_rewrite_succeeds rs (r1, r2),
+        return (explain_proof_concisely rs_strings (r1, r2) needs_refl)) <|> return (explain_proof rs_strings (r1, r2)),
+      if cfg.trace_result then trace explanation          
+      else skip,
+      if cfg.trace_summary then 
+        do name ← decl_name,
+          trace format!"during elaboration of {name}, rewrite_search (saw, searched, used) ({steps+remaining}, {steps}, {r1.rewrites.length + r2.rewrites.length}) rewrites"
+      else skip,
+      exact prf,
+      return explanation
    | _ := fail "target is not an equation"
    end
 
@@ -259,7 +264,11 @@ meta def is_eq_after_binders : expr → bool
 | _                  := ff
 
 meta def rewrite_search_using (a : name) (cfg : rewrite_search_config := {}) : tactic string :=
-do names ← attribute.get_instances a,
+do tgt ← target,
+   if tgt.has_meta_var then
+     fail "rewrite_search is not suitable for goals containing metavariables"
+   else skip,
+   names ← attribute.get_instances a,
    exprs ← names.mmap $ mk_const,
    hyps ← local_context,
    let exprs := exprs ++ hyps,
