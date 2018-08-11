@@ -59,18 +59,16 @@ universes u₁ u₂
 @[backwards] definition empty_exfalso (x : false) : empty := begin exfalso, trivial end
 @[backwards] definition pempty_exfalso (x : false) : pempty := begin exfalso, trivial end
 
-@[backwards] lemma punit.ext (a b : punit.{u₁}): a = b := by induction a; induction b; refl
-@[backwards] lemma ulift.ext {α : Type u₁} (X Y : ulift.{u₂} α) (w : X.down = Y.down) : X = Y :=
+-- TODO remove after https://github.com/leanprover/mathlib/pull/249 lands
+@[extensionality] lemma ulift_ext {α : Type u₁} (X Y : ulift.{u₂} α) (w : X.down = Y.down) : X = Y :=
 begin
   induction X, induction Y, dsimp at w, rw w,
 end
-@[backwards] lemma sigma.ext {α : Type u₁} (Z : α → Type u₂) (X Y : Σ a : α, Z a) (w1 : X.1 = Y.1) (w2 : @eq.rec_on _ X.1 _ _ w1 X.2 = Y.2) : X = Y :=
+-- TODO get from subsingleton.elim?
+@[extensionality] lemma punit_ext (a b : punit.{u₁}) : a = b := begin induction a, induction b, refl end
+@[extensionality] lemma sigma_ext {α : Type u₁} (Z : α → Type u₂) (X Y : Σ a : α, Z a) (w₁ : X.1 = Y.1) (w₂ : @eq.rec_on _ X.1 _ _ w₁ X.2 = Y.2) : X = Y :=
 begin
-  induction X, induction Y, dsimp at w1, dsimp at w2, induction w1, induction w2, refl,
-end
-@[backwards] lemma pair.ext {α : Type u₁} {β : Type u₂} {X Y : α × β} (p1 : X.1 = Y.1) (p2 : X.2 = Y.2) : X = Y := 
-begin
-  induction X, induction Y, dsimp at *, rw p1, rw p2,
+  induction X, induction Y, dsimp at w₁, dsimp at w₂, induction w₁, induction w₂, refl,
 end
 
 -- TODO should `apply_instance` be in tidy? If so, these shouldn't be needed.
