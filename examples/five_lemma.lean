@@ -22,8 +22,8 @@ variables [is_group_hom f₁] [is_group_hom g₁] [is_group_hom h₁] [is_group_
 variables [is_group_hom f₂] [is_group_hom g₂] [is_group_hom h₂] [is_group_hom i₂]
 variables [is_group_hom j] [is_group_hom k] [is_group_hom l] [is_group_hom m] [is_group_hom n]
 
-local attribute [applicable] is_submonoid.one_mem
-local attribute [applicable] is_group_hom.one -- is_group_hom.mem_ker
+local attribute [backwards] is_submonoid.one_mem
+local attribute [search] is_group_hom.one -- is_group_hom.mem_ker
 local attribute [ematch]     is_group_hom.mem_ker
 
 open is_group_hom
@@ -44,7 +44,7 @@ begin
 --  have := one f₁, have := one g₁, have := one h₁,
 --  have := one f₂, have := one g₂, have := one h₂,
 --  have := one j, have := one k, have := one l, have := one m,
-  get_applicable_lemmas,
+  -- get_applicable_lemmas,
   -- applicable,
   -- obviously',
  refine inj_of_trivial_ker _ _,
@@ -54,7 +54,7 @@ begin
  }, { -- x ∈ ker l → x = 1
   rw mem_ker at a,
   -- simp,
-  have H0 : h₂ 1 = 1,                     { obviously' },
+  have H0 : h₂ 1 = 1,                     { rw is_group_hom.one h₂ , },
   have H1 : (h₂ ∘ l) x = 1,               { obviously' },
   have H2 : (m ∘ h₁) x = 1,               { rewrite_search_using `ematch, /- obviously' -/ },
   have H3 : m (h₁ x) = 1,                 { obviously' },
