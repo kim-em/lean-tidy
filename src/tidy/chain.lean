@@ -5,7 +5,10 @@
 import .some_goal
 import .repeat_at_least_once
 import .recover
+import .pretty_print
 import data.option
+
+open interactive
 
 namespace tactic
 
@@ -47,10 +50,14 @@ instance : has_focus unit :=
 
 instance string_has_focus : has_focus string :=
 { work_on_goal := λ n ts, 
+  if n = 0 then
+    ", ".intercalate ts
+  else
    "work_on_goal " ++ (to_string n) ++ " {\n  " ++ (",\n  ".intercalate ts) ++ "\n}" }
 
 namespace interactive
-meta def work_on_goal : ℕ → itactic → tactic unit
+open lean.parser
+meta def work_on_goal : parse small_nat → itactic → tactic unit
 | n t := do goals ← get_goals,
             let earlier_goals := goals.take n,
             let later_goals := goals.drop (n+1),
@@ -59,7 +66,6 @@ meta def work_on_goal : ℕ → itactic → tactic unit
             new_goals ← get_goals,
             set_goals (earlier_goals ++ new_goals ++ later_goals)
 end interactive
-
 
 /- 
 The chain tactic is built out of two components,
@@ -77,7 +83,7 @@ The tactic `chain_multiple_goals` repeatedly applies `chain_single_goal` to the 
 -/
 meta def chain_multiple_goals : tactic (list α) :=
 do (p, q) ← repeat_at_least_once (some_goal single_goal_tactic) <|> fail "chain did not find any goal where progress could be made",
-   return ((p :: q).map $ λ x, has_focus.work_on_goal x.1 x.2.reverse)
+   return ((p :: q).reverse.map $ λ x, has_focus.work_on_goal x.1 x.2.reverse)
 
 meta def chain_single_goal_aux (tactics : list (tactic α)) : tactic (list α) :=
 do ng ← num_goals,
@@ -138,11 +144,11 @@ do gs ← get_goals,
                   exact r,
                   append_goals r.metavariables) <|> fail "bug: could not close goal using solution to synthetic goal!"
    end,
-   return as.join
+   return as.reverse.join
 
 structure chain_cfg := 
-( trace_steps        : bool := ff )
-( make_declarations  : bool := tt )
+(trace_steps        : bool := ff)
+(make_declarations  : bool := tt)
 
 meta def chain_core (cfg : chain_cfg) (tactics : list (tactic α)) : tactic (list α) := 
 do ng ← num_goals,
@@ -153,13 +159,22 @@ do ng ← num_goals,
    | _ := chain_multiple_goals tac
    end
 
-
 variable [has_to_format α]
 
 meta def trace_output (t : tactic α) : tactic α :=
-do r ← t,
+do tgt ← target,
+   r ← t,
    name ← decl_name,
-   trace format!"chain successfully applied a tactic during elaboration of {name} with result: {r}",
+   trace format!"chain successfully applied a tactic during elaboration of {name}:",
+   tgt ← pretty_print tgt,
+   trace format!"old target: {tgt}",
+   trace format!"tactic:     {r}",
+   tgt ← try_core target,
+   tgt ← match tgt with
+          | (some tgt) := do pretty_print tgt
+          | none       := do return "′no goals′"
+          end,
+   trace format!"new target: {tgt}",
    pure r
 
 private meta def chain_handle_trace (cfg : chain_cfg) (tactics : list (tactic α)) : tactic (list α) :=

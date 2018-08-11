@@ -3,7 +3,7 @@
 -- Authors: Scott Morrison
 
 import data.list
-import .pretty_print
+import tidy.pretty_print
 
 open tactic
 open interactive
