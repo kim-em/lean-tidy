@@ -9,7 +9,7 @@ local attribute [forwards] G
 
 example : 1 = 1 :=
 begin 
-  success_if_fail { forwards_reasoning },
+  success_if_fail { forwards_library_reasoning },
   refl
 end
 
@@ -17,17 +17,17 @@ local attribute [forwards] F
 
 example : 1 = 1 :=
 begin 
-  forwards_reasoning,
-  forwards_reasoning,
-  success_if_fail { forwards_reasoning },
+  forwards_library_reasoning,
+  forwards_library_reasoning,
+  success_if_fail { forwards_library_reasoning },
   refl
 end
 
 example : 1 = 1 :=
 begin 
   have p := [0],  
-  forwards_reasoning,
-  success_if_fail { forwards_reasoning },
+  forwards_library_reasoning,
+  success_if_fail { forwards_library_reasoning },
   refl
 end
 end
@@ -40,9 +40,9 @@ inductive T (n : ℕ)
 
 example : 1 = 1 :=
 begin
-success_if_fail { forwards_reasoning },
+success_if_fail { forwards_library_reasoning },
 have p : T 3 := T.t 3 5,
-forwards_reasoning,
+forwards_library_reasoning,
 refl
 end
 
