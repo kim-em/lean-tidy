@@ -50,7 +50,7 @@ instance : has_focus unit :=
 
 instance string_has_focus : has_focus string :=
 { work_on_goal := λ n ts, 
-  if n = 1000 then
+  if n = 0 then
     ", ".intercalate ts
   else
    "work_on_goal " ++ (to_string n) ++ " {\n  " ++ (",\n  ".intercalate ts) ++ "\n}" }
@@ -83,7 +83,7 @@ The tactic `chain_multiple_goals` repeatedly applies `chain_single_goal` to the 
 -/
 meta def chain_multiple_goals : tactic (list α) :=
 do (p, q) ← repeat_at_least_once (some_goal single_goal_tactic) <|> fail "chain did not find any goal where progress could be made",
-   return ((p :: q).map $ λ x, has_focus.work_on_goal x.1 x.2.reverse)
+   return ((p :: q).reverse.map $ λ x, has_focus.work_on_goal x.1 x.2.reverse)
 
 meta def chain_single_goal_aux (tactics : list (tactic α)) : tactic (list α) :=
 do ng ← num_goals,
@@ -144,7 +144,7 @@ do gs ← get_goals,
                   exact r,
                   append_goals r.metavariables) <|> fail "bug: could not close goal using solution to synthetic goal!"
    end,
-   return as.join
+   return as.reverse.join
 
 structure chain_cfg := 
 (trace_steps        : bool := ff)
