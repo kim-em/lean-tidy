@@ -31,6 +31,8 @@ let use_cases := match t' with
 | `(subtype _) := tt
 | `(Exists _)  := tt
 | `(fin 0)     := tt
+| `(sum _ _)   := tt -- This is perhaps controversial!
+| `(or _ _)    := tt -- This is perhaps controversial!
 | _            := ff
 end,
 if use_cases then
