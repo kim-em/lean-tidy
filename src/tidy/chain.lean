@@ -49,7 +49,7 @@ instance : has_focus unit :=
 
 instance string_has_focus : has_focus string :=
 { work_on_goal := λ n ts, 
-  if n = 1000 then
+  if n = 0 then
     ", ".intercalate ts
   else
    "work_on_goal " ++ (to_string n) ++ " {\n  " ++ (",\n  ".intercalate ts) ++ "\n}" }
@@ -157,7 +157,6 @@ do ng ← num_goals,
    | 1 := tac
    | _ := chain_multiple_goals tac
    end
-
 
 variable [has_to_format α]
 
