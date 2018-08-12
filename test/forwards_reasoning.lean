@@ -36,13 +36,14 @@ section
 inductive T (n : ℕ)
 | t : ℕ → T
 
-@[forward] lemma H {n : ℕ} (v : T n) : string := "hello"
+@[forward] lemma H.H {n : ℕ} (v : T n) : string := "hello"
 
 example : 1 = 1 :=
 begin
   success_if_fail { forwards_library_reasoning },
   have p : T 3 := T.t 3 5,
   forwards_library_reasoning,
+  guard_hyp H_p := string, -- check that we drop namespaces
   refl
 end
 

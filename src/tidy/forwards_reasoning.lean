@@ -48,7 +48,7 @@ meta def attempt_forwards_reasoning (only_props : bool) (s : simp_lemmas) : list
 /-- Attempt to `have` a lemma marked with the attribute @[forward], whose conclusion is not yet known and whose arguments can be filled in by hypotheses. -/
 meta def forwards_library_reasoning : tactic string :=
 do cs ← attribute.get_instances `forward,
-   es ← cs.mmap (λ n, (do e ← mk_const n, let s := n.to_string_with_sep "_", return (e, [s]))),
+   es ← cs.mmap (λ n, (do e ← mk_const n, let s := n.components.ilast.to_string, return (e, [s]))),
    s ← mk_simp_set ff [] [],
    attempt_forwards_reasoning ff s.1 es
 
