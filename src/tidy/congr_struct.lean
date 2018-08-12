@@ -66,12 +66,12 @@ end tactic.interactive
 
 
 -- congr_struct needs various helper lemmas.
-@[backwards] lemma heq_prop { α β : Prop } { a : α } { b : β } ( h : α = β ) : a == b :=
+@[back] lemma heq_prop { α β : Prop } { a : α } { b : β } ( h : α = β ) : a == b :=
 begin
   induction h, reflexivity
 end
 
-@[backwards] theorem {u v w z} funext_prop_001 { α : Type u } { β : Type v } { Z : α → β → Type w } { X : Π ( a : α ) ( b : β ) ( g : Z a b ), Type z }
+@[back] theorem {u v w z} funext_prop_001 { α : Type u } { β : Type v } { Z : α → β → Type w } { X : Π ( a : α ) ( b : β ) ( g : Z a b ), Type z }
                           { p q r s : Π ( a : α ) ( b : β ) ( g : Z a b ), X a b g }
                           ( h1 : p = r ) ( h2 : q = s )
                        : (∀ ( a : α ) ( b : β ) ( g : Z a b ), p a b g = q a b g ) = (∀ ( a : α ) ( b : β ) ( g : Z a b), r a b g = s a b g ) :=

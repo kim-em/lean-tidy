@@ -6,24 +6,24 @@ import .pempty
 
 open tactic
 
-meta def backwards_attribute : user_attribute := {
-  name := `backwards,
-  descr := "A lemma that should be applied to a goal whenever possible; use `backwards_reasoning` to automatically `apply` all lemmas tagged `backwards`."
+meta def back_attribute : user_attribute := {
+  name := `back,
+  descr := "A lemma that should be applied to a goal whenever possible; use `backwards_reasoning` to automatically `apply` all lemmas tagged `[back]`."
 }
 
-run_cmd attribute.register `backwards_attribute
+run_cmd attribute.register `back_attribute
 
 /-- Try to apply one of the given lemmas; it succeeds as soon as one of them succeeds. -/
 meta def any_apply : list name → tactic name
 | []      := failed
 | (c::cs) := (mk_const c >>= apply >> pure c) <|> any_apply cs
 
-meta def backwards_cautiously_attribute : user_attribute := {
-  name := `backwards_cautiously,
-  descr := "A lemma that should be applied to a goal whenever possible, as long as all arguments to the lemma by be fulfilled from existing hypotheses; use `backwards_reasoning` to automatically apply all lemmas tagged `backwards_cautiously`."
+meta def back'_attribute : user_attribute := {
+  name := `back',
+  descr := "A lemma that should be applied to a goal whenever possible, as long as all arguments to the lemma by be fulfilled from existing hypotheses; use `backwards_reasoning` to automatically apply all lemmas tagged `[back']`."
 }
 
-run_cmd attribute.register `backwards_cautiously_attribute
+run_cmd attribute.register `back'_attribute
 
 /- Try to apply one of the given lemmas, fulfilling all new goals using existing hypotheses. It succeeds if one of them succeeds. -/
 meta def any_apply_no_new_goals : list name → tactic name
@@ -35,29 +35,29 @@ meta def any_apply_no_new_goals : list name → tactic name
                  guard (n = n' + 1),
                  pure c) <|> any_apply_no_new_goals cs
 
-/-- Try to apply any lemma marked with the attribute @[backwards] -/
+/-- Try to apply any lemma marked with the attribute @[back] -/
 meta def backwards_reasoning : tactic string :=
-do cs ← attribute.get_instances `backwards_cautiously,
+do cs ← attribute.get_instances `back',
    r ← try_core (any_apply_no_new_goals cs),
    match r with 
    | (some n) := return ("apply " ++ n.to_string ++ " ; solve_by_elim")
    | none     :=  do 
-                    cs ← attribute.get_instances `backwards,
-                    n ← any_apply cs | fail "no @[backwards] or @[backwards_cautiously] lemmas could be applied",
+                    cs ← attribute.get_instances `back,
+                    n ← any_apply cs | fail "no @[back] or @[back'] lemmas could be applied",
                     return ("apply " ++ n.to_string)
    end
 
-attribute [backwards] subsingleton.elim
+attribute [back] subsingleton.elim
 
-attribute [backwards] funext
-attribute [backwards] set.ext   -- Order matters here: putting the attribute on set.ext after funext makes applicable prefer set.ext
-attribute [backwards] propext
-attribute [backwards] subtype.eq
+attribute [back] funext
+attribute [back] set.ext   -- Order matters here: putting the attribute on set.ext after funext makes applicable prefer set.ext
+attribute [back] propext
+attribute [back] subtype.eq
 
 universes u₁ u₂
 
-@[backwards] definition empty_exfalso (x : false) : empty := begin exfalso, trivial end
-@[backwards] definition pempty_exfalso (x : false) : pempty := begin exfalso, trivial end
+@[back] definition empty_exfalso (x : false) : empty := begin exfalso, trivial end
+@[back] definition pempty_exfalso (x : false) : pempty := begin exfalso, trivial end
 
 -- TODO remove after https://github.com/leanprover/mathlib/pull/249 lands
 @[extensionality] lemma ulift_ext {α : Type u₁} (X Y : ulift.{u₂} α) (w : X.down = Y.down) : X = Y :=
@@ -72,10 +72,10 @@ begin
 end
 
 -- TODO should `apply_instance` be in tidy? If so, these shouldn't be needed.
-@[backwards] definition decidable_true  : decidable true  := is_true  dec_trivial
-@[backwards] definition decidable_false : decidable false := is_false dec_trivial
+@[back] definition decidable_true  : decidable true  := is_true  dec_trivial
+@[back] definition decidable_false : decidable false := is_false dec_trivial
 
-attribute [backwards] quotient.mk quotient.sound
+attribute [back] quotient.mk quotient.sound
 
-attribute [backwards_cautiously] eqv_gen.rel
-attribute [backwards_cautiously] Exists.intro
+attribute [back'] eqv_gen.rel
+attribute [back'] Exists.intro

@@ -7,12 +7,12 @@ import .pretty_print
 
 open tactic
 
-meta def forwards_attribute : user_attribute := {
-  name := `forwards,
-  descr := "A lemma whose conclusion should be deduced whenever all arguments are satisfiable from hypotheses; use `forwards_reasoning` to automatically try all lemmas tagged `@[forwards]`."
+meta def forward_attribute : user_attribute := {
+  name := `forward,
+  descr := "A lemma whose conclusion should be deduced whenever all arguments are satisfiable from hypotheses; use `forwards_reasoning` to automatically try all lemmas tagged `@[forward]`."
 }
 
-run_cmd attribute.register `forwards_attribute
+run_cmd attribute.register `forward_attribute
 
 meta def guard_no_duplicate_hypothesis (t : expr) : tactic unit :=
 do hyps ← local_context,
@@ -45,9 +45,9 @@ meta def attempt_forwards_reasoning (only_props : bool) (s : simp_lemmas) : list
              return ("have " ++ n ++ " := " ++ term)
              ) <|> attempt_forwards_reasoning es
 
-/-- Attempt to `have` a lemma marked with the attribute @[forwards], whose conclusion is not yet known and whose arguments can be filled in by hypotheses. -/
+/-- Attempt to `have` a lemma marked with the attribute @[forward], whose conclusion is not yet known and whose arguments can be filled in by hypotheses. -/
 meta def forwards_library_reasoning : tactic string :=
-do cs ← attribute.get_instances `forwards,
+do cs ← attribute.get_instances `forward,
    es ← cs.mmap (λ n, (do e ← mk_const n, let s := n.to_string_with_sep "_", return (e, [s]))),
    s ← mk_simp_set ff [] [],
    attempt_forwards_reasoning ff s.1 es
