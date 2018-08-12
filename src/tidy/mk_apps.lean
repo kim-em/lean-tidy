@@ -21,7 +21,7 @@ meta def mk_app_aux : expr → expr → expr → tactic expr
 
 meta def mk_app' (f arg : expr) : tactic expr :=
 do t ← infer_type f >>= whnf,
-   r ← mk_app_aux f t arg,
+   r ← mk_app_aux f t arg <|> to_expr ``(%%f %%arg),
    instantiate_mvars r
 
 /--
