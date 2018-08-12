@@ -40,10 +40,17 @@ inductive T (n : ℕ)
 
 example : 1 = 1 :=
 begin
-success_if_fail { forwards_library_reasoning },
-have p : T 3 := T.t 3 5,
-forwards_library_reasoning,
-refl
+  success_if_fail { forwards_library_reasoning },
+  have p : T 3 := T.t 3 5,
+  forwards_library_reasoning,
+  refl
 end
+
+example (P Q : Prop) (p : P) (h : P → Q): Q :=
+begin
+  forwards_reasoning,
+  exact h_p
+end
+
 
 end

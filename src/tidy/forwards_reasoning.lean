@@ -18,45 +18,43 @@ meta def guard_no_duplicate_hypothesis (t : expr) : tactic unit :=
 do hyps ← local_context,
    types ← hyps.mmap (λ h, infer_type h),
    success_if_fail (types.mfirst (λ s, is_def_eq s t))
-  --  if types.many t then failed else skip
 
 meta def guard_prop (e : expr) : tactic unit :=
 do t ← infer_type e,
    guard (t = `(Prop))
 
-meta def attempt_forwards_reasoning (only_props : bool) (s : simp_lemmas) : list expr → tactic string
+meta def attempt_forwards_reasoning (only_props : bool) (s : simp_lemmas) : list (expr × list string) → tactic string
 | [] := fail "forwards_reasoning failed"
 | (e :: es) := do
-    t ← infer_type e,
+    t ← infer_type e.1,
     t' ← try_core (s.dsimplify [] t),
     let changed := t'.is_some,
     let t := t'.get_or_else t,
     if t.is_pi then
       do hyps ← local_context,
-         apps ← mk_apps e hyps,
+         apps ← mk_apps e.1 hyps,
+         apps ← apps.mmap (λ p, do h_pp ← pretty_print p.2, return (p.1, h_pp :: e.2)),
          attempt_forwards_reasoning (apps ++ es)
     else (do if only_props then guard_prop t else skip,
              guard_no_duplicate_hypothesis t,
-             --  n ← mk_fresh_name,
-             let n := `this,
-             assertv n t e,
-            --  type ← pretty_print t,
-             term ← pretty_print e,
-            --  if changed then 
-            --    return ("have " ++ (n.to_string_with_sep "_") ++ " : " ++ type ++ " := by convert (" ++ term ++ ")")               
-            --  else
-            --    return ("have " ++ (n.to_string_with_sep "_") ++ " : " ++ type ++ " := " ++ term)
-             return ("have := " ++ term)
+             let n := "_".intercalate e.2.reverse,
+             assertv n t e.1,
+             term ← pretty_print e.1,
+             -- TODO sometimes this reported tactic won't work, and we need to write instead
+             -- `have n : t := by convert term`
+             return ("have " ++ n ++ " := " ++ term)
              ) <|> attempt_forwards_reasoning es
 
 /-- Try to deduce any lemma marked with the attribute @[forwards] -/
 meta def forwards_library_reasoning : tactic string :=
 do cs ← attribute.get_instances `forwards,
-   es ← cs.mmap mk_const,
+   es ← cs.mmap (λ n, (do e ← mk_const n, let s := n.to_string_with_sep "_", return (e, [s]))),
    s ← mk_simp_set ff [] [],
    attempt_forwards_reasoning ff s.1 es
 
 meta def forwards_reasoning : tactic string :=
 do hyps ← local_context,
+   es ← hyps.mmap (λ e, (do s ← pretty_print e, return (e, [s]))),
+   trace es,
    s ← mk_simp_set ff [] [],
-   attempt_forwards_reasoning tt s.1 hyps   
+   attempt_forwards_reasoning tt s.1 es   

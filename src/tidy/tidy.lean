@@ -25,26 +25,11 @@ attribute [ematch] subtype.property
 meta def dsimp' := `[dsimp {unfold_reducible := tt, md := semireducible}]
 meta def dsimp_all' := `[dsimp at * {unfold_reducible := tt, md := semireducible}]
 
--- lemma funext_simp {α : Type u} {Z : α → Type v} {f g : Π a : α, Z a} : (f = g) = ∀ a : α, f a = g a :=
--- begin
---   apply propext,
---   split,
---   { intro w, intro, rw w },
---   { intro w, apply funext, assumption }
--- end 
-
 open tactic
-
--- TODO I'd love to do some profiling here, and find how much time is spent inside each tactic,
--- also divided up between successful and unsuccessful calls.
-
--- TODO also find tactics which are never used!
 
 -- TODO split_ifs?
 -- TODO refine_struct?
 
--- meta def simp_only_funext := `[simp only [funext_simp] at *] >> pure "simp only [funext_simp] at *"
-meta def dsimp_reducible := `[dsimp {unfold_reducible:=tt}]  >> pure "dsimp {unfold_reducible:=tt}"
 meta def exact_decidable := `[exact dec_trivial]             >> pure "exact dec_trivial"
 
 meta def default_tidy_tactics : list (tactic string) :=
@@ -59,12 +44,9 @@ meta def default_tidy_tactics : list (tactic string) :=
   `[apply_auto_param]                         >> pure "apply_auto_param",
   `[dsimp at *]                               >> pure "dsimp at *",
   `[simp at *]                                >> pure "simp at *",
-  -- `[unfold_coes]                              >> pure "unfold_coes",
   fsplit                                      >> pure "fsplit", 
   injections_and_clear                        >> pure "injections_and_clear",
   terminal_goal >> (`[solve_by_elim])         >> pure "solve_by_elim",
-  -- simp_only_funext,
-  -- dsimp_reducible,
   run_tidy_tactics ]
 
 meta structure tidy_cfg extends chain_cfg :=
@@ -81,8 +63,6 @@ do
 
 meta def obviously_tactics : list (tactic string) :=
 [ tactic.interactive.rewrite_search_using `ematch ] -- TODO should switch this back to search eventually
-
--- meta def obviously : tactic unit := tidy { tactics := default_tidy_tactics ++ obviously_tactics }
 
 meta def obviously'  : tactic unit := tidy { tactics := default_tidy_tactics ++ obviously_tactics, trace_result := tt, trace_steps := ff }
 

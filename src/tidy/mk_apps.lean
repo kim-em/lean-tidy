@@ -9,7 +9,7 @@ meta def mk_app_aux : expr → expr → expr → tactic expr
    return $ f arg
  | f (expr.pi n binder_info.inst_implicit d b) arg := do
    infer_type arg >>= unify d,
-   return $ f arg
+   return $ f arg -- TODO use typeclass inference?
   --  v ← mk_instance d,
   --  t ← whnf (b.instantiate_var v),
   --  mk_app_aux (f v) t arg   
@@ -24,6 +24,10 @@ do t ← infer_type f >>= whnf,
    r ← mk_app_aux f t arg,
    instantiate_mvars r
 
-meta def mk_apps (e : expr) (F : list expr) : tactic (list expr) :=
+/--
+Given an expression `e` and  list of expressions `F`, builds all applications of `e` to elements of `F`. 
+`mk_apps` returns a list of all pairs ``(`(%%e %%f), f)`` which typecheck, for `f` in the list `F`.
+-/
+meta def mk_apps (e : expr) (F : list expr) : tactic (list (expr × expr)) :=
 -- lock_tactic_state $
-do l ← F.mmap $ λ f, (do r ← try_core (mk_app' e f), return r.to_list), return l.join
+do l ← F.mmap $ λ f, (do r ← try_core (mk_app' e f >>= λ m, return (m, f)), return r.to_list), return l.join
