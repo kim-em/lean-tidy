@@ -64,7 +64,7 @@ do
 meta def obviously_tactics : list (tactic string) :=
 [ tactic.interactive.rewrite_search_using `ematch ] -- TODO should switch this back to search eventually
 
-meta def obviously'  : tactic unit := tidy { tactics := default_tidy_tactics ++ obviously_tactics, trace_result := tt, trace_steps := ff }
+meta def obviously'  : tactic unit := tidy { tactics := default_tidy_tactics ++ obviously_tactics, trace_result := ff, trace_steps := ff }
 
 instance subsingleton_pempty : subsingleton pempty := by tidy
 instance subsingleton_punit  : subsingleton punit  := by tidy

@@ -47,17 +47,15 @@ do cs ← attribute.get_instances `back',
                     return ("apply " ++ n.to_string)
    end
 
-attribute [back] subsingleton.elim
+-- attribute [back] subsingleton.elim
 
-attribute [back] funext
-attribute [back] set.ext   -- Order matters here: putting the attribute on set.ext after funext makes applicable prefer set.ext
-attribute [back] propext
-attribute [back] subtype.eq
+-- attribute [back] propext
+-- attribute [back] subtype.eq
 
 universes u₁ u₂
 
-@[back] definition empty_exfalso (x : false) : empty := begin exfalso, trivial end
-@[back] definition pempty_exfalso (x : false) : pempty := begin exfalso, trivial end
+-- @[back] def empty_exfalso (x : false) : empty := begin exfalso, trivial end
+-- @[back] def pempty_exfalso (x : false) : pempty := begin exfalso, trivial end
 
 -- TODO remove after https://github.com/leanprover/mathlib/pull/249 lands
 @[extensionality] lemma ulift_ext {α : Type u₁} (X Y : ulift.{u₂} α) (w : X.down = Y.down) : X = Y :=
@@ -65,11 +63,11 @@ begin
   induction X, induction Y, dsimp at w, rw w,
 end
 -- TODO get from subsingleton.elim?
-@[extensionality] lemma punit_ext (a b : punit.{u₁}) : a = b := begin induction a, induction b, refl end
-@[extensionality] lemma sigma_ext {α : Type u₁} (Z : α → Type u₂) (X Y : Σ a : α, Z a) (w₁ : X.1 = Y.1) (w₂ : @eq.rec_on _ X.1 _ _ w₁ X.2 = Y.2) : X = Y :=
-begin
-  induction X, induction Y, dsimp at w₁, dsimp at w₂, induction w₁, induction w₂, refl,
-end
+-- @[extensionality] lemma punit_ext (a b : punit.{u₁}) : a = b := begin induction a, induction b, refl end
+-- @[extensionality] lemma sigma_ext {α : Type u₁} (Z : α → Type u₂) (X Y : Σ a : α, Z a) (w₁ : X.1 = Y.1) (w₂ : @eq.rec_on _ X.1 _ _ w₁ X.2 = Y.2) : X = Y :=
+-- begin
+--   induction X, induction Y, dsimp at w₁, dsimp at w₂, induction w₁, induction w₂, refl,
+-- end
 
 -- TODO should `apply_instance` be in tidy? If so, these shouldn't be needed.
 @[back] definition decidable_true  : decidable true  := is_true  dec_trivial

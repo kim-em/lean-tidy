@@ -102,10 +102,10 @@ do
 
 structure rewrite_search_config :=
   (trace         : bool := ff)
-  (trace_goal    : bool := tt)
+  (trace_goal    : bool := ff)
   (trace_result  : bool := ff)
   (trace_rules   : bool := ff)
-  (trace_summary : bool := tt)
+  (trace_summary : bool := ff)
   (max_steps          : option ℕ := none)
   (max_extra_distance : option ℕ := some 50)
 
