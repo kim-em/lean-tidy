@@ -39,7 +39,9 @@ if use_cases then
   do cases h, pp ← pp h, return ("cases " ++ pp.to_string)
 else
   match t' with
-  | `(eq _ _)        := do induction h, pp ← pp h, return ("induction " ++ pp.to_string)
+  -- TODO I've seen places where we need to use cases. Double check we really need induction sometimes.
+  | `(eq _ _)        := (do induction h, pp ← pp h, return ("induction " ++ pp.to_string)) <|>
+                        (do cases h,     pp ← pp h, return ("cases " ++ pp.to_string))
   | `(quot _)        := do induction h, pp ← pp h, return ("induction " ++ pp.to_string)
   | _                := failed
   end

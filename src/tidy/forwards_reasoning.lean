@@ -26,15 +26,12 @@ do t ← infer_type e,
 meta def attempt_forwards_reasoning (only_props : bool) (s : simp_lemmas) : list (expr × list string) → tactic string
 | [] := fail "forwards_reasoning failed"
 | (e :: es) := do
-trace (e :: es),
     t ← infer_type e.1,
     t' ← try_core (s.dsimplify [] t),
     let changed := t'.is_some,
     let t := t'.get_or_else t,
-    trace t,
     if t.is_pi then
       do hyps ← local_context,
-      trace hyps,
          apps ← mk_apps e.1 hyps,
          apps ← apps.mmap (λ p, do h_pp ← pretty_print p.2, return (p.1, h_pp :: e.2)),
          attempt_forwards_reasoning (apps ++ es)
@@ -61,3 +58,5 @@ do hyps ← local_context,
    es ← hyps.mmap (λ e, (do s ← pretty_print e, return (e, [s]))),
    s ← mk_simp_set ff [] [],
    attempt_forwards_reasoning tt s.1 es   
+
+attribute [forward] congr_fun

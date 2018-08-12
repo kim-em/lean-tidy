@@ -38,7 +38,7 @@ meta def default_tidy_tactics : list (tactic string) :=
   forwards_reasoning,
   forwards_library_reasoning,
   backwards_reasoning,
-  `[ext]                                      >> pure "ext",
+  `[ext1]                                      >> pure "ext1",
   intro_at_least_one                          >>= λ ns, pure ("intros " ++ (" ".intercalate ns)),
   automatic_induction,
   `[apply_auto_param]                         >> pure "apply_auto_param",
@@ -47,6 +47,7 @@ meta def default_tidy_tactics : list (tactic string) :=
   fsplit                                      >> pure "fsplit", 
   injections_and_clear                        >> pure "injections_and_clear",
   terminal_goal >> (`[solve_by_elim])         >> pure "solve_by_elim",
+  recover'                                    >> pure "recover'",
   run_tidy_tactics ]
 
 meta structure tidy_cfg extends chain_cfg :=
@@ -64,7 +65,7 @@ do
 meta def obviously_tactics : list (tactic string) :=
 [ tactic.interactive.rewrite_search_using `ematch ] -- TODO should switch this back to search eventually
 
-meta def obviously'  : tactic unit := tidy { tactics := default_tidy_tactics ++ obviously_tactics, trace_result := tt, trace_steps := ff }
+meta def obviously'  : tactic unit := tidy { tactics := default_tidy_tactics ++ obviously_tactics, trace_result := ff, trace_steps := ff }
 
 instance subsingleton_pempty : subsingleton pempty := by tidy
 instance subsingleton_punit  : subsingleton punit  := by tidy
