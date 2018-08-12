@@ -4,6 +4,7 @@
 
 import data.list
 import .pretty_print
+import .lock_tactic_state
 
 open tactic
 open interactive
@@ -11,12 +12,6 @@ open interactive.types
 open expr
 open lean
 open lean.parser
-
-meta def lock_tactic_state {α} (t : tactic α) : tactic α
-| s := match t s with
-       | result.success a s' := result.success a s
-       | result.exception msg pos s' := result.exception msg pos s
-       end
 
 meta def rewrite_without_new_mvars (r : expr) (e : expr) (cfg : rewrite_cfg := {}) : tactic (expr × expr) :=
 lock_tactic_state $ -- This makes sure that we forget everything in between rewrites; otherwise we don't correctly find everything!
