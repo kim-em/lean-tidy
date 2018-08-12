@@ -45,14 +45,14 @@ meta def attempt_forwards_reasoning (only_props : bool) (s : simp_lemmas) : list
              return ("have " ++ n ++ " := " ++ term)
              ) <|> attempt_forwards_reasoning es
 
-/-- Try to `have` a lemma marked with the attribute @[forwards], whose conclusion is not yet known and whose arguments can be filled in by hypotheses. -/
+/-- Attempt to `have` a lemma marked with the attribute @[forwards], whose conclusion is not yet known and whose arguments can be filled in by hypotheses. -/
 meta def forwards_library_reasoning : tactic string :=
 do cs ← attribute.get_instances `forwards,
    es ← cs.mmap (λ n, (do e ← mk_const n, let s := n.to_string_with_sep "_", return (e, [s]))),
    s ← mk_simp_set ff [] [],
    attempt_forwards_reasoning ff s.1 es
 
-/-- `have` any result obtained by applying one hypothesis to others, as long as the conclusion is propositional, is not yet known, and has no further arguments. -/
+/-- Attempt to `have` a result obtained by applying one hypothesis to others, as long as the conclusion is propositional, is not yet known, and has no further arguments. -/
 meta def forwards_reasoning : tactic string :=
 do hyps ← local_context,
    es ← hyps.mmap (λ e, (do s ← pretty_print e, return (e, [s]))),
