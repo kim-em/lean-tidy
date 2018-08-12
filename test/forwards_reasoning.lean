@@ -49,6 +49,7 @@ end
 example (P Q : Prop) (p : P) (h : P → Q): Q :=
 begin
   forwards_reasoning, 
+  success_if_fail { forwards_reasoning },
   exact h_p
 end
 
