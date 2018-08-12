@@ -5,7 +5,7 @@ lemma F : ℕ := 0
 
 section
 
-local attribute [forwards] G
+local attribute [forward] G
 
 example : 1 = 1 :=
 begin 
@@ -13,7 +13,7 @@ begin
   refl
 end
 
-local attribute [forwards] F
+local attribute [forward] F
 
 example : 1 = 1 :=
 begin 
@@ -36,7 +36,7 @@ section
 inductive T (n : ℕ)
 | t : ℕ → T
 
-@[forwards] lemma H {n : ℕ} (v : T n) : string := "hello"
+@[forward] lemma H {n : ℕ} (v : T n) : string := "hello"
 
 example : 1 = 1 :=
 begin

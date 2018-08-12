@@ -35,7 +35,7 @@ meta def any_apply_no_new_goals : list name → tactic name
                  guard (n = n' + 1),
                  pure c) <|> any_apply_no_new_goals cs
 
-/-- Try to apply any lemma marked with the attribute @[back] -/
+/-- Try to apply any lemma marked with the attributes `@[back]` or `@[back']`. -/
 meta def backwards_reasoning : tactic string :=
 do cs ← attribute.get_instances `back',
    r ← try_core (any_apply_no_new_goals cs),
@@ -43,6 +43,7 @@ do cs ← attribute.get_instances `back',
    | (some n) := return ("apply " ++ n.to_string ++ " ; solve_by_elim")
    | none     :=  do 
                     cs ← attribute.get_instances `back,
+                    trace cs,
                     n ← any_apply cs | fail "no @[back] or @[back'] lemmas could be applied",
                     return ("apply " ++ n.to_string)
    end
@@ -50,7 +51,8 @@ do cs ← attribute.get_instances `back',
 -- attribute [back] subsingleton.elim
 
 -- attribute [back] propext
--- attribute [back] subtype.eq
+
+attribute [extensionality] subtype.eq
 
 universes u₁ u₂
 
@@ -75,5 +77,5 @@ end
 
 attribute [back] quotient.mk quotient.sound
 
-attribute [back'] eqv_gen.rel
+attribute [back] eqv_gen.rel
 attribute [back'] Exists.intro
