@@ -43,7 +43,6 @@ do cs ← attribute.get_instances `back',
    | (some n) := return ("apply " ++ n.to_string ++ " ; solve_by_elim")
    | none     :=  do 
                     cs ← attribute.get_instances `back,
-                    trace cs,
                     n ← any_apply cs | fail "no @[back] or @[back'] lemmas could be applied",
                     return ("apply " ++ n.to_string)
    end
