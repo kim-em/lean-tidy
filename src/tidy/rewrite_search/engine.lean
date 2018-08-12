@@ -136,26 +136,6 @@ meta def global_state.get_endpoints {α β : Type} (g : global_state α β) (e :
 
 meta def global_state.get_estimate_verts {α β : Type} (g : global_state α β) (de : dist_estimate β) : vertex × vertex :=
   (g.get_vertex de.l, g.get_vertex de.r)
-
-meta def dump_rws : list (expr × expr × ℕ × ℕ) → tactic unit
-  | [] := tactic.trace ""
-  | (a :: rest) := do tactic.trace format!"→{a.1}\nPF:{a.2}", dump_rws rest
-
-meta def dump_vertices : list vertex → tactic unit
-  | [] := tactic.trace ""
-  | (a :: rest) := do
-    let pfx : string := match a.parent with
-      | none := "?"
-      | some p := p.f.to_string
-    end,
-    tactic.trace format!"V{a.id.to_string}:{a.pp}<-{pfx}",
-    dump_vertices rest
-
-meta def dump_estimates {α β : Type} (g : global_state α β) : list (dist_estimate β) → tactic unit
-  | [] := tactic.trace ""
-  | (a :: rest) := do
-  tactic.trace format!"I{(g.get_vertex a.l).pp}-{(g.get_vertex a.r).pp}:{a.bnd.bound}",
-  dump_estimates rest
   
 -- Forcibly add a new vertex to the vertex table. Probably should never be 
 -- called by a strategy and add_vertex to should used instead.
@@ -197,28 +177,9 @@ meta def global_state.find_pair {α β : Type} (g : global_state α β) (l r : v
 meta def global_state.register_solved {α β : Type} (g : global_state α β) (e : edge) : global_state α β :=
   ⟨ g.next_id, g.vertices, g.estimates, g.interesting_pairs, some e, g.internal_strat_state ⟩
 
--- Look up the given vertex associated to (e : expr), or create it if it is
--- not already present.
-meta def global_state.do_add_vertex {α β : Type} (g : global_state α β) (e : expr) (root : bool) (s : option side)
-  : tactic (global_state α β × vertex) := do
-  maybe_v ← g.find_vertex e,
-  match maybe_v with
-    | none := do
-      (g, v) ← g.do_alloc_vertex e root s,
-      -- tactic.trace format!"addV: {v.pp}",
-      return (g, v)
-    | (some v) := return (g, v)
-  end
-
-meta def global_state.add_vertex {α β : Type} (g : global_state α β) (e : expr) :=
-  global_state.do_add_vertex g e ff none
-
-meta def global_state.add_root_vertex {α β : Type} (g : global_state α β) (e : expr) (s : side) :=
-  global_state.do_add_vertex g e tt s
-
 meta def global_state.add_adj {α β : Type} (g : global_state α β) (v : vertex)
   (e : edge) : tactic (global_state α β × vertex) := do
-  let v : vertex := ⟨ v.id, v.exp, v.pp, v.tokens, v.visited, v.root, v.s, v.parent, v.adj.append [e] ⟩,
+  let v : vertex := ⟨ v.id, v.exp, v.pp, v.tokens, v.root, v.visited, v.s, v.parent, v.adj.append [e] ⟩,
   return (g.set_vertex v, v)
 
 meta def global_state.publish_parent {α β : Type} (f t : vertex) (g : global_state α β)
@@ -229,7 +190,7 @@ meta def global_state.publish_parent {α β : Type} (f t : vertex) (g : global_s
   match t.parent with
     | some parent := return (g, t)
     | none := do
-      let t : vertex := ⟨ t.id, t.exp, t.pp, t.tokens, t.root, t.visited, f.s, some e, t.adj ⟩,
+      let t : vertex := ⟨ t.id, t.exp, t.pp, t.tokens, t.root, t.visited, t.s, some e, t.adj ⟩,
       return (g.set_vertex t, t)
   end
 
@@ -237,18 +198,6 @@ meta def global_state.mark_vertex_visited {α β : Type} (g : global_state α β
   : global_state α β :=
   let v := g.get_vertex vr in
   g.set_vertex ⟨ v.id, v.exp, v.pp, v.tokens, v.root, tt, v.s, v.parent, v.adj ⟩
-
-meta def global_state.add_edge {α β : Type} (g : global_state α β) (f t : vertex)
-  (proof : expr) (how : ℕ) : tactic (global_state α β × edge) := do
-  let new_edge : edge := ⟨ f.id, t.id, proof, how ⟩,
-  -- tactic.trace format!"addE:{f.to_string}→{t.to_string}",
-  (g, f) ← g.add_adj f new_edge,
-  (g, t) ← g.add_adj t new_edge,
-  (g, t) ← g.publish_parent f t new_edge,
-  if ¬(vertex.same_side f t) then
-    return (g.register_solved new_edge, new_edge)
-  else
-    return (g, new_edge)
 
 -- updates rival's estimate trying to beat candidate's estimate, stopping if we do or we can't
 -- go any further. We return true if we were able to beat candidate.
@@ -304,7 +253,6 @@ meta def find_most_interesting {α β : Type} (g : global_state α β) (fn : @im
       return (best :: others)
 
 meta def global_state.find_most_interesting {α β : Type} (g : global_state α β) (fn : @improve_estimate_fn β) : tactic (global_state α β) := do
-  -- dump_estimates g g.interesting_pairs,
   new_interestings ← find_most_interesting g fn g.interesting_pairs,
   return ⟨ g.next_id, g.vertices, g.estimates, new_interestings, g.solving_edge, g.internal_strat_state ⟩ 
 
@@ -327,20 +275,142 @@ meta structure strategy {α β : Type} :=
   (improve_estimate_over : improve_estimate_fn β)
 
 structure config := 
-  (trace : bool := ff)
+  (trace      : bool := ff)
+  (visualiser : bool := ff)
 
-meta structure inst (α β : Type) :=
-  (conf  : config)
-  (rs    : list (expr × bool))
-  (strat : @strategy α β)
-  (g     : global_state α β)
+meta structure tracer (γ : Type) :=
+  (init            : tactic γ)
+  (publish_vertex  : γ → vertex → tactic unit)
+  (publish_edge    : γ → edge → tactic unit)
+  (publish_pair    : γ → vertex_ref → vertex_ref → tactic unit)
+  (publish_finished: γ → tactic unit)
+  (dump            : γ → string → tactic unit)
+  (pause           : γ → tactic unit)
 
-meta def inst.mutate {α β : Type} (i : inst α β) (g : global_state α β) : inst α β :=
-  ⟨ i.conf, i.rs, i.strat, g ⟩
+meta structure tracer_state (γ : Type) :=
+  (tr       : tracer γ)
+  (internal : γ)
+
+--FIXME is there a builtin of this?
+inductive nothing
+  | mk : nothing
+meta def no_tracer_init : tactic nothing := return nothing.mk
+meta def no_tracer_publish_vertex (_ : nothing) (_ : vertex) : tactic unit := tactic.skip
+meta def no_tracer_publish_edge (_ : nothing) (_ : edge) : tactic unit := tactic.skip
+meta def no_tracer_publish_pair (_ : nothing) (_ _ : vertex_ref) : tactic unit := tactic.skip
+meta def no_tracer_publish_finished (_ : nothing) : tactic unit := tactic.skip
+meta def no_tracer_dump (_ : nothing) (_ : string) : tactic unit := tactic.skip
+meta def no_tracer_pause (_ : nothing) : tactic unit := tactic.skip
+meta def no_tracer : tracer nothing :=
+  ⟨ no_tracer_init, no_tracer_publish_vertex, no_tracer_publish_edge, no_tracer_publish_pair,
+    no_tracer_publish_finished, no_tracer_dump, no_tracer_pause ⟩
+
+meta structure inst (α β γ : Type) :=
+  (conf   : config)
+  (rs     : list (expr × bool))
+  (strat  : @strategy α β)
+  (g      : global_state α β)
+
+  (tr_state : tracer_state γ)
+
+meta def inst.mutate {α β γ : Type} (i : inst α β γ) (g : global_state α β) : inst α β γ:=
+  ⟨ i.conf, i.rs, i.strat, g, i.tr_state ⟩
+
+meta def inst.trace {α β γ δ : Type} [has_to_tactic_format δ] (i : inst α β γ) (s : δ) : tactic unit :=
+  if i.conf.trace then
+    tactic.trace s
+  else
+    tactic.skip
+
+meta def tracer_vertex_added {α β γ : Type} (i : inst α β γ) (v : vertex) : tactic unit := do
+  --FIXME guard all of these with an if (to prevent pointless string building)
+  i.trace format!"addV({v.id.to_string}): {v.pp}",
+  i.tr_state.tr.publish_vertex i.tr_state.internal v
+
+meta def tracer_edge_added {α β γ : Type} (i : inst α β γ) (e : edge) : tactic unit := do
+  --FIXME guard all of these with an if (to prevent pointless string building)
+  i.trace format!"addE: {e.f.to_string}→{e.t.to_string}",
+  i.tr_state.tr.publish_edge i.tr_state.internal e
+
+meta def tracer_pair_added {α β γ : Type} (i : inst α β γ) (l r : vertex_ref) : tactic unit := do
+  --FIXME guard all of these with an if (to prevent pointless string building)
+  i.trace format!"addP: {l.to_string}→{r.to_string}",
+  i.tr_state.tr.publish_pair i.tr_state.internal l r
+
+meta def tracer_dump {α β γ δ : Type} [has_to_tactic_format δ] (i : inst α β γ) (s : δ) : tactic unit := do
+  --FIXME guard all of these with an if (to prevent pointless string building)
+  fmt ← has_to_tactic_format.to_tactic_format s,
+  str ← pure (to_string fmt),
+  i.trace str,
+  i.tr_state.tr.dump i.tr_state.internal str
+
+meta def tracer_search_finished {α β γ : Type} (i : inst α β γ) : tactic unit := do
+  --FIXME guard all of these with an if (to prevent pointless string building)
+  i.trace format!"DONE!",
+  i.tr_state.tr.publish_finished i.tr_state.internal
+
+meta def dump_rws : list (expr × expr × ℕ × ℕ) → tactic unit
+  | [] := tactic.skip
+  | (a :: rest) := do tactic.trace format!"→{a.1}\nPF:{a.2}", dump_rws rest
+
+meta def dump_vertices {α β γ : Type} (i : inst α β γ) : list vertex → tactic unit
+  | [] := tactic.skip
+  | (a :: rest) := do
+    let pfx : string := match a.parent with
+      | none := "?"
+      | some p := p.f.to_string
+    end,
+    tracer_dump i (to_string format!"V{a.id.to_string}:{a.pp}<-{pfx}:{a.root}"),
+    dump_vertices rest
+
+meta def dump_edges {α β γ : Type} (i : inst α β γ) : list edge → tactic unit
+  | [] := tactic.skip
+  | (a :: rest) := do
+    let (vf, vt) := i.g.get_endpoints a,
+    tracer_dump i "E:{vf.pp}→{vt.pp}",
+    dump_edges rest
+
+meta def dump_estimates {α β γ : Type} (i : inst α β γ) : list (dist_estimate β) → tactic unit
+  | [] := tactic.trace ""
+  | (a :: rest) := do
+  tracer_dump i format!"I{(i.g.get_vertex a.l).pp}-{(i.g.get_vertex a.r).pp}:{a.bnd.bound}",
+  dump_estimates rest
+
+-- Look up the given vertex associated to (e : expr), or create it if it is
+-- not already present.
+meta def inst.do_add_vertex {α β γ : Type} (i : inst α β γ) (e : expr) (root : bool) (s : option side)
+  : tactic (inst α β γ × vertex) := do
+  maybe_v ← i.g.find_vertex e,
+  match maybe_v with
+    | none := do
+      (g, v) ← i.g.do_alloc_vertex e root s,
+      tracer_vertex_added i v,
+      return (i.mutate g, v)
+    | (some v) := return (i, v)
+  end
+
+meta def inst.add_vertex {α β γ : Type} (i : inst α β γ) (e : expr) (s : option side) :=
+  i.do_add_vertex e ff s
+
+meta def inst.add_root_vertex {α β γ : Type} (i : inst α β γ) (e : expr) (s : side) :=
+  i.do_add_vertex e tt s
+
+meta def inst.add_edge {α β γ : Type} (i : inst α β γ) (f t : vertex)
+  (proof : expr) (how : ℕ) : tactic (inst α β γ × edge) := do
+  let new_edge : edge := ⟨ f.id, t.id, proof, how ⟩,
+  tracer_edge_added i new_edge,
+  g ← pure i.g,
+  (g, f) ← g.add_adj f new_edge,
+  (g, t) ← g.add_adj t new_edge,
+  (g, t) ← g.publish_parent f t new_edge,
+  if ¬(vertex.same_side f t) then
+    return (i.mutate (g.register_solved new_edge), new_edge)
+  else
+    return (i.mutate g, new_edge)
 
 -- Add an "interesting pair" to the global state
-meta def inst.add_pair {α β : Type} (i : inst α β) (l r : vertex) : tactic (inst α β) := do
-  -- tactic.trace format!"add_pair:({l.pp}, {r.pp})",
+meta def inst.add_pair {α β γ : Type} (i : inst α β γ) (l r : vertex) : tactic (inst α β γ) := do
+  tracer_pair_added i l.id r.id,
   match i.g.find_pair l.id r.id with
     | some de := return i
     | none := do
@@ -348,36 +418,41 @@ meta def inst.add_pair {α β : Type} (i : inst α β) (l r : vertex) : tactic (
         return (i.mutate g)
     end
 
-meta def inst.find_most_interesting {α β : Type} (i : inst α β) : tactic (inst α β) := do
+meta def inst.find_most_interesting {α β γ : Type} (i : inst α β γ) : tactic (inst α β γ) := do
   g ← i.g.find_most_interesting i.strat.improve_estimate_over,
   return (i.mutate g)
 
-meta def store_new_equalities {α β : Type} (f : vertex) : global_state α β → list (expr × expr × ℕ × ℕ) → tactic (global_state α β × list vertex × list edge)
-  | g [] := return (g, [], [])
-  | g ((new_expr, prf, i, j) :: rest) := do
-      (g, v) ← g.add_vertex new_expr,
-      (g, e) ← g.add_edge f v prf i,
-      (g, vs, es) ← store_new_equalities g rest,
-      return (g, (v :: vs), (e :: es))
+meta def store_new_equalities {α β γ : Type} (f : vertex) : inst α β γ → list (expr × expr × ℕ × ℕ) → tactic (inst α β γ × list vertex × list edge)
+  | i [] := return (i, [], [])
+  | i ((new_expr, prf, id, j) :: rest) := do
+      (i, v) ← i.add_vertex new_expr f.s,
+      (i, e) ← i.add_edge f v prf id,
+      (i, vs, es) ← store_new_equalities i rest,
+      return (i, (v :: vs), (e :: es))
 
-meta def add_new_interestings {α β : Type} (v : vertex) : inst α β → list vertex → tactic (inst α β)
+meta def add_new_interestings {α β γ : Type} (v : vertex) : inst α β γ → list vertex → tactic (inst α β γ)
   | i [] := return i
   | i (a :: rest) := do
       i ← i.add_pair v a,
       add_new_interestings i rest
 
 -- My job is to examine the specified side and to blow up the vertex once
-meta def inst.examine_one {α β : Type} (i : inst α β) (de : dist_estimate β) (s : side) : tactic (inst α β) := do
+meta def inst.examine_one {α β γ : Type} (i : inst α β γ) (de : dist_estimate β) (s : side) : tactic (inst α β γ) := do
   let v := i.g.get_vertex (de.side s),
-  all_rws ← all_rewrites_list i.rs v.exp,
-  (g, touched_verts, new_edges) ← store_new_equalities v i.g all_rws,
-  g ← pure (g.mark_vertex_visited v.id),
-  i ← pure (i.mutate g),
+  -- let flip := match s with
+  --   | side.L := ff
+  --   | side.R := tt
+  -- end,
+  all_rws ← all_rewrites_list i.rs ff v.exp,
+  (i, touched_verts, new_edges) ← store_new_equalities v i all_rws,
+  i ← pure (i.mutate (i.g.mark_vertex_visited v.id)),
+  --FIXME this next line could use some improving
+  --we might also want to mark all of the immediate children of "(i.g.get_vertex (de.side s.other))" as interesting
   i ← add_new_interestings (i.g.get_vertex (de.side s.other)) i touched_verts,
   i ← i.find_most_interesting,
   return i
 
-meta def inst.step_once {α β : Type} (i : inst α β) (itr : ℕ) : tactic (inst α β × status) :=
+meta def inst.step_once {α β γ : Type} (i : inst α β γ) (itr : ℕ) : tactic (inst α β γ × status) :=
   match i.g.solving_edge with
   | some e := return (i, status.done e)
   | none :=
@@ -387,25 +462,23 @@ meta def inst.step_once {α β : Type} (i : inst α β) (itr : ℕ) : tactic (in
       | examine de s := do
         target ← pure (g.get_vertex (de.side s)),
         buddy ← pure (g.get_vertex (de.side s.other)),
-        tactic.trace format!"examine {target.pp}-{buddy.pp}",
-        -- dump_vertices g.vertices,
-        -- dump_estimates g g.interesting_pairs,
+        i.trace format!"examine ({target.pp})↔({buddy.pp})",
         if target.visited then do
-          tactic.trace format!"abort: already visited vertex!",
+          i.trace format!"abort: already visited vertex!",
           return (i, status.abort)
         else do
           i ← i.examine_one de s,
           return (i, status.going (itr + 1))
       | refresh ref_fn := do
-        tactic.trace format!"refresh",
+        i.trace format!"refresh",
         return (i.mutate (ref_fn i.g), status.going (itr + 1))
       | abort reason := do
-        tactic.trace format!"abort: {reason}",
+        i.trace format!"abort: {reason}",
         return (i, status.abort)
     end
   end
 
-meta def inst.backtrack_to_root_with {α β : Type} (i : inst α β) : vertex → expr → tactic expr :=
+meta def inst.backtrack_to_root_with {α β γ : Type} (i : inst α β γ) : vertex → expr → tactic expr :=
   λ (cur : vertex) (prf_so_far : expr), do
   match cur.parent with
     | none := return prf_so_far
@@ -416,7 +489,7 @@ meta def inst.backtrack_to_root_with {α β : Type} (i : inst α β) : vertex �
   end
 
 --FIXME code duplication with above
-meta def inst.backtrack_to_root {α β : Type} (i : inst α β) (cur : vertex) : tactic (option expr) := do
+meta def inst.backtrack_to_root {α β γ : Type} (i : inst α β γ) (cur : vertex) : tactic (option expr) := do
   match cur.parent with
     | none := return none
     | some e := do
@@ -428,9 +501,9 @@ meta def inst.backtrack_to_root {α β : Type} (i : inst α β) (cur : vertex) :
 meta def flip_half (h : expr) : tactic expr := tactic.mk_eq_symm h
 meta def unify_halves (l r : expr) : tactic expr := tactic.mk_eq_trans l r
 
-meta def inst.solve_goal {α β : Type} (i : inst α β) (e : edge) : tactic string := do
+meta def inst.solve_goal {α β γ : Type} (i : inst α β γ) (e : edge) : tactic string := do
   let (vf, vt) := i.g.get_endpoints e,
-  
+
   rhs_half ← i.backtrack_to_root_with vf e.proof,
   rhs_half ← flip_half rhs_half,
 
@@ -439,22 +512,22 @@ meta def inst.solve_goal {α β : Type} (i : inst α β) (e : edge) : tactic str
     | some lhs_half := do
       proof ← unify_halves lhs_half rhs_half,
       proof ← match vf.s with
-        | some side.L := tactic.mk_eq_symm proof
+        | some side.L := flip_half proof
         | _           := pure proof
       end,
 
       pp ← pretty_print proof,
-      tactic.trace pp,
-      tactic.trace vf.to_string,
-      tactic.trace vt.to_string,
+      i.trace pp,
+      i.trace vf.to_string,
+      i.trace vt.to_string,
 
       tactic.exact proof
     | none := tactic.skip
   end,
 
-  return "aaaaaa pretty version"
+  return "pretty version"
 
-meta def inst.search_until_stop_aux {α β : Type} : inst α β → ℕ → tactic search_result := λ i itr, do
+meta def inst.search_until_stop_aux {α β γ : Type} : inst α β γ → ℕ → tactic search_result := λ i itr, do
   (i, s) ← i.step_once itr,
   match s with
     | status.going k := inst.search_until_stop_aux i (itr + 1)
@@ -464,18 +537,24 @@ meta def inst.search_until_stop_aux {α β : Type} : inst α β → ℕ → tact
       return (search_result.success str)
   end
 
-meta def inst.search_until_abort {α β : Type} (i : inst α β) : tactic search_result :=
-  i.search_until_stop_aux 0
+meta def inst.search_until_abort {α β γ : Type} (i : inst α β γ) : tactic search_result := do
+  res ← i.search_until_stop_aux 0,
+  tracer_search_finished i,
+  return res
 
 meta def mk_initial_global_state {α β : Type} (strat : @strategy α β) : global_state α β :=
   ⟨ mk_vertex_ref_first, [], [], [], none, strat.init ⟩
 
-meta def mk_search_instance {α β : Type} (conf : config) (rs : list (expr × bool)) (strat : @strategy α β) (lhs rhs : expr)
-  : tactic (inst α β) := do
-  let g := mk_initial_global_state strat,
-  (g, vl) ← g.add_root_vertex lhs side.L,
-  (g, vr) ← g.add_root_vertex rhs side.R,
-  let i := inst.mk conf rs strat g,
+meta def mk_initial_tracer_state {γ : Type} (tr : tracer γ) : tactic (tracer_state γ) := do
+  internal ← tr.init,
+  return ⟨ tr, internal ⟩
+
+meta def mk_search_instance {α β γ : Type} (conf : config) (rs : list (expr × bool)) (strat : @strategy α β) (lhs rhs : expr) (tr : tracer γ)
+  : tactic (inst α β γ) := do
+  tracer_state ← mk_initial_tracer_state tr,
+  let i := inst.mk conf rs strat (mk_initial_global_state strat) tracer_state,
+  (i, vl) ← i.add_root_vertex lhs side.L,
+  (i, vr) ← i.add_root_vertex rhs side.R,
   i ← i.add_pair vl vr,
   return i
 

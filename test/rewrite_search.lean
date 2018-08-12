@@ -3,7 +3,7 @@ import tidy.rewrite_search
 namespace tidy.rewrite_search.testing
 
 axiom foo' : [6] = [7]
-axiom bar' : [[6],[6]] = [[5],[5]]
+axiom bar' : [[5],[5]] = [[6],[6]]
 
 example : [[7],[6]] = [[5],[5]] :=
 begin
@@ -32,7 +32,7 @@ end
 
 private example : [[0],[0]] = [[4],[4]] :=
 begin
-    rewrite_search_using `search,
+  rewrite_search_using `search {trace := tt},
 end
 
 @[search] private axiom qux' : [[1], [2]] = [[6], [7]]
@@ -55,7 +55,7 @@ begin
   -- perform_nth_rewrite_lhs [bar1] 0,
   -- perform_nth_rewrite_lhs [←bar2] 0,
   -- perform_nth_rewrite_lhs [bar3] 0,
-  rewrite_search_using `search {trace:=tt},
+  rewrite_search_using `search {trace := tt},
 end
 
 private structure cat :=

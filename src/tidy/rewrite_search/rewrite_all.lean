@@ -145,9 +145,9 @@ meta def remove_duplicates {α β} (f : α → β) [decidable_eq β] : list α �
 | [] := []
 
 
-meta def all_rewrites (r : expr × bool) (e : expr) : tactic (list (expr × expr)) :=
+meta def all_rewrites (r : expr × bool) (flip : bool) (e : expr) : tactic (list (expr × expr)) :=
 do 
-   results ← rewrite_fold (rewrite_F r) e [],
+   results ← rewrite_fold (rewrite_F (r.1, if flip then ¬r.2 else r.2)) e [],
   --  tactic.trace results,
    return (remove_adjacent_duplicates (λ p, p.1) results)
 
@@ -156,29 +156,29 @@ do
 --   prf : e = e', 
 --   n is the index of the rule r used from rs, and 
 --   k is the index of (e', prf) in all_rewrites r e.
-meta def all_rewrites_list (rs : list (expr × bool)) (e : expr) : tactic (list (expr × expr × ℕ × ℕ)) :=
+meta def all_rewrites_list (rs : list (expr × bool)) (flip : bool) (e : expr) : tactic (list (expr × expr × ℕ × ℕ)) :=
 do
-  results ← rs.mmap $ λ r, all_rewrites r e,
+  results ← rs.mmap $ λ r, all_rewrites r flip e,
   let results' := results.enum.map (λ p, p.2.enum.map (λ q, (q.2.1, q.2.2, p.1, q.1))),
   return (remove_duplicates (λ t, t.1) results'.join)
 
-meta def perform_nth_rewrite (r : expr × bool) (n : ℕ) : tactic unit := 
+meta def perform_nth_rewrite (r : expr × bool) (flip : bool) (n : ℕ) : tactic unit := 
 do e ← target,
-   rewrites ← all_rewrites r e,
+   rewrites ← all_rewrites r flip e,
    (new_t, prf) ← rewrites.nth n,
    replace_target new_t prf
 
-meta def all_rewrites_using (a : name) (e : expr) : tactic (list (expr × expr)) :=
+meta def all_rewrites_using (a : name) (flip : bool) (e : expr) : tactic (list (expr × expr)) :=
 do names ← attribute.get_instances a,
    rules ← names.mmap $ mk_const,
    let pairs := rules.map (λ e, (e, ff)) ++ rules.map (λ e, (e, tt)),
-   results ← pairs.mmap $ λ r, all_rewrites r e,
+   results ← pairs.mmap $ λ r, all_rewrites r flip e,
    pure results.join
 
 namespace tactic.interactive
 
 private meta def perform_nth_rewrite' (q : parse rw_rules) (n : ℕ) (e : expr) : tactic (expr × expr) := 
-do rewrites ← q.rules.mmap $ λ p : rw_rule, to_expr p.rule tt ff >>= λ r, all_rewrites (r, p.symm) e,
+do rewrites ← q.rules.mmap $ λ p : rw_rule, to_expr p.rule tt ff >>= λ r, all_rewrites (r, p.symm) ff e,
    let rewrites := rewrites.join,
    rewrites.nth n
 
@@ -217,7 +217,7 @@ do `(%%lhs = %%rhs) ← target,
 
 meta def perform_nth_rewrite_using (a : name) (n : ℕ) : tactic unit := 
 do e ← target,
-   rewrites ← all_rewrites_using a e,
+   rewrites ← all_rewrites_using a ff e,
    (new_t, prf) ← rewrites.nth n,
    replace_target new_t prf
 

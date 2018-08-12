@@ -1,8 +1,15 @@
 import .rewrite_search.engine
+import .rewrite_search.tracer.graph
 import .rewrite_search.strategy.edit_distance
 
 open tidy.rewrite_search tidy.rewrite_search.strategy
 open interactive interactive.types expr tactic
+
+meta def handle_search_result (r : search_result) : tactic string := do
+  match r with
+    | search_result.success str    := return str
+    | search_result.failure reason := fail reason
+  end
 
 meta def do_rewrite_search (rs : list (expr × bool)) (cfg : config := {}) : tactic string := do
   t ← target,
@@ -31,12 +38,19 @@ meta def do_rewrite_search (rs : list (expr × bool)) (cfg : config := {}) : tac
     -- return explanation,
 
     let strat := edit_distance_strategy,
-    i ← mk_search_instance cfg rs strat lhs rhs,
-    result ← i.search_until_abort,
-    match result with
-      | search_result.success str    := return str
-      | search_result.failure reason := fail reason
-    end
+
+    -- FIXME how to dynamically select these via a nicely-named argument? Typeclasses
+    -- are getting in the way. Perhaps the best way is to fix universe issues which forced this
+    result ← (
+      if cfg.visualiser then do
+        i ← mk_search_instance cfg rs strat lhs rhs graph_tracer,
+        i.search_until_abort
+      else do
+        i ← mk_search_instance cfg rs strat lhs rhs no_tracer,
+        i.search_until_abort
+    ),
+
+    handle_search_result result
   | _ := fail "target is not an equation"
   end
 
@@ -51,15 +65,15 @@ meta def is_eq_after_binders : expr → bool
   | `(%%a = %%b)       := tt
   | _                  := ff
 
-meta def rewrite_search_using (a : name) (cfg : config := {}) : tactic string :=
-do tgt ← target,
-   if tgt.has_meta_var then
-     fail "rewrite_search is not suitable for goals containing metavariables"
-   else skip,
-   names ← attribute.get_instances a,
-   exprs ← names.mmap $ mk_const,
-   hyps ← local_context,
-   let exprs := exprs ++ hyps,
+meta def rewrite_search_using (a : name) (cfg : config := {}) : tactic string := do
+  tgt ← target,
+  if tgt.has_meta_var then
+    fail "rewrite_search is not suitable for goals containing metavariables"
+  else skip,
+  names ← attribute.get_instances a,
+  exprs ← names.mmap $ mk_const,
+  hyps ← local_context,
+  let exprs := exprs ++ hyps,
   --  rules ← close_under_apps exprs, -- TODO don't do this for everything, it's too expensive: only for specially marked lemmas
   let rules := exprs,
   rules ← rules.mfilter $ λ r, (do t ← infer_type r, return (is_eq_after_binders t)),
