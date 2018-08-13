@@ -46,7 +46,7 @@ meta def do_rewrite_search (rs : list (expr × bool)) (cfg : config := {}) : tac
         i ← mk_search_instance cfg rs strat lhs rhs graph_tracer,
         i.search_until_abort
       else do
-        i ← mk_search_instance cfg rs strat lhs rhs no_tracer,
+        i ← mk_search_instance cfg rs strat lhs rhs unit_tracer,
         i.search_until_abort
     ),
 
