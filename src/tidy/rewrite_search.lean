@@ -65,13 +65,20 @@ meta def is_eq_after_binders : expr → bool
   | `(%%a = %%b)       := tt
   | _                  := ff
 
-meta def rewrite_search_using (a : name) (cfg : config := {}) : tactic string := do
+meta def load_exprs : list name → tactic (list expr)
+| [] := return []
+| (a :: rest) := do
+  names ← attribute.get_instances a,
+  u ← names.mmap $ mk_const,
+  l ← load_exprs rest,
+  return (u ++ l)
+
+meta def rewrite_search_using (as : list name) (cfg : config := {}) : tactic string := do
   tgt ← target,
   if tgt.has_meta_var then
     fail "rewrite_search is not suitable for goals containing metavariables"
   else skip,
-  names ← attribute.get_instances a,
-  exprs ← names.mmap $ mk_const,
+  exprs ← load_exprs as,
   hyps ← local_context,
   hyps ← hyps.mfilter (λ h, (do t ← infer_type h, return ¬ t.has_meta_var)),
   let exprs := exprs ++ hyps,
