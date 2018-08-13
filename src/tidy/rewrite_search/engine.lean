@@ -524,11 +524,11 @@ do
 
   return "pretty version"
 
-meta def search_until_stop_aux : inst α β γ → ℕ → tactic search_result
+meta def search_until_abort_aux : inst α β γ → ℕ → tactic search_result
 | i itr := do
   (i, s) ← i.step_once itr,
   match s with
-  | status.going k := search_until_stop_aux i (itr + 1)
+  | status.going k := search_until_abort_aux i (itr + 1)
   | status.abort   := return (search_result.failure "aborted")
   | status.done e  := do
     str ← i.solve_goal e,
@@ -537,12 +537,11 @@ meta def search_until_stop_aux : inst α β γ → ℕ → tactic search_result
 
 meta def search_until_abort : tactic search_result := 
 do
-  res ← i.search_until_stop_aux 0,
+  res ← i.search_until_abort_aux 0,
   i.tracer_search_finished,
   return res
 
 end inst
-
 
 meta def mk_initial_global_state {α β : Type} (strat : strategy α β) : global_state α β :=
 ⟨ mk_vertex_ref_first, [], [], [], none, strat.init ⟩
