@@ -35,10 +35,11 @@ meta def exact_decidable := `[exact dec_trivial]             >> pure "exact dec_
 meta def default_tidy_tactics : list (tactic string) :=
 [ force (reflexivity)                         >> pure "refl", 
   exact_decidable,
+  propositional_goal >> assumption            >> pure "assumption",
   forwards_reasoning,
   forwards_library_reasoning,
   backwards_reasoning,
-  `[ext1]                                      >> pure "ext1",
+  `[ext1]                                     >> pure "ext1",
   intro_at_least_one                          >>= λ ns, pure ("intros " ++ (" ".intercalate ns)),
   automatic_induction,
   `[apply_auto_param]                         >> pure "apply_auto_param",
@@ -65,7 +66,7 @@ do
 meta def obviously_tactics : list (tactic string) :=
 [ tactic.interactive.rewrite_search_using `ematch ] -- TODO should switch this back to search eventually
 
-meta def obviously'  : tactic unit := tidy { tactics := default_tidy_tactics ++ obviously_tactics, trace_result := ff, trace_steps := ff }
+meta def obviously'  : tactic unit := tidy { tactics := default_tidy_tactics ++ obviously_tactics, trace_result := tt, trace_steps := ff }
 
 instance subsingleton_pempty : subsingleton pempty := by tidy
 instance subsingleton_punit  : subsingleton punit  := by tidy
