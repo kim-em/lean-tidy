@@ -5,7 +5,7 @@ lemma F : ℕ := 0
 
 section
 
-local attribute [forwards] G
+local attribute [forward] G
 
 example : 1 = 1 :=
 begin 
@@ -13,7 +13,7 @@ begin
   refl
 end
 
-local attribute [forwards] F
+local attribute [forward] F
 
 example : 1 = 1 :=
 begin 
@@ -36,14 +36,23 @@ section
 inductive T (n : ℕ)
 | t : ℕ → T
 
-@[forwards] lemma H {n : ℕ} (v : T n) : string := "hello"
+@[forward] lemma H.H {n : ℕ} (v : T n) : string := "hello"
 
 example : 1 = 1 :=
 begin
-success_if_fail { forwards_library_reasoning },
-have p : T 3 := T.t 3 5,
-forwards_library_reasoning,
-refl
+  success_if_fail { forwards_library_reasoning },
+  have p : T 3 := T.t 3 5,
+  forwards_library_reasoning,
+  guard_hyp H_p := string, -- check that we drop namespaces
+  refl
 end
+
+example (P Q : Prop) (p : P) (h : P → Q): Q :=
+begin
+  forwards_reasoning, 
+  success_if_fail { forwards_reasoning },
+  exact h_p
+end
+
 
 end

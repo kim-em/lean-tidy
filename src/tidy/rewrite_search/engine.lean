@@ -3,7 +3,7 @@ import data.option
 
 import tidy.lib
 import tidy.pretty_print
-import .rewrite_all
+import tidy.rewrite_all
 
 namespace tidy.rewrite_search
 

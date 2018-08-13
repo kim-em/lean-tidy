@@ -73,6 +73,7 @@ meta def rewrite_search_using (a : name) (cfg : config := {}) : tactic string :=
   names ← attribute.get_instances a,
   exprs ← names.mmap $ mk_const,
   hyps ← local_context,
+  hyps ← hyps.mfilter (λ h, (do t ← infer_type h, return ¬ t.has_meta_var)),
   let exprs := exprs ++ hyps,
   --  rules ← close_under_apps exprs, -- TODO don't do this for everything, it's too expensive: only for specially marked lemmas
   let rules := exprs,

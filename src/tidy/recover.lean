@@ -46,7 +46,7 @@ do done,
    mvars ← metavariables,
    guard mvars.empty
 
-meta def recover : tactic unit :=
+meta def recover' : tactic unit :=
   do mvars ← metavariables,
      done,
      guard ¬ mvars.empty,

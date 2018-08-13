@@ -50,7 +50,7 @@ instance : has_focus unit :=
 
 instance string_has_focus : has_focus string :=
 { work_on_goal := λ n ts, 
-  if n = 0 then
+  if false /-n = 0-/ then
     ", ".intercalate ts
   else
    "work_on_goal " ++ (to_string n) ++ " {\n  " ++ (",\n  ".intercalate ts) ++ "\n}" }
@@ -131,20 +131,26 @@ We then follow these steps:
 meta def chain_single_goal (make_declarations : bool) (tactics : list (tactic α)) : tactic (list α) :=
 do gs ← get_goals,
    guard (gs.length = 1),
-   type ← target >>= zeta,
-   m ← mk_meta_var type,
-   set_goals [m],
-   as ← repeat_with_results (chain_single_goal_aux chain_single_goal tactics),
-   guard (as.length > 0) <|> fail "chain tactic made no progress",
-   ng ← num_goals,
-   match (ng, make_declarations) with
-   | (0, tt) := close_goal_with_declaration gs.head type m
-   | _       := (do r ← instantiate_mvars m,
-                  set_goals gs,
-                  exact r,
-                  append_goals r.metavariables) <|> fail "bug: could not close goal using solution to synthetic goal!"
-   end,
-   return as.reverse.join
+   if make_declarations then
+     do type ← target >>= zeta,
+        m ← mk_meta_var type,
+        set_goals [m],
+        as ← repeat_with_results (chain_single_goal_aux chain_single_goal tactics),
+        guard (as.length > 0) <|> fail "chain tactic made no progress",
+        ng ← num_goals,
+        match (ng, bnot type.has_meta_var) with
+        | (0, tt) := close_goal_with_declaration gs.head type m
+        | _       := (do r ← instantiate_mvars m,
+                          set_goals gs,
+                          exact r,
+                          append_goals r.metavariables) <|> fail "bug: could not close goal using solution to synthetic goal!"
+        end,
+        return as.reverse.join
+    else
+      do as ← repeat_with_results (chain_single_goal_aux chain_single_goal tactics),
+         guard (as.length > 0) <|> fail "chain tactic made no progress",
+         return as.reverse.join
+
 
 structure chain_cfg := 
 (trace_steps        : bool := ff)
@@ -168,6 +174,12 @@ do tgt ← target,
    trace format!"chain successfully applied a tactic during elaboration of {name}:",
    tgt ← pretty_print tgt,
    trace format!"old target: {tgt}",
+   gs ← get_goals,
+   gs' ← gs.mmap (λ g, infer_type g >>= pretty_print),
+   trace gs',
+   mvars ← metavariables,
+   mvars' ← mvars.mmap (λ g, infer_type g >>= pretty_print),
+   trace mvars',
    trace format!"tactic:     {r}",
    tgt ← try_core target,
    tgt ← match tgt with
@@ -175,6 +187,12 @@ do tgt ← target,
           | none       := do return "′no goals′"
           end,
    trace format!"new target: {tgt}",
+   gs ← get_goals,
+   gs' ← gs.mmap (λ g, infer_type g >>= pretty_print),
+   trace gs',
+   mvars ← metavariables,
+   mvars' ← mvars.mmap (λ g, infer_type g >>= pretty_print),
+   trace mvars',
    pure r
 
 private meta def chain_handle_trace (cfg : chain_cfg) (tactics : list (tactic α)) : tactic (list α) :=

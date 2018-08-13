@@ -4,6 +4,7 @@
 
 import data.list
 import tidy.pretty_print
+import tidy.lock_tactic_state
 
 open tactic
 open interactive
@@ -11,12 +12,6 @@ open interactive.types
 open expr
 open lean
 open lean.parser
-
-meta def lock_tactic_state {α} (t : tactic α) : tactic α
-| s := match t s with
-       | result.success a s' := result.success a s
-       | result.exception msg pos s' := result.exception msg pos s
-       end
 
 meta def rewrite_without_new_mvars (r : expr) (e : expr) (cfg : rewrite_cfg := {}) : tactic (expr × expr) :=
 lock_tactic_state $ -- This makes sure that we forget everything in between rewrites; otherwise we don't correctly find everything!
@@ -160,19 +155,19 @@ meta def all_rewrites_list (rs : list (expr × bool)) (flip : bool) (e : expr) :
 do
   results ← rs.mmap $ λ r, all_rewrites r flip e,
   let results' := results.enum.map (λ p, p.2.enum.map (λ q, (q.2.1, q.2.2, p.1, q.1))),
-  return (remove_duplicates (λ t, t.1) results'.join)
+return (remove_duplicates (λ t, t.1) results'.join)
 
-meta def perform_nth_rewrite (r : expr × bool) (flip : bool) (n : ℕ) : tactic unit := 
+meta def perform_nth_rewrite (r : expr × bool) (n : ℕ) : tactic unit := 
 do e ← target,
-   rewrites ← all_rewrites r flip e,
+   rewrites ← all_rewrites r ff e,
    (new_t, prf) ← rewrites.nth n,
    replace_target new_t prf
 
-meta def all_rewrites_using (a : name) (flip : bool) (e : expr) : tactic (list (expr × expr)) :=
+meta def all_rewrites_using (a : name) (e : expr) : tactic (list (expr × expr)) :=
 do names ← attribute.get_instances a,
    rules ← names.mmap $ mk_const,
    let pairs := rules.map (λ e, (e, ff)) ++ rules.map (λ e, (e, tt)),
-   results ← pairs.mmap $ λ r, all_rewrites r flip e,
+   results ← pairs.mmap $ λ r, all_rewrites r ff e,
    pure results.join
 
 namespace tactic.interactive
@@ -217,7 +212,7 @@ do `(%%lhs = %%rhs) ← target,
 
 meta def perform_nth_rewrite_using (a : name) (n : ℕ) : tactic unit := 
 do e ← target,
-   rewrites ← all_rewrites_using a ff e,
+   rewrites ← all_rewrites_using a e,
    (new_t, prf) ← rewrites.nth n,
    replace_target new_t prf
 
