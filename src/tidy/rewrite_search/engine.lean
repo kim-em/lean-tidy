@@ -291,26 +291,22 @@ meta structure tracer_state (γ : Type) :=
   (tr       : tracer γ)
   (internal : γ)
 
---FIXME is there a builtin of this?
-inductive nothing
-  | mk : nothing
-meta def no_tracer_init : tactic nothing := return nothing.mk
-meta def no_tracer_publish_vertex (_ : nothing) (_ : vertex) : tactic unit := tactic.skip
-meta def no_tracer_publish_edge (_ : nothing) (_ : edge) : tactic unit := tactic.skip
-meta def no_tracer_publish_pair (_ : nothing) (_ _ : vertex_ref) : tactic unit := tactic.skip
-meta def no_tracer_publish_finished (_ : nothing) : tactic unit := tactic.skip
-meta def no_tracer_dump (_ : nothing) (_ : string) : tactic unit := tactic.skip
-meta def no_tracer_pause (_ : nothing) : tactic unit := tactic.skip
-meta def no_tracer : tracer nothing :=
-  ⟨ no_tracer_init, no_tracer_publish_vertex, no_tracer_publish_edge, no_tracer_publish_pair,
-    no_tracer_publish_finished, no_tracer_dump, no_tracer_pause ⟩
+meta def unit_tracer_init : tactic unit := return ()
+meta def unit_tracer_publish_vertex (_ : unit) (_ : vertex) : tactic unit := tactic.skip
+meta def unit_tracer_publish_edge (_ : unit) (_ : edge) : tactic unit := tactic.skip
+meta def unit_tracer_publish_pair (_ : unit) (_ _ : vertex_ref) : tactic unit := tactic.skip
+meta def unit_tracer_publish_finished (_ : unit) : tactic unit := tactic.skip
+meta def unit_tracer_dump (_ : unit) (_ : string) : tactic unit := tactic.skip
+meta def unit_tracer_pause (_ : unit) : tactic unit := tactic.skip
+meta def unit_tracer : tracer unit :=
+  ⟨ unit_tracer_init, unit_tracer_publish_vertex, unit_tracer_publish_edge, unit_tracer_publish_pair,
+    unit_tracer_publish_finished, unit_tracer_dump, unit_tracer_pause ⟩
 
 meta structure inst (α β γ : Type) :=
   (conf   : config)
   (rs     : list (expr × bool))
   (strat  : @strategy α β)
   (g      : global_state α β)
-
   (tr_state : tracer_state γ)
 
 meta def inst.mutate {α β γ : Type} (i : inst α β γ) (g : global_state α β) : inst α β γ:=
