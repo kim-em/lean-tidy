@@ -8,18 +8,18 @@ import .rewrite_all
 namespace tidy.rewrite_search
 
 inductive side
-  | L
-  | R
+| L
+| R
 def side.other : side → side
-  | side.L := side.R
-  | side.R := side.L
+| side.L := side.R
+| side.R := side.L
 def side.to_string : side → string
-  | side.L := "L"
-  | side.R := "R"
+| side.L := "L"
+| side.R := "R"
 
 inductive search_result
-  | success : string → search_result
-  | failure : string → search_result
+| success : string → search_result
+| failure : string → search_result
 
 -- universe variables u v
 -- Workaround for the crazy fact that you are only allowed a single universe
@@ -30,18 +30,20 @@ inductive search_result
 
 -- meta def bound_numeric := ℕ
 inductive bound_progress (β : Type)
-  | exactly : ℕ → β → bound_progress
-  | at_least : ℕ → β → bound_progress
+| exactly : ℕ → β → bound_progress
+| at_least : ℕ → β → bound_progress
+
 open bound_progress
+
 def bound_progress.bound {β : Type} : bound_progress β → ℕ
-  | (exactly n _)    := n
-  | (at_least n _) := n
+| (exactly n _)  := n
+| (at_least n _) := n
 def bound_progress.sure {β : Type} : bound_progress β → bool
-  | (exactly _ _)    := tt
-  | (at_least _ _) := ff
+| (exactly _ _)  := tt
+| (at_least _ _) := ff
 def bound_progress.to_string {β : Type} : bound_progress β → string
-  | (exactly n _)    := "=" ++ to_string n
-  | (at_least n _) := "≥" ++ to_string n
+| (exactly n _)  := "=" ++ to_string n
+| (at_least n _) := "≥" ++ to_string n
 
 meta def tokenise_expr (e : expr) : tactic (string × list string) := do
   pp ← pretty_print e,
@@ -56,100 +58,101 @@ def mk_vertex_ref_null : vertex_ref := vertex_ref_from_nat 0x8FFFFFFF
 def mk_vertex_ref_first : vertex_ref := vertex_ref_from_nat 0
 
 meta structure edge :=
-  (f t   : vertex_ref)
-  (proof : expr)
-  (how   : ℕ)
+(f t   : vertex_ref)
+(proof : expr)
+(how   : ℕ) -- Scott: doen't we need to store two ℕs here? which rule, and which application?
 
 meta structure vertex :=
-  (id      : vertex_ref)
-  (exp     : expr)
-  (pp      : string)
-  (tokens  : list string)
-
-  (root    : bool)
-  (visited : bool)
-  (s       : option side)
-  (parent  : option edge)
-  (adj     : list edge)
+(id      : vertex_ref)
+(exp     : expr)
+(pp      : string)
+(tokens  : list string)
+(root    : bool)
+(visited : bool)
+(s       : option side) -- Scott: why is this an option?
+(parent  : option edge)
+(adj     : list edge)
 
 --FIXME do this better with decidability
 meta def vertex.same_side (a b : vertex) : bool :=
-  match (a.s, b.s) with
-    | (some side.L, some side.L) := tt
-    | (some side.R, some side.R) := tt
-    | _ := ff
-  end
+match (a.s, b.s) with
+| (some side.L, some side.L) := tt
+| (some side.R, some side.R) := tt
+| _ := ff
+end
 
 meta def vertex.to_string (v : vertex) : string :=
-  let pfx : string := match v.s with
-    | (some s) := s.to_string
-    | none := "?"
-  end in
-  pfx ++ v.pp
+let pfx : string := match v.s with
+| (some s) := s.to_string
+| none := "?"
+end in
+pfx ++ v.pp
 
 meta def null_expr : expr := default expr
 meta def mk_null_vertex : vertex :=
-  ⟨ mk_vertex_ref_null, null_expr, "__NULLEXPR", [], ff, ff, side.L, none, [] ⟩
+⟨ mk_vertex_ref_null, null_expr, "__NULLEXPR", [], ff, ff, side.L, none, [] ⟩
 
 structure dist_estimate (state_type : Type) :=
   (l r : vertex_ref)
   (bnd : bound_progress state_type)
+
 def dist_estimate.side {α : Type} (de : dist_estimate α) (s : side) : vertex_ref :=
-  match s with
-  | side.L := de.l
-  | side.R := de.r
-  end
+match s with
+| side.L := de.l
+| side.R := de.r
+end
+
 def dist_estimate.to_string {α : Type} (de : dist_estimate α) : string :=
-  (de.l.to_string) ++ "-" ++ (de.r.to_string) ++ "Δ" ++ de.bnd.to_string
+(de.l.to_string) ++ "-" ++ (de.r.to_string) ++ "Δ" ++ de.bnd.to_string
 
 meta def init_bound_fn (β : Type) := vertex → vertex → bound_progress β
 meta def improve_estimate_fn (β : Type) := ℕ → vertex → vertex → bound_progress β → bound_progress β
 
 meta inductive status
-  | going : ℕ → status
-  | done : edge → status
-  | abort
+| going : ℕ → status
+| done : edge → status
+| abort
 meta def status.next_itr : status → status
-  | (status.going n) := status.going (n + 1)
-  | other := other
+| (status.going n) := status.going (n + 1)
+| other := other
 
 meta structure global_state (α β : Type) :=
-  (next_id  : vertex_ref)
-  (vertices : list vertex) -- FIXME use array
+(next_id  : vertex_ref)
+(vertices : list vertex) -- FIXME use array
 
-  (estimates : list (dist_estimate β))
-  (interesting_pairs : list (dist_estimate β))
+(estimates : list (dist_estimate β))
+(interesting_pairs : list (dist_estimate β))
 
-  (solving_edge : option edge)
-  (internal_strat_state : α)
+(solving_edge : option edge)
+(internal_strat_state : α)
 
 -- Retrieve the vertex with the given ref, or the null vertex if it is not
 -- present.
 meta def global_state.get_vertex {α β : Type} (g : global_state α β) (r : vertex_ref) : vertex :=
-  list_at mk_null_vertex g.vertices r
+list_at mk_null_vertex g.vertices r
 
 meta def global_state.set_vertex {α β : Type} (g : global_state α β) (v : vertex) : (global_state α β) :=
-  ⟨ g.next_id, list_set_at g.vertices v.id v, g.estimates, g.interesting_pairs, g.solving_edge, g.internal_strat_state ⟩
+⟨ g.next_id, list_set_at g.vertices v.id v, g.estimates, g.interesting_pairs, g.solving_edge, g.internal_strat_state ⟩
 
 meta def global_state.get_endpoints {α β : Type} (g : global_state α β) (e : edge) : vertex × vertex :=
-  (g.get_vertex e.f, g.get_vertex e.t)
+(g.get_vertex e.f, g.get_vertex e.t)
 
 meta def global_state.get_estimate_verts {α β : Type} (g : global_state α β) (de : dist_estimate β) : vertex × vertex :=
-  (g.get_vertex de.l, g.get_vertex de.r)
+(g.get_vertex de.l, g.get_vertex de.r)
   
 -- Forcibly add a new vertex to the vertex table. Probably should never be 
 -- called by a strategy and add_vertex to should used instead.
 meta def global_state.do_alloc_vertex {α β : Type} (g : global_state α β) (e : expr) (root : bool) (s : option side)
-  : tactic (global_state α β × vertex) := do
-  (pp, tokens) ← tokenise_expr e,
-  let v : vertex := ⟨ g.next_id, e, pp, tokens, root, ff, s, none, [] ⟩,
-  return (⟨ g.next_id.next, g.vertices.append [v], g.estimates, g.interesting_pairs, g.solving_edge,g.internal_strat_state ⟩, v)
+  : tactic (global_state α β × vertex) := 
+do (pp, tokens) ← tokenise_expr e,
+   let v : vertex := ⟨ g.next_id, e, pp, tokens, root, ff, s, none, [] ⟩,
+   return (⟨ g.next_id.next, g.vertices.append [v], g.estimates, g.interesting_pairs, g.solving_edge,g.internal_strat_state ⟩, v)
   
 -- Forcibly add a new pair to the interesting pair list. Probably should never be 
 -- called by a strategy and add_vertex to should used instead.
 meta def global_state.do_alloc_pair {α β : Type} (g : global_state α β) (de : dist_estimate β)
-  : tactic (global_state α β) := do
-  return (⟨ g.next_id, g.vertices, g.estimates.append [de], g.interesting_pairs.append [de], g.solving_edge, g.internal_strat_state ⟩)
+  : tactic (global_state α β) := 
+return (⟨ g.next_id, g.vertices, g.estimates.append [de], g.interesting_pairs.append [de], g.solving_edge, g.internal_strat_state ⟩)
 
 meta def global_state_find_vertex_aux (pp : string) : list vertex → option vertex
 | [] := none
