@@ -126,23 +126,26 @@ meta structure global_state (α β : Type) :=
 (solving_edge : option edge)
 (internal_strat_state : α)
 
+namespace global_state
+variables {α β : Type} (g : global_state α β)
+
 -- Retrieve the vertex with the given ref, or the null vertex if it is not
 -- present.
-meta def global_state.get_vertex {α β : Type} (g : global_state α β) (r : vertex_ref) : vertex :=
+meta def get_vertex (r : vertex_ref) : vertex :=
 list_at mk_null_vertex g.vertices r
 
-meta def global_state.set_vertex {α β : Type} (g : global_state α β) (v : vertex) : (global_state α β) :=
+meta def set_vertex (v : vertex) : (global_state α β) :=
 ⟨ g.next_id, list_set_at g.vertices v.id v, g.estimates, g.interesting_pairs, g.solving_edge, g.internal_strat_state ⟩
 
-meta def global_state.get_endpoints {α β : Type} (g : global_state α β) (e : edge) : vertex × vertex :=
+meta def get_endpoints (e : edge) : vertex × vertex :=
 (g.get_vertex e.f, g.get_vertex e.t)
 
-meta def global_state.get_estimate_verts {α β : Type} (g : global_state α β) (de : dist_estimate β) : vertex × vertex :=
+meta def get_estimate_verts (de : dist_estimate β) : vertex × vertex :=
 (g.get_vertex de.l, g.get_vertex de.r)
   
 -- Forcibly add a new vertex to the vertex table. Probably should never be 
 -- called by a strategy and add_vertex to should used instead.
-meta def global_state.do_alloc_vertex {α β : Type} (g : global_state α β) (e : expr) (root : bool) (s : option side)
+meta def do_alloc_vertex (e : expr) (root : bool) (s : option side)
   : tactic (global_state α β × vertex) := 
 do (pp, tokens) ← tokenise_expr e,
    let v : vertex := ⟨ g.next_id, e, pp, tokens, root, ff, s, none, [] ⟩,
@@ -150,43 +153,41 @@ do (pp, tokens) ← tokenise_expr e,
   
 -- Forcibly add a new pair to the interesting pair list. Probably should never be 
 -- called by a strategy and add_vertex to should used instead.
-meta def global_state.do_alloc_pair {α β : Type} (g : global_state α β) (de : dist_estimate β)
+meta def do_alloc_pair (de : dist_estimate β)
   : tactic (global_state α β) := 
 return (⟨ g.next_id, g.vertices, g.estimates.append [de], g.interesting_pairs.append [de], g.solving_edge, g.internal_strat_state ⟩)
 
-meta def global_state_find_vertex_aux (pp : string) : list vertex → option vertex
+private meta def find_vertex_aux (pp : string) : list vertex → option vertex
 | [] := none
-| (a :: rest) := if a.pp = pp then some a else global_state_find_vertex_aux rest
+| (a :: rest) := if a.pp = pp then some a else find_vertex_aux rest
 
 -- Find the vertex with the given (e : expr), or return the null verterx if not
 -- found.
-meta def global_state.find_vertex {α β : Type} (g : global_state α β) (e : expr) : tactic (option vertex) := do
+meta def find_vertex (e : expr) : tactic (option vertex) := do
   pp ← pretty_print e,
-  return (global_state_find_vertex_aux pp g.vertices)
+  return (find_vertex_aux pp g.vertices)
 
-meta def global_state_find_pair_aux {β : Type} (l r : vertex_ref) : list (dist_estimate β) → option (dist_estimate β)
+private meta def find_pair_aux {β : Type} (l r : vertex_ref) : list (dist_estimate β) → option (dist_estimate β)
 | [] := none
 | (a :: rest) :=
   if (a.l = l ∧ a.r = r) ∨ (a.l = r ∧ a.r = l) then
     some a
   else
-    global_state_find_pair_aux rest
+    find_pair_aux rest
 
 -- Find the vertex with the given (e : expr), or return the null verterx if not
 -- found.
-meta def global_state.find_pair {α β : Type} (g : global_state α β) (l r : vertex_ref) : option (dist_estimate β) :=
-  global_state_find_pair_aux l r g.estimates
+meta def find_pair (l r : vertex_ref) : option (dist_estimate β) :=
+  find_pair_aux l r g.estimates
 
-meta def global_state.register_solved {α β : Type} (g : global_state α β) (e : edge) : global_state α β :=
+meta def register_solved (e : edge) : global_state α β :=
   ⟨ g.next_id, g.vertices, g.estimates, g.interesting_pairs, some e, g.internal_strat_state ⟩
 
-meta def global_state.add_adj {α β : Type} (g : global_state α β) (v : vertex)
-  (e : edge) : tactic (global_state α β × vertex) := do
+meta def add_adj (v : vertex) (e : edge) : tactic (global_state α β × vertex) := do
   let v : vertex := ⟨ v.id, v.exp, v.pp, v.tokens, v.root, v.visited, v.s, v.parent, v.adj.append [e] ⟩,
   return (g.set_vertex v, v)
 
-meta def global_state.publish_parent {α β : Type} (f t : vertex) (g : global_state α β)
-  (e : edge) : tactic (global_state α β × vertex) :=
+meta def publish_parent (f t : vertex) (e : edge) : tactic (global_state α β × vertex) :=
   if t.root then
     return (g, t)
   else
@@ -197,10 +198,12 @@ meta def global_state.publish_parent {α β : Type} (f t : vertex) (g : global_s
       return (g.set_vertex t, t)
   end
 
-meta def global_state.mark_vertex_visited {α β : Type} (g : global_state α β) (vr : vertex_ref)
+meta def mark_vertex_visited (vr : vertex_ref)
   : global_state α β :=
   let v := g.get_vertex vr in
   g.set_vertex ⟨ v.id, v.exp, v.pp, v.tokens, v.root, tt, v.s, v.parent, v.adj ⟩
+  
+end global_state
 
 -- updates rival's estimate trying to beat candidate's estimate, stopping if we do or we can't
 -- go any further. We return true if we were able to beat candidate.
