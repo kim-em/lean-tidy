@@ -202,12 +202,10 @@ meta def mark_vertex_visited (vr : vertex_ref)
   : global_state α β :=
   let v := g.get_vertex vr in
   g.set_vertex ⟨ v.id, v.exp, v.pp, v.tokens, v.root, tt, v.s, v.parent, v.adj ⟩
-  
-end global_state
 
 -- updates rival's estimate trying to beat candidate's estimate, stopping if we do or we can't
 -- go any further. We return true if we were able to beat candidate.
-meta def try_to_beat {β : Type} (fn : @improve_estimate_fn β) (candidate rival : bound_progress β)
+private meta def try_to_beat (fn : improve_estimate_fn β) (candidate rival : bound_progress β)
   (rival_l rival_r : vertex) : bound_progress β × bool :=
   let m := candidate.bound in
   match rival with
@@ -218,7 +216,7 @@ meta def try_to_beat {β : Type} (fn : @improve_estimate_fn β) (candidate rival
   end
 
 -- First is closer
-meta def sort_most_interesting {α β : Type} (g : global_state α β) (fn : @improve_estimate_fn β)
+private meta def sort_most_interesting (fn : improve_estimate_fn β)
   : dist_estimate β → dist_estimate β → tactic (dist_estimate β × dist_estimate β)
   | a b := do
   match try_to_beat fn a.bnd b.bnd (g.get_vertex b.l) (g.get_vertex b.r) with
@@ -233,7 +231,7 @@ meta def sort_most_interesting {α β : Type} (g : global_state α β) (fn : @im
     end
   end
 
-meta def find_most_interesting_aux {α β : Type} (g : global_state α β) (fn : @improve_estimate_fn β)
+private meta def find_most_interesting_aux_1 (fn : improve_estimate_fn β)
   : dist_estimate β → list (dist_estimate β) → list (dist_estimate β) → tactic (dist_estimate β × list (dist_estimate β))
   | current_best seen [] := return (current_best, seen)
   | current_best seen (a :: rest) := do
@@ -241,26 +239,28 @@ meta def find_most_interesting_aux {α β : Type} (g : global_state α β) (fn :
     -- Drop "interesting" vertices which have had both ends visited, and hence aren't interesting
     -- any more.
     if vl.visited ∧ vr.visited then
-      find_most_interesting_aux current_best seen rest
+      find_most_interesting_aux_1 current_best seen rest
     else do
       (better, worse) ← sort_most_interesting g fn current_best a,
-      r ← find_most_interesting_aux better (worse :: seen) rest,
+      r ← find_most_interesting_aux_1 better (worse :: seen) rest,
       return r
 
-meta def find_most_interesting {α β : Type} (g : global_state α β) (fn : @improve_estimate_fn β)
+private meta def find_most_interesting_aux_2 (fn : improve_estimate_fn β)
   : list (dist_estimate β) → tactic (list (dist_estimate β))
   | [] := return []
   | (a :: rest) := do
     (vl, vr) ← pure (g.get_estimate_verts a),
     if vl.visited ∧ vr.visited then
-      find_most_interesting rest
+      find_most_interesting_aux_2 rest
     else do
-      (best, others) ← find_most_interesting_aux g fn a [] rest,
+      (best, others) ← find_most_interesting_aux_1 g fn a [] rest,
       return (best :: others)
 
-meta def global_state.find_most_interesting {α β : Type} (g : global_state α β) (fn : @improve_estimate_fn β) : tactic (global_state α β) := do
-  new_interestings ← find_most_interesting g fn g.interesting_pairs,
+meta def find_most_interesting (fn : improve_estimate_fn β) : tactic (global_state α β) := do
+  new_interestings ← find_most_interesting_aux_2 g fn g.interesting_pairs,
   return ⟨ g.next_id, g.vertices, g.estimates, new_interestings, g.solving_edge, g.internal_strat_state ⟩ 
+
+end global_state
 
 meta def refresh_fn (α β : Type) : Type :=
   global_state α β → global_state α β
@@ -269,6 +269,7 @@ meta inductive strategy_action {α β : Type}
   | examine : dist_estimate β → side → strategy_action
   | refresh : refresh_fn α β → strategy_action
   | abort   : string → strategy_action
+  
 open strategy_action
 
 meta def step_fn (α β : Type) : Type := global_state α β → ℕ → global_state α β × (@strategy_action α β)
