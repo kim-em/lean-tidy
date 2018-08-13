@@ -34,7 +34,7 @@ meta def ed_step (g : global_state ed_searchstate ed_partial) (itr : ℕ)
   else
     (g, strategy_action.abort "max iterations reached")
 
-meta def ed_init_bound (l r : vertex) : @bound_progress ed_partial :=
+meta def ed_init_bound (l r : vertex) : bound_progress ed_partial :=
   at_least 0 (empty_partial_edit_distance_data l.tokens r.tokens)
 
 def triples {α : Type} (p : ed_partial) (l₂ : list α): list (ℕ × ℕ × α) := p.distances.zip ((p.prefix_length :: p.distances).zip l₂)
@@ -45,24 +45,24 @@ meta def fold_fn (h : string) (n : ℕ × list ℕ) (t : ℕ × ℕ × string) :
   (min m n.1, m :: n.2)
 
 --FIXME rewrite me
-meta def ed_improve_bound_once (l r : list string) (cur : ℕ) (p : ed_partial) : @bound_progress ed_partial :=
+meta def ed_improve_bound_once (l r : list string) (cur : ℕ) (p : ed_partial) : bound_progress ed_partial :=
   match p.suffix with
-    | [] := exactly p.distances.ilast
+    | [] := exactly p.distances.ilast p
     | (h :: t) :=
       let initial := (p.prefix_length + 1, [p.prefix_length + 1]) in
       let new_distances : ℕ × list ℕ := (triples p r).foldl (fold_fn h) initial in
       at_least new_distances.1 ⟨ p.prefix_length + 1, t, new_distances.2.reverse.drop 1 ⟩
   end 
 
-meta def ed_improve_bound_over (l r : list string) (m : ℕ) : @bound_progress ed_partial → @bound_progress ed_partial
-| (exactly n) := exactly n
+meta def ed_improve_bound_over (l r : list string) (m : ℕ) : bound_progress ed_partial → bound_progress ed_partial
+| (exactly n p) := exactly n p
 | (at_least n p) :=
   if n > m then
     at_least n p
   else
     ed_improve_bound_over (ed_improve_bound_once l r n p)
 
-meta def ed_improve_estimate_over (m : ℕ) (l r : vertex) (bnd : @bound_progress ed_partial) : @bound_progress ed_partial :=
+meta def ed_improve_estimate_over (m : ℕ) (l r : vertex) (bnd : bound_progress ed_partial) : bound_progress ed_partial :=
   ed_improve_bound_over l.tokens r.tokens m bnd
 
 end tidy.rewrite_search.strategy.edit_distance

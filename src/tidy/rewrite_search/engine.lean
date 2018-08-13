@@ -29,18 +29,18 @@ inductive search_result
 -- meta def ul {α : Type u} {β : Type v} (a : tactic α) : tactic (ulift α) := ulift.up a
 
 -- meta def bound_numeric := ℕ
-inductive bound_progress {β : Type}
-  | exactly : ℕ → bound_progress
+inductive bound_progress (β : Type)
+  | exactly : ℕ → β → bound_progress
   | at_least : ℕ → β → bound_progress
 open bound_progress
-def bound_progress.bound {β : Type} : @bound_progress β → ℕ
-  | (exactly n)    := n
+def bound_progress.bound {β : Type} : bound_progress β → ℕ
+  | (exactly n _)    := n
   | (at_least n _) := n
-def bound_progress.sure {β : Type} : @bound_progress β → bool
-  | (exactly _)    := tt
+def bound_progress.sure {β : Type} : bound_progress β → bool
+  | (exactly _ _)    := tt
   | (at_least _ _) := ff
-def bound_progress.to_string {β : Type} : @bound_progress β → string
-  | (exactly n)    := "=" ++ to_string n
+def bound_progress.to_string {β : Type} : bound_progress β → string
+  | (exactly n _)    := "=" ++ to_string n
   | (at_least n _) := "≥" ++ to_string n
 
 meta def tokenise_expr (e : expr) : tactic (string × list string) := do
@@ -93,7 +93,7 @@ meta def mk_null_vertex : vertex :=
 
 structure dist_estimate (state_type : Type) :=
   (l r : vertex_ref)
-  (bnd : @bound_progress state_type)
+  (bnd : bound_progress state_type)
 def dist_estimate.side {α : Type} (de : dist_estimate α) (s : side) : vertex_ref :=
   match s with
   | side.L := de.l
@@ -102,8 +102,8 @@ def dist_estimate.side {α : Type} (de : dist_estimate α) (s : side) : vertex_r
 def dist_estimate.to_string {α : Type} (de : dist_estimate α) : string :=
   (de.l.to_string) ++ "-" ++ (de.r.to_string) ++ "Δ" ++ de.bnd.to_string
 
-meta def init_bound_fn (β : Type) := vertex → vertex → @bound_progress β
-meta def improve_estimate_fn (β : Type) := ℕ → vertex → vertex → @bound_progress β → @bound_progress β
+meta def init_bound_fn (β : Type) := vertex → vertex → bound_progress β
+meta def improve_estimate_fn (β : Type) := ℕ → vertex → vertex → bound_progress β → bound_progress β
 
 meta inductive status
   | going : ℕ → status
@@ -201,11 +201,11 @@ meta def global_state.mark_vertex_visited {α β : Type} (g : global_state α β
 
 -- updates rival's estimate trying to beat candidate's estimate, stopping if we do or we can't
 -- go any further. We return true if we were able to beat candidate.
-meta def try_to_beat {β : Type} (fn : @improve_estimate_fn β) (candidate rival : @bound_progress β)
-  (rival_l rival_r : vertex) : @bound_progress β × bool :=
+meta def try_to_beat {β : Type} (fn : @improve_estimate_fn β) (candidate rival : bound_progress β)
+  (rival_l rival_r : vertex) : bound_progress β × bool :=
   let m := candidate.bound in
   match rival with
-  | exactly n := (rival, n <= m)
+  | exactly n _ := (rival, n <= m)
   | at_least n p :=
     let attempt := fn m rival_l rival_r rival in
     (attempt, attempt.bound < m)
@@ -221,7 +221,7 @@ meta def sort_most_interesting {α β : Type} (g : global_state α β) (fn : @im
     -- otherwise:
     | (new_b, tt) := match a.bnd with
       -- b is further than the current estimate for a and the estimate for a is exact:
-      | exactly k    := return (a, ⟨ b.l, b.r, new_b ⟩)
+      | exactly k _  := return (a, ⟨ b.l, b.r, new_b ⟩)
       -- or, b is futher than the current estimate for a but a might actually be worse, so check:
       | at_least k p := sort_most_interesting ⟨ b.l, b.r, new_b ⟩ a
     end
