@@ -433,7 +433,7 @@ meta def add_new_interestings (v : vertex) : inst α β γ → list vertex → t
     add_new_interestings i rest
 
 -- My job is to examine the specified side and to blow up the vertex once
-meta def examine_one {α β γ : Type} (i : inst α β γ) (de : dist_estimate β) (s : side) : tactic (inst α β γ) := 
+meta def examine_one (de : dist_estimate β) (s : side) : tactic (inst α β γ) := 
 do
   let v := i.g.get_vertex (de.side s),
   -- let flip := match s with
@@ -449,7 +449,7 @@ do
   i ← i.find_most_interesting,
   return i
 
-meta def step_once {α β γ : Type} (i : inst α β γ) (itr : ℕ) : tactic (inst α β γ × status) :=
+meta def step_once (itr : ℕ) : tactic (inst α β γ × status) :=
 match i.g.solving_edge with
 | some e := return (i, status.done e)
 | none :=
@@ -475,7 +475,7 @@ match i.g.solving_edge with
   end
 end
 
-meta def backtrack_to_root_with {α β γ : Type} (i : inst α β γ) : vertex → expr → tactic expr :=
+meta def backtrack_to_root_with : vertex → expr → tactic expr :=
 λ (cur : vertex) (prf_so_far : expr), do
 match cur.parent with
 | none := return prf_so_far
@@ -486,7 +486,7 @@ match cur.parent with
 end
 
 --FIXME code duplication with above
-meta def backtrack_to_root {α β γ : Type} (i : inst α β γ) (cur : vertex) : tactic (option expr) := do
+meta def backtrack_to_root (cur : vertex) : tactic (option expr) := do
 match cur.parent with
 | none := return none
 | some e := do
@@ -494,24 +494,20 @@ match cur.parent with
   proof ← i.backtrack_to_root_with parent e.proof,
   return proof
 end
-end inst
 
-meta def flip_half (h : expr) : tactic expr := tactic.mk_eq_symm h
-meta def unify_halves (l r : expr) : tactic expr := tactic.mk_eq_trans l r
-
-meta def inst.solve_goal {α β γ : Type} (i : inst α β γ) (e : edge) : tactic string := 
+meta def solve_goal (e : edge) : tactic string := 
 do
   let (vf, vt) := i.g.get_endpoints e,
 
   rhs_half ← i.backtrack_to_root_with vf e.proof,
-  rhs_half ← flip_half rhs_half,
+  rhs_half ← tactic.mk_eq_symm rhs_half,
 
   lhs_half ← i.backtrack_to_root vt,
   match lhs_half with
   | some lhs_half := do
-    proof ← unify_halves lhs_half rhs_half,
+    proof ← tactic.mk_eq_trans lhs_half rhs_half,
     proof ← match vf.s with
-            | some side.L := flip_half proof
+            | some side.L := tactic.mk_eq_symm proof
             | _           := pure proof
             end,
 
@@ -526,22 +522,25 @@ do
 
   return "pretty version"
 
-meta def inst.search_until_stop_aux {α β γ : Type} : inst α β γ → ℕ → tactic search_result
+meta def search_until_stop_aux : inst α β γ → ℕ → tactic search_result
 | i itr := do
   (i, s) ← i.step_once itr,
   match s with
-  | status.going k := inst.search_until_stop_aux i (itr + 1)
+  | status.going k := search_until_stop_aux i (itr + 1)
   | status.abort   := return (search_result.failure "aborted")
   | status.done e  := do
     str ← i.solve_goal e,
     return (search_result.success str)
   end
 
-meta def inst.search_until_abort {α β γ : Type} (i : inst α β γ) : tactic search_result := 
+meta def search_until_abort : tactic search_result := 
 do
   res ← i.search_until_stop_aux 0,
   i.tracer_search_finished,
   return res
+
+end inst
+
 
 meta def mk_initial_global_state {α β : Type} (strat : @strategy α β) : global_state α β :=
 ⟨ mk_vertex_ref_first, [], [], [], none, strat.init ⟩
