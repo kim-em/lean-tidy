@@ -203,96 +203,93 @@ meta def mark_vertex_visited (vr : vertex_ref) : global_state α β := g.set_ver
 -- updates rival's estimate trying to beat candidate's estimate, stopping if we do or we can't
 -- go any further. We return true if we were able to beat candidate.
 private meta def try_to_beat (fn : improve_estimate_fn β) (candidate rival : bound_progress β) (rival_l rival_r : vertex) : bound_progress β × bool :=
-  let m := candidate.bound in
-  match rival with
-  | exactly n _ := (rival, n <= m)
-  | at_least n p :=
-    let attempt := fn m rival_l rival_r rival in
-    (attempt, attempt.bound < m)
-  end
+let m := candidate.bound in
+match rival with
+| exactly n _ := (rival, n <= m)
+| at_least n p :=
+  let attempt := fn m rival_l rival_r rival in
+  (attempt, attempt.bound < m)
+end
 
 -- First is closer
-private meta def sort_most_interesting (fn : improve_estimate_fn β)
-  : dist_estimate β → dist_estimate β → tactic (dist_estimate β × dist_estimate β) -- Scott: why is this a tactic?
-  | a b := do
-  match try_to_beat fn a.bnd b.bnd (g.get_vertex b.l) (g.get_vertex b.r) with
-    -- b is guarenteed closer, so return it:
-    | (new_b, ff) := return ({ b with bnd := new_b }, a)
-    -- otherwise:
-    | (new_b, tt) := match a.bnd with
-      -- b is further than the current estimate for a and the estimate for a is exact:
-      | exactly k _  := return (a, { b with bnd := new_b })
-      -- or, b is futher than the current estimate for a but a might actually be worse, so check:
-      | at_least k p := sort_most_interesting { b with bnd := new_b } a
-    end
+private meta def sort_most_interesting (fn : improve_estimate_fn β) : dist_estimate β → dist_estimate β → tactic (dist_estimate β × dist_estimate β) -- Scott: why is this a tactic?
+| a b := do
+match try_to_beat fn a.bnd b.bnd (g.get_vertex b.l) (g.get_vertex b.r) with
+  -- b is guarenteed closer, so return it:
+  | (new_b, ff) := return ({ b with bnd := new_b }, a)
+  -- otherwise:
+  | (new_b, tt) := match a.bnd with
+    -- b is further than the current estimate for a and the estimate for a is exact:
+    | exactly k _  := return (a, { b with bnd := new_b })
+    -- or, b is futher than the current estimate for a but a might actually be worse, so check:
+    | at_least k p := sort_most_interesting { b with bnd := new_b } a
   end
+end
 
-private meta def find_most_interesting_aux_1 (fn : improve_estimate_fn β)
-  : dist_estimate β → list (dist_estimate β) → list (dist_estimate β) → tactic (dist_estimate β × list (dist_estimate β)) -- Scott: why is this a tactic?
-  | current_best seen [] := return (current_best, seen)
-  | current_best seen (a :: rest) := do
-    (vl, vr) ← pure (g.get_estimate_verts a),
-    -- Drop "interesting" vertices which have had both ends visited, and hence aren't interesting
-    -- any more.
-    if vl.visited ∧ vr.visited then
-      find_most_interesting_aux_1 current_best seen rest
-    else do
-      (better, worse) ← sort_most_interesting g fn current_best a,
-      r ← find_most_interesting_aux_1 better (worse :: seen) rest,
-      return r
+private meta def find_most_interesting_aux_1 (fn : improve_estimate_fn β) : dist_estimate β → list (dist_estimate β) → list (dist_estimate β) → tactic (dist_estimate β × list (dist_estimate β)) -- Scott: why is this a tactic?
+| current_best seen [] := return (current_best, seen)
+| current_best seen (a :: rest) := do
+  (vl, vr) ← pure (g.get_estimate_verts a),
+  -- Drop "interesting" vertices which have had both ends visited, and hence aren't interesting
+  -- any more.
+  if vl.visited ∧ vr.visited then
+    find_most_interesting_aux_1 current_best seen rest
+  else do
+    (better, worse) ← sort_most_interesting g fn current_best a,
+    r ← find_most_interesting_aux_1 better (worse :: seen) rest,
+    return r
 
-private meta def find_most_interesting_aux_2 (fn : improve_estimate_fn β)
-  : list (dist_estimate β) → tactic (list (dist_estimate β))
-  | [] := return []
-  | (a :: rest) := do
-    (vl, vr) ← pure (g.get_estimate_verts a),
-    if vl.visited ∧ vr.visited then
-      find_most_interesting_aux_2 rest
-    else do
-      (best, others) ← find_most_interesting_aux_1 g fn a [] rest,
-      return (best :: others)
+private meta def find_most_interesting_aux_2 (fn : improve_estimate_fn β) : list (dist_estimate β) → tactic (list (dist_estimate β))
+| [] := return []
+| (a :: rest) := do
+  (vl, vr) ← pure (g.get_estimate_verts a),
+  if vl.visited ∧ vr.visited then
+    find_most_interesting_aux_2 rest
+  else do
+    (best, others) ← find_most_interesting_aux_1 g fn a [] rest,
+    return (best :: others)
 
-meta def find_most_interesting (fn : improve_estimate_fn β) : tactic (global_state α β) := do
-  new_interestings ← find_most_interesting_aux_2 g fn g.interesting_pairs,
-  return { g with interesting_pairs := new_interestings } 
+meta def find_most_interesting (fn : improve_estimate_fn β) : tactic (global_state α β) := 
+do new_interestings ← find_most_interesting_aux_2 g fn g.interesting_pairs,
+   return { g with interesting_pairs := new_interestings } 
 
 end global_state
 
 meta def refresh_fn (α β : Type) : Type :=
-  global_state α β → global_state α β
+global_state α β → global_state α β
 
 meta inductive strategy_action {α β : Type}
-  | examine : dist_estimate β → side → strategy_action
-  | refresh : refresh_fn α β → strategy_action
-  | abort   : string → strategy_action
+| examine : dist_estimate β → side → strategy_action
+| refresh : refresh_fn α β → strategy_action
+| abort   : string → strategy_action
   
 open strategy_action
 
 meta def step_fn (α β : Type) : Type := global_state α β → ℕ → global_state α β × (@strategy_action α β)
 
 meta structure strategy {α β : Type} :=
-  (init : α)
-  (step : step_fn α β)
+(init : α)
+(step : step_fn α β)
 
-  (init_bound : init_bound_fn β)
-  (improve_estimate_over : improve_estimate_fn β)
+(init_bound : init_bound_fn β)
+(improve_estimate_over : improve_estimate_fn β)
 
 structure config := 
-  (trace      : bool := ff)
-  (visualiser : bool := ff)
+(trace      : bool := ff)
+(visualiser : bool := ff)
 
 meta structure tracer (γ : Type) :=
-  (init            : tactic γ)
-  (publish_vertex  : γ → vertex → tactic unit)
-  (publish_edge    : γ → edge → tactic unit)
-  (publish_pair    : γ → vertex_ref → vertex_ref → tactic unit)
-  (publish_finished: γ → tactic unit)
-  (dump            : γ → string → tactic unit)
-  (pause           : γ → tactic unit)
+(init            : tactic γ)
+(publish_vertex  : γ → vertex → tactic unit)
+(publish_edge    : γ → edge → tactic unit)
+(publish_pair    : γ → vertex_ref → vertex_ref → tactic unit)
+(publish_finished: γ → tactic unit)
+(dump            : γ → string → tactic unit)
+(pause           : γ → tactic unit)
 
 meta structure tracer_state (γ : Type) :=
-  (tr       : tracer γ)
-  (internal : γ)
+(tr       : tracer γ)
+(internal : γ)
 
 meta def unit_tracer_init : tactic unit := return ()
 meta def unit_tracer_publish_vertex (_ : unit) (_ : vertex) : tactic unit := tactic.skip
@@ -306,55 +303,55 @@ meta def unit_tracer : tracer unit :=
     unit_tracer_publish_finished, unit_tracer_dump, unit_tracer_pause ⟩
 
 meta structure inst (α β γ : Type) :=
-  (conf   : config)
-  (rs     : list (expr × bool))
-  (strat  : @strategy α β)
-  (g      : global_state α β)
-  (tr_state : tracer_state γ)
+(conf   : config)
+(rs     : list (expr × bool))
+(strat  : @strategy α β)
+(g      : global_state α β)
+(tr_state : tracer_state γ)
 
 meta def inst.mutate {α β γ : Type} (i : inst α β γ) (g : global_state α β) : inst α β γ:=
-  ⟨ i.conf, i.rs, i.strat, g, i.tr_state ⟩
+⟨ i.conf, i.rs, i.strat, g, i.tr_state ⟩
 
 meta def inst.trace {α β γ δ : Type} [has_to_tactic_format δ] (i : inst α β γ) (s : δ) : tactic unit :=
-  if i.conf.trace then
-    tactic.trace s
-  else
-    tactic.skip
+if i.conf.trace then
+  tactic.trace s
+else
+  tactic.skip
 
-meta def tracer_vertex_added {α β γ : Type} (i : inst α β γ) (v : vertex) : tactic unit := do
-  --FIXME guard all of these with an if (to prevent pointless string building)
-  i.trace format!"addV({v.id.to_string}): {v.pp}",
-  i.tr_state.tr.publish_vertex i.tr_state.internal v
+meta def tracer_vertex_added {α β γ : Type} (i : inst α β γ) (v : vertex) : tactic unit := 
+do --FIXME guard all of these with an if (to prevent pointless string building)
+   i.trace format!"addV({v.id.to_string}): {v.pp}",
+   i.tr_state.tr.publish_vertex i.tr_state.internal v
 
-meta def tracer_edge_added {α β γ : Type} (i : inst α β γ) (e : edge) : tactic unit := do
-  --FIXME guard all of these with an if (to prevent pointless string building)
-  i.trace format!"addE: {e.f.to_string}→{e.t.to_string}",
-  i.tr_state.tr.publish_edge i.tr_state.internal e
+meta def tracer_edge_added {α β γ : Type} (i : inst α β γ) (e : edge) : tactic unit := 
+do --FIXME guard all of these with an if (to prevent pointless string building)
+   i.trace format!"addE: {e.f.to_string}→{e.t.to_string}",
+   i.tr_state.tr.publish_edge i.tr_state.internal e
 
-meta def tracer_pair_added {α β γ : Type} (i : inst α β γ) (l r : vertex_ref) : tactic unit := do
-  --FIXME guard all of these with an if (to prevent pointless string building)
-  i.trace format!"addP: {l.to_string}→{r.to_string}",
-  i.tr_state.tr.publish_pair i.tr_state.internal l r
+meta def tracer_pair_added {α β γ : Type} (i : inst α β γ) (l r : vertex_ref) : tactic unit := 
+do --FIXME guard all of these with an if (to prevent pointless string building)
+   i.trace format!"addP: {l.to_string}→{r.to_string}",
+   i.tr_state.tr.publish_pair i.tr_state.internal l r
 
-meta def tracer_dump {α β γ δ : Type} [has_to_tactic_format δ] (i : inst α β γ) (s : δ) : tactic unit := do
-  --FIXME guard all of these with an if (to prevent pointless string building)
-  fmt ← has_to_tactic_format.to_tactic_format s,
-  str ← pure (to_string fmt),
-  i.trace str,
-  i.tr_state.tr.dump i.tr_state.internal str
+meta def tracer_dump {α β γ δ : Type} [has_to_tactic_format δ] (i : inst α β γ) (s : δ) : tactic unit := 
+do --FIXME guard all of these with an if (to prevent pointless string building)
+   fmt ← has_to_tactic_format.to_tactic_format s,
+   str ← pure (to_string fmt),
+   i.trace str,
+   i.tr_state.tr.dump i.tr_state.internal str
 
-meta def tracer_search_finished {α β γ : Type} (i : inst α β γ) : tactic unit := do
-  --FIXME guard all of these with an if (to prevent pointless string building)
-  i.trace format!"DONE!",
-  i.tr_state.tr.publish_finished i.tr_state.internal
+meta def tracer_search_finished {α β γ : Type} (i : inst α β γ) : tactic unit := 
+do --FIXME guard all of these with an if (to prevent pointless string building)
+   i.trace format!"DONE!",
+   i.tr_state.tr.publish_finished i.tr_state.internal
 
 meta def dump_rws : list (expr × expr × ℕ × ℕ) → tactic unit
-  | [] := tactic.skip
-  | (a :: rest) := do tactic.trace format!"→{a.1}\nPF:{a.2}", dump_rws rest
+| [] := tactic.skip
+| (a :: rest) := do tactic.trace format!"→{a.1}\nPF:{a.2}", dump_rws rest
 
 meta def dump_vertices {α β γ : Type} (i : inst α β γ) : list vertex → tactic unit
-  | [] := tactic.skip
-  | (a :: rest) := do
+| [] := tactic.skip
+| (a :: rest) := do
     let pfx : string := match a.parent with
       | none := "?"
       | some p := p.f.to_string
@@ -363,80 +360,78 @@ meta def dump_vertices {α β γ : Type} (i : inst α β γ) : list vertex → t
     dump_vertices rest
 
 meta def dump_edges {α β γ : Type} (i : inst α β γ) : list edge → tactic unit
-  | [] := tactic.skip
-  | (a :: rest) := do
+| [] := tactic.skip
+| (a :: rest) := do
     let (vf, vt) := i.g.get_endpoints a,
     tracer_dump i "E:{vf.pp}→{vt.pp}",
     dump_edges rest
 
 meta def dump_estimates {α β γ : Type} (i : inst α β γ) : list (dist_estimate β) → tactic unit
-  | [] := tactic.trace ""
-  | (a :: rest) := do
-  tracer_dump i format!"I{(i.g.get_vertex a.l).pp}-{(i.g.get_vertex a.r).pp}:{a.bnd.bound}",
-  dump_estimates rest
+| [] := tactic.trace ""
+| (a :: rest) := do
+    tracer_dump i format!"I{(i.g.get_vertex a.l).pp}-{(i.g.get_vertex a.r).pp}:{a.bnd.bound}",
+    dump_estimates rest
 
 -- Look up the given vertex associated to (e : expr), or create it if it is
 -- not already present.
-meta def inst.do_add_vertex {α β γ : Type} (i : inst α β γ) (e : expr) (root : bool) (s : option side)
-  : tactic (inst α β γ × vertex) := do
-  maybe_v ← i.g.find_vertex e,
-  match maybe_v with
-    | none := do
-      (g, v) ← i.g.do_alloc_vertex e root s,
-      tracer_vertex_added i v,
-      return (i.mutate g, v)
-    | (some v) := return (i, v)
-  end
+meta def inst.do_add_vertex {α β γ : Type} (i : inst α β γ) (e : expr) (root : bool) (s : option side) : tactic (inst α β γ × vertex) := 
+do maybe_v ← i.g.find_vertex e,
+   match maybe_v with
+   | none := do
+     (g, v) ← i.g.do_alloc_vertex e root s,
+     tracer_vertex_added i v,
+     return (i.mutate g, v)
+   | (some v) := return (i, v)
+   end
 
 meta def inst.add_vertex {α β γ : Type} (i : inst α β γ) (e : expr) (s : option side) :=
-  i.do_add_vertex e ff s
+i.do_add_vertex e ff s
 
 meta def inst.add_root_vertex {α β γ : Type} (i : inst α β γ) (e : expr) (s : side) :=
-  i.do_add_vertex e tt s
+i.do_add_vertex e tt s
 
-meta def inst.add_edge {α β γ : Type} (i : inst α β γ) (f t : vertex)
-  (proof : expr) (how : ℕ) : tactic (inst α β γ × edge) := do
-  let new_edge : edge := ⟨ f.id, t.id, proof, how ⟩,
-  tracer_edge_added i new_edge,
-  g ← pure i.g,
-  (g, f) ← g.add_adj f new_edge,
-  (g, t) ← g.add_adj t new_edge,
-  (g, t) ← g.publish_parent f t new_edge,
-  if ¬(vertex.same_side f t) then
-    return (i.mutate (g.register_solved new_edge), new_edge)
-  else
-    return (i.mutate g, new_edge)
+meta def inst.add_edge {α β γ : Type} (i : inst α β γ) (f t : vertex) (proof : expr) (how : ℕ) : tactic (inst α β γ × edge) := 
+do let new_edge : edge := ⟨ f.id, t.id, proof, how ⟩,
+   tracer_edge_added i new_edge,
+   g ← pure i.g,
+   (g, f) ← g.add_adj f new_edge,
+   (g, t) ← g.add_adj t new_edge,
+   (g, t) ← g.publish_parent f t new_edge,
+   if ¬(vertex.same_side f t) then
+     return (i.mutate (g.register_solved new_edge), new_edge)
+   else
+     return (i.mutate g, new_edge)
 
 -- Add an "interesting pair" to the global state
-meta def inst.add_pair {α β γ : Type} (i : inst α β γ) (l r : vertex) : tactic (inst α β γ) := do
-  tracer_pair_added i l.id r.id,
-  match i.g.find_pair l.id r.id with
-    | some de := return i
-    | none := do
-        g ← i.g.do_alloc_pair ⟨ l.id, r.id, i.strat.init_bound l r ⟩,
-        return (i.mutate g)
-    end
+meta def inst.add_pair {α β γ : Type} (i : inst α β γ) (l r : vertex) : tactic (inst α β γ) := 
+do tracer_pair_added i l.id r.id,
+   match i.g.find_pair l.id r.id with
+   | some de := return i
+   | none := do g ← i.g.do_alloc_pair ⟨ l.id, r.id, i.strat.init_bound l r ⟩,
+                return (i.mutate g)
+   end
 
-meta def inst.find_most_interesting {α β γ : Type} (i : inst α β γ) : tactic (inst α β γ) := do
-  g ← i.g.find_most_interesting i.strat.improve_estimate_over,
-  return (i.mutate g)
+meta def inst.find_most_interesting {α β γ : Type} (i : inst α β γ) : tactic (inst α β γ) := 
+do g ← i.g.find_most_interesting i.strat.improve_estimate_over,
+   return (i.mutate g)
 
 meta def store_new_equalities {α β γ : Type} (f : vertex) : inst α β γ → list (expr × expr × ℕ × ℕ) → tactic (inst α β γ × list vertex × list edge)
-  | i [] := return (i, [], [])
-  | i ((new_expr, prf, id, j) :: rest) := do
-      (i, v) ← i.add_vertex new_expr f.s,
-      (i, e) ← i.add_edge f v prf id,
-      (i, vs, es) ← store_new_equalities i rest,
-      return (i, (v :: vs), (e :: es))
+| i [] := return (i, [], [])
+| i ((new_expr, prf, id, j) :: rest) := do
+    (i, v) ← i.add_vertex new_expr f.s,
+    (i, e) ← i.add_edge f v prf id,
+    (i, vs, es) ← store_new_equalities i rest,
+    return (i, (v :: vs), (e :: es))
 
 meta def add_new_interestings {α β γ : Type} (v : vertex) : inst α β γ → list vertex → tactic (inst α β γ)
-  | i [] := return i
-  | i (a :: rest) := do
-      i ← i.add_pair v a,
-      add_new_interestings i rest
+| i [] := return i
+| i (a :: rest) := do
+    i ← i.add_pair v a,
+    add_new_interestings i rest
 
 -- My job is to examine the specified side and to blow up the vertex once
-meta def inst.examine_one {α β γ : Type} (i : inst α β γ) (de : dist_estimate β) (s : side) : tactic (inst α β γ) := do
+meta def inst.examine_one {α β γ : Type} (i : inst α β γ) (de : dist_estimate β) (s : side) : tactic (inst α β γ) := 
+do
   let v := i.g.get_vertex (de.side s),
   -- let flip := match s with
   --   | side.L := ff
@@ -452,55 +447,56 @@ meta def inst.examine_one {α β γ : Type} (i : inst α β γ) (de : dist_estim
   return i
 
 meta def inst.step_once {α β γ : Type} (i : inst α β γ) (itr : ℕ) : tactic (inst α β γ × status) :=
-  match i.g.solving_edge with
-  | some e := return (i, status.done e)
-  | none :=
-    let (g, action) := i.strat.step i.g itr in
-    let i := i.mutate g in
-    match action with
-      | examine de s := do
-        target ← pure (g.get_vertex (de.side s)),
-        buddy ← pure (g.get_vertex (de.side s.other)),
-        i.trace format!"examine ({target.pp})↔({buddy.pp})",
-        if target.visited then do
-          i.trace format!"abort: already visited vertex!",
-          return (i, status.abort)
-        else do
-          i ← i.examine_one de s,
-          return (i, status.going (itr + 1))
-      | refresh ref_fn := do
-        i.trace format!"refresh",
-        return (i.mutate (ref_fn i.g), status.going (itr + 1))
-      | abort reason := do
-        i.trace format!"abort: {reason}",
-        return (i, status.abort)
-    end
+match i.g.solving_edge with
+| some e := return (i, status.done e)
+| none :=
+  let (g, action) := i.strat.step i.g itr in
+  let i := i.mutate g in
+  match action with
+  | examine de s := do
+    target ← pure (g.get_vertex (de.side s)),
+    buddy ← pure (g.get_vertex (de.side s.other)),
+    i.trace format!"examine ({target.pp})↔({buddy.pp})",
+    if target.visited then do
+      i.trace format!"abort: already visited vertex!",
+      return (i, status.abort)
+    else do
+      i ← i.examine_one de s,
+      return (i, status.going (itr + 1))
+  | refresh ref_fn := do
+    i.trace format!"refresh",
+    return (i.mutate (ref_fn i.g), status.going (itr + 1))
+  | abort reason := do
+    i.trace format!"abort: {reason}",
+    return (i, status.abort)
   end
+end
 
 meta def inst.backtrack_to_root_with {α β γ : Type} (i : inst α β γ) : vertex → expr → tactic expr :=
-  λ (cur : vertex) (prf_so_far : expr), do
-  match cur.parent with
-    | none := return prf_so_far
-    | some e := do
-      let parent : vertex := i.g.get_vertex e.f,
-      new_expr ← tactic.mk_eq_trans e.proof prf_so_far,
-      inst.backtrack_to_root_with parent new_expr
-  end
+λ (cur : vertex) (prf_so_far : expr), do
+match cur.parent with
+| none := return prf_so_far
+| some e := do
+  let parent : vertex := i.g.get_vertex e.f,
+  new_expr ← tactic.mk_eq_trans e.proof prf_so_far,
+  inst.backtrack_to_root_with parent new_expr
+end
 
 --FIXME code duplication with above
 meta def inst.backtrack_to_root {α β γ : Type} (i : inst α β γ) (cur : vertex) : tactic (option expr) := do
-  match cur.parent with
-    | none := return none
-    | some e := do
-      let parent : vertex := i.g.get_vertex e.f,
-      proof ← i.backtrack_to_root_with parent e.proof,
-      return proof
-  end
+match cur.parent with
+| none := return none
+| some e := do
+  let parent : vertex := i.g.get_vertex e.f,
+  proof ← i.backtrack_to_root_with parent e.proof,
+  return proof
+end
 
 meta def flip_half (h : expr) : tactic expr := tactic.mk_eq_symm h
 meta def unify_halves (l r : expr) : tactic expr := tactic.mk_eq_trans l r
 
-meta def inst.solve_goal {α β γ : Type} (i : inst α β γ) (e : edge) : tactic string := do
+meta def inst.solve_goal {α β γ : Type} (i : inst α β γ) (e : edge) : tactic string := 
+do
   let (vf, vt) := i.g.get_endpoints e,
 
   rhs_half ← i.backtrack_to_root_with vf e.proof,
@@ -508,48 +504,51 @@ meta def inst.solve_goal {α β γ : Type} (i : inst α β γ) (e : edge) : tact
 
   lhs_half ← i.backtrack_to_root vt,
   match lhs_half with
-    | some lhs_half := do
-      proof ← unify_halves lhs_half rhs_half,
-      proof ← match vf.s with
-        | some side.L := flip_half proof
-        | _           := pure proof
-      end,
+  | some lhs_half := do
+    proof ← unify_halves lhs_half rhs_half,
+    proof ← match vf.s with
+            | some side.L := flip_half proof
+            | _           := pure proof
+            end,
 
-      pp ← pretty_print proof,
-      i.trace pp,
-      i.trace vf.to_string,
-      i.trace vt.to_string,
+    pp ← pretty_print proof,
+    i.trace pp,
+    i.trace vf.to_string,
+    i.trace vt.to_string,
 
-      tactic.exact proof
-    | none := tactic.skip
+    tactic.exact proof
+  | none := tactic.skip
   end,
 
   return "pretty version"
 
-meta def inst.search_until_stop_aux {α β γ : Type} : inst α β γ → ℕ → tactic search_result := λ i itr, do
+meta def inst.search_until_stop_aux {α β γ : Type} : inst α β γ → ℕ → tactic search_result
+| i itr := do
   (i, s) ← i.step_once itr,
   match s with
-    | status.going k := inst.search_until_stop_aux i (itr + 1)
-    | status.abort   := return (search_result.failure "aborted")
-    | status.done e  := do
-      str ← i.solve_goal e,
-      return (search_result.success str)
+  | status.going k := inst.search_until_stop_aux i (itr + 1)
+  | status.abort   := return (search_result.failure "aborted")
+  | status.done e  := do
+    str ← i.solve_goal e,
+    return (search_result.success str)
   end
 
-meta def inst.search_until_abort {α β γ : Type} (i : inst α β γ) : tactic search_result := do
+meta def inst.search_until_abort {α β γ : Type} (i : inst α β γ) : tactic search_result := 
+do
   res ← i.search_until_stop_aux 0,
   tracer_search_finished i,
   return res
 
 meta def mk_initial_global_state {α β : Type} (strat : @strategy α β) : global_state α β :=
-  ⟨ mk_vertex_ref_first, [], [], [], none, strat.init ⟩
+⟨ mk_vertex_ref_first, [], [], [], none, strat.init ⟩
 
-meta def mk_initial_tracer_state {γ : Type} (tr : tracer γ) : tactic (tracer_state γ) := do
+meta def mk_initial_tracer_state {γ : Type} (tr : tracer γ) : tactic (tracer_state γ) := 
+do
   internal ← tr.init,
   return ⟨ tr, internal ⟩
 
-meta def mk_search_instance {α β γ : Type} (conf : config) (rs : list (expr × bool)) (strat : @strategy α β) (lhs rhs : expr) (tr : tracer γ)
-  : tactic (inst α β γ) := do
+meta def mk_search_instance {α β γ : Type} (conf : config) (rs : list (expr × bool)) (strat : @strategy α β) (lhs rhs : expr) (tr : tracer γ) : tactic (inst α β γ) := 
+do
   tracer_state ← mk_initial_tracer_state tr,
   let i := inst.mk conf rs strat (mk_initial_global_state strat) tracer_state,
   (i, vl) ← i.add_root_vertex lhs side.L,
