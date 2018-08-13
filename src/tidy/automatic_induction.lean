@@ -31,23 +31,22 @@ let use_cases := match t' with
 | `(subtype _) := tt
 | `(Exists _)  := tt
 | `(fin 0)     := tt
-| `(sum _ _)   := tt -- This is perhaps controversial!
-| `(or _ _)    := tt -- This is perhaps controversial!
+| `(sum _ _)   := tt -- This is perhaps dangerous!
+| `(or _ _)    := tt -- This is perhaps dangerous!
 | _            := ff
 end,
 if use_cases then
   do cases h, pp ← pp h, return ("cases " ++ pp.to_string)
 else
   match t' with
-  -- TODO I've seen places where we need to use cases. Double check we really need induction sometimes.
+  -- `cases` can be dangerous on `eq` and `quot`, producing mysterious errors during type checking.
   | `(eq _ _)        := (do induction h, pp ← pp h, return ("induction " ++ pp.to_string))
-                          -- <|> (do cases h,     pp ← pp h, return ("cases " ++ pp.to_string))
   | `(quot _)        := do induction h, pp ← pp h, return ("induction " ++ pp.to_string)
   | _                := failed
   end
 )
 
-/- Applies `cases` or `induction` fairly aggressively on hypotheses. -/
+/-- Applies `cases` or `induction` fairly aggressively on hypotheses. -/
 meta def automatic_induction : tactic string :=
 do l ← local_context,
    results ← at_least_one (l.reverse.map(λ h, automatic_induction_at h)),
