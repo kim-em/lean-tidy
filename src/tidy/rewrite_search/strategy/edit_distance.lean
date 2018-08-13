@@ -71,7 +71,7 @@ namespace tidy.rewrite_search.strategy
 
 open tidy.rewrite_search.strategy.edit_distance
 
-meta def edit_distance_strategy : @strategy ed_searchstate ed_partial :=
+meta def edit_distance_strategy : strategy ed_searchstate ed_partial :=
   ⟨ ed_searchstate_init, ed_step, ed_init_bound, ed_improve_estimate_over ⟩
 
 end tidy.rewrite_search.strategy

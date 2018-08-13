@@ -267,7 +267,7 @@ open strategy_action
 
 meta def step_fn (α β : Type) : Type := global_state α β → ℕ → global_state α β × (@strategy_action α β)
 
-meta structure strategy {α β : Type} :=
+meta structure strategy (α β : Type) :=
 (init : α)
 (step : step_fn α β)
 
@@ -305,7 +305,7 @@ meta def unit_tracer : tracer unit :=
 meta structure inst (α β γ : Type) :=
 (conf   : config)
 (rs     : list (expr × bool))
-(strat  : @strategy α β)
+(strat  : strategy α β)
 (g      : global_state α β)
 (tr_state : tracer_state γ)
 
@@ -542,7 +542,7 @@ do
 end inst
 
 
-meta def mk_initial_global_state {α β : Type} (strat : @strategy α β) : global_state α β :=
+meta def mk_initial_global_state {α β : Type} (strat : strategy α β) : global_state α β :=
 ⟨ mk_vertex_ref_first, [], [], [], none, strat.init ⟩
 
 meta def mk_initial_tracer_state {γ : Type} (tr : tracer γ) : tactic (tracer_state γ) := 
@@ -550,7 +550,7 @@ do
   internal ← tr.init,
   return ⟨ tr, internal ⟩
 
-meta def mk_search_instance {α β γ : Type} (conf : config) (rs : list (expr × bool)) (strat : @strategy α β) (lhs rhs : expr) (tr : tracer γ) : tactic (inst α β γ) := 
+meta def mk_search_instance {α β γ : Type} (conf : config) (rs : list (expr × bool)) (strat : strategy α β) (lhs rhs : expr) (tr : tracer γ) : tactic (inst α β γ) := 
 do
   tracer_state ← mk_initial_tracer_state tr,
   let i := inst.mk conf rs strat (mk_initial_global_state strat) tracer_state,
