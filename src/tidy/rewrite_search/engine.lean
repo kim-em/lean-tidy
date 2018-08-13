@@ -501,24 +501,26 @@ do
 
   rhs_half ← i.backtrack_to_root_with vf e.proof,
   rhs_half ← tactic.mk_eq_symm rhs_half,
-
   lhs_half ← i.backtrack_to_root vt,
-  match lhs_half with
-  | some lhs_half := do
-    proof ← tactic.mk_eq_trans lhs_half rhs_half,
-    proof ← match vf.s with
-            | some side.L := tactic.mk_eq_symm proof
-            | _           := pure proof
-            end,
 
-    pp ← pretty_print proof,
-    i.trace pp,
-    i.trace vf.to_string,
-    i.trace vt.to_string,
-
-    tactic.exact proof
-  | none := tactic.skip
+  -- vt might be the root node, in which case we ignore it
+  proof ← match lhs_half with
+  | some lhs_half := tactic.mk_eq_trans lhs_half rhs_half
+  | none          := pure rhs_half
   end,
+
+  -- Flip the proof if neccessary in order to match the goal
+  proof ← match vf.s with
+          | some side.L := tactic.mk_eq_symm proof
+          | _           := pure proof
+          end,
+
+  pp ← pretty_print proof,
+  i.trace pp,
+  i.trace vf.to_string,
+  i.trace vt.to_string,
+
+  tactic.exact proof,
 
   return "pretty version"
 
