@@ -135,7 +135,7 @@ meta def get_vertex (r : vertex_ref) : vertex :=
 list_at mk_null_vertex g.vertices r
 
 meta def set_vertex (v : vertex) : (global_state α β) :=
-⟨ g.next_id, list_set_at g.vertices v.id v, g.estimates, g.interesting_pairs, g.solving_edge, g.internal_strat_state ⟩
+{ g with vertices := list_set_at g.vertices v.id v }
 
 meta def get_endpoints (e : edge) : vertex × vertex :=
 (g.get_vertex e.f, g.get_vertex e.t)
@@ -149,13 +149,13 @@ meta def do_alloc_vertex (e : expr) (root : bool) (s : option side)
   : tactic (global_state α β × vertex) := 
 do (pp, tokens) ← tokenise_expr e,
    let v : vertex := ⟨ g.next_id, e, pp, tokens, root, ff, s, none, [] ⟩,
-   return (⟨ g.next_id.next, g.vertices.append [v], g.estimates, g.interesting_pairs, g.solving_edge,g.internal_strat_state ⟩, v)
+   return ({ g with next_id := g.next_id.next, vertices := g.vertices.append [v] }, v)
   
 -- Forcibly add a new pair to the interesting pair list. Probably should never be 
 -- called by a strategy and add_vertex to should used instead.
 meta def do_alloc_pair (de : dist_estimate β)
   : tactic (global_state α β) := 
-return (⟨ g.next_id, g.vertices, g.estimates.append [de], g.interesting_pairs.append [de], g.solving_edge, g.internal_strat_state ⟩)
+return {g with estimates := g.estimates.append [de], interesting_pairs := g.interesting_pairs.append [de]}
 
 private meta def find_vertex_aux (pp : string) : list vertex → option vertex
 | [] := none
@@ -420,7 +420,7 @@ do g ← i.g.find_most_interesting i.strat.improve_estimate_over,
 
 meta def store_new_equalities (f : vertex) : inst α β γ → list (expr × expr × ℕ × ℕ) → tactic (inst α β γ × list vertex × list edge)
 | i [] := return (i, [], [])
-| i ((new_expr, prf, id, j) :: rest) := do
+| i ((new_expr, prf, id, j) :: rest) := do -- FIXME it's essential we record j here, for writing the tactic script
     (i, v) ← i.add_vertex new_expr f.s,
     (i, e) ← i.add_edge f v prf id,
     (i, vs, es) ← store_new_equalities i rest,
@@ -431,6 +431,13 @@ meta def add_new_interestings (v : vertex) : inst α β γ → list vertex → t
 | i (a :: rest) := do
     i ← i.add_pair v a,
     add_new_interestings i rest
+
+/-- Check if `eq.refl _` suffices to prove the two sides are equal. -/
+meta def unify (de : dist_estimate β) : tactic (inst α β γ) :=
+do
+  let lhs := i.g.get_vertex (de.side side.L),
+  let rhs := i.g.get_vertex (de.side side.R),
+  tactic.failed -- FIXME finish this implementation
 
 -- My job is to examine the specified side and to blow up the vertex once
 meta def examine_one (de : dist_estimate β) (s : side) : tactic (inst α β γ) := 
@@ -464,7 +471,7 @@ match i.g.solving_edge with
       i.trace format!"abort: already visited vertex!",
       return (i, status.abort)
     else do
-      i ← i.examine_one de s,
+      i ← (i.unify de) <|> (i.examine_one de s),
       return (i, status.going (itr + 1))
   | refresh ref_fn := do
     i.trace format!"refresh",
