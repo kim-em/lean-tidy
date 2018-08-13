@@ -181,31 +181,28 @@ meta def find_pair (l r : vertex_ref) : option (dist_estimate β) :=
 find_pair_aux l r g.estimates
 
 meta def register_solved (e : edge) : global_state α β :=
-⟨ g.next_id, g.vertices, g.estimates, g.interesting_pairs, some e, g.internal_strat_state ⟩
+{ g with solving_edge := some e }
 
-meta def add_adj (v : vertex) (e : edge) : tactic (global_state α β × vertex) := 
-do let v : vertex := ⟨ v.id, v.exp, v.pp, v.tokens, v.root, v.visited, v.s, v.parent, v.adj.append [e] ⟩,
+meta def add_adj (v : vertex) (e : edge) : tactic (global_state α β × vertex) := -- Scott: why is this a tactic?
+do let v : vertex := { v with adj := v.adj.append [e] },
    return (g.set_vertex v, v)
 
-meta def publish_parent (f t : vertex) (e : edge) : tactic (global_state α β × vertex) :=
+meta def publish_parent (f t : vertex) (e : edge) : tactic (global_state α β × vertex) := -- Scott: why is this a tactic?
 if t.root then
   return (g, t)
 else
   match t.parent with
   | some parent := return (g, t)
   | none := do
-    let t : vertex := ⟨ t.id, t.exp, t.pp, t.tokens, t.root, t.visited, t.s, some e, t.adj ⟩,
+    let t : vertex := { t with parent := some e },
     return (g.set_vertex t, t)
   end
 
-meta def mark_vertex_visited (vr : vertex_ref) : global_state α β :=
-let v := g.get_vertex vr in
-g.set_vertex ⟨ v.id, v.exp, v.pp, v.tokens, v.root, tt, v.s, v.parent, v.adj ⟩
+meta def mark_vertex_visited (vr : vertex_ref) : global_state α β := g.set_vertex { g.get_vertex vr with visited := tt}
 
 -- updates rival's estimate trying to beat candidate's estimate, stopping if we do or we can't
 -- go any further. We return true if we were able to beat candidate.
-private meta def try_to_beat (fn : improve_estimate_fn β) (candidate rival : bound_progress β)
-  (rival_l rival_r : vertex) : bound_progress β × bool :=
+private meta def try_to_beat (fn : improve_estimate_fn β) (candidate rival : bound_progress β) (rival_l rival_r : vertex) : bound_progress β × bool :=
   let m := candidate.bound in
   match rival with
   | exactly n _ := (rival, n <= m)
@@ -216,22 +213,22 @@ private meta def try_to_beat (fn : improve_estimate_fn β) (candidate rival : bo
 
 -- First is closer
 private meta def sort_most_interesting (fn : improve_estimate_fn β)
-  : dist_estimate β → dist_estimate β → tactic (dist_estimate β × dist_estimate β)
+  : dist_estimate β → dist_estimate β → tactic (dist_estimate β × dist_estimate β) -- Scott: why is this a tactic?
   | a b := do
   match try_to_beat fn a.bnd b.bnd (g.get_vertex b.l) (g.get_vertex b.r) with
     -- b is guarenteed closer, so return it:
-    | (new_b, ff) := return (⟨ b.l, b.r, new_b ⟩, a)
+    | (new_b, ff) := return ({ b with bnd := new_b }, a)
     -- otherwise:
     | (new_b, tt) := match a.bnd with
       -- b is further than the current estimate for a and the estimate for a is exact:
-      | exactly k _  := return (a, ⟨ b.l, b.r, new_b ⟩)
+      | exactly k _  := return (a, { b with bnd := new_b })
       -- or, b is futher than the current estimate for a but a might actually be worse, so check:
-      | at_least k p := sort_most_interesting ⟨ b.l, b.r, new_b ⟩ a
+      | at_least k p := sort_most_interesting { b with bnd := new_b } a
     end
   end
 
 private meta def find_most_interesting_aux_1 (fn : improve_estimate_fn β)
-  : dist_estimate β → list (dist_estimate β) → list (dist_estimate β) → tactic (dist_estimate β × list (dist_estimate β))
+  : dist_estimate β → list (dist_estimate β) → list (dist_estimate β) → tactic (dist_estimate β × list (dist_estimate β)) -- Scott: why is this a tactic?
   | current_best seen [] := return (current_best, seen)
   | current_best seen (a :: rest) := do
     (vl, vr) ← pure (g.get_estimate_verts a),
@@ -257,7 +254,7 @@ private meta def find_most_interesting_aux_2 (fn : improve_estimate_fn β)
 
 meta def find_most_interesting (fn : improve_estimate_fn β) : tactic (global_state α β) := do
   new_interestings ← find_most_interesting_aux_2 g fn g.interesting_pairs,
-  return ⟨ g.next_id, g.vertices, g.estimates, new_interestings, g.solving_edge, g.internal_strat_state ⟩ 
+  return { g with interesting_pairs := new_interestings } 
 
 end global_state
 
