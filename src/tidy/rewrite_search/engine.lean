@@ -178,30 +178,29 @@ private meta def find_pair_aux {β : Type} (l r : vertex_ref) : list (dist_estim
 -- Find the vertex with the given (e : expr), or return the null verterx if not
 -- found.
 meta def find_pair (l r : vertex_ref) : option (dist_estimate β) :=
-  find_pair_aux l r g.estimates
+find_pair_aux l r g.estimates
 
 meta def register_solved (e : edge) : global_state α β :=
-  ⟨ g.next_id, g.vertices, g.estimates, g.interesting_pairs, some e, g.internal_strat_state ⟩
+⟨ g.next_id, g.vertices, g.estimates, g.interesting_pairs, some e, g.internal_strat_state ⟩
 
-meta def add_adj (v : vertex) (e : edge) : tactic (global_state α β × vertex) := do
-  let v : vertex := ⟨ v.id, v.exp, v.pp, v.tokens, v.root, v.visited, v.s, v.parent, v.adj.append [e] ⟩,
-  return (g.set_vertex v, v)
+meta def add_adj (v : vertex) (e : edge) : tactic (global_state α β × vertex) := 
+do let v : vertex := ⟨ v.id, v.exp, v.pp, v.tokens, v.root, v.visited, v.s, v.parent, v.adj.append [e] ⟩,
+   return (g.set_vertex v, v)
 
 meta def publish_parent (f t : vertex) (e : edge) : tactic (global_state α β × vertex) :=
-  if t.root then
-    return (g, t)
-  else
+if t.root then
+  return (g, t)
+else
   match t.parent with
-    | some parent := return (g, t)
-    | none := do
-      let t : vertex := ⟨ t.id, t.exp, t.pp, t.tokens, t.root, t.visited, t.s, some e, t.adj ⟩,
-      return (g.set_vertex t, t)
+  | some parent := return (g, t)
+  | none := do
+    let t : vertex := ⟨ t.id, t.exp, t.pp, t.tokens, t.root, t.visited, t.s, some e, t.adj ⟩,
+    return (g.set_vertex t, t)
   end
 
-meta def mark_vertex_visited (vr : vertex_ref)
-  : global_state α β :=
-  let v := g.get_vertex vr in
-  g.set_vertex ⟨ v.id, v.exp, v.pp, v.tokens, v.root, tt, v.s, v.parent, v.adj ⟩
+meta def mark_vertex_visited (vr : vertex_ref) : global_state α β :=
+let v := g.get_vertex vr in
+g.set_vertex ⟨ v.id, v.exp, v.pp, v.tokens, v.root, tt, v.s, v.parent, v.adj ⟩
 
 -- updates rival's estimate trying to beat candidate's estimate, stopping if we do or we can't
 -- go any further. We return true if we were able to beat candidate.
