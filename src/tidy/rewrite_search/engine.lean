@@ -453,15 +453,14 @@ meta def add_new_interestings (v : vertex) : inst α β γ → list vertex → t
 /-- Check if `eq.refl _` suffices to prove the two sides are equal. -/
 meta def unify (de : dist_estimate β) : tactic (inst α β γ) :=
 do
-  let lhs := i.g.get_vertex (de.side side.L),
-  let rhs := i.g.get_vertex (de.side side.R),
+  let (lhs, rhs) := i.g.get_estimate_verts de,
   prf ← attempt_refl lhs.exp rhs.exp,
   -- success! we're done
 
   -- It does not matter if the prf is "backwards", because we will traverse
   -- the refl edge the right way in the "backtrack" step.
-  (i, solving_edge) ← i.add_edge lhs rhs prf how.defeq,
-  return (i.mutate (i.g.register_solved solving_edge))
+  (i, _) ← i.add_edge lhs rhs prf how.defeq,
+  return i
 
 -- My job is to examine the specified side and to blow up the vertex once
 meta def examine_one (de : dist_estimate β) (s : side) : tactic (inst α β γ) := 
