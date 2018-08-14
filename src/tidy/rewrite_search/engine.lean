@@ -457,22 +457,16 @@ meta def add_new_interestings (v : vertex) : inst α β γ → list vertex → t
 meta def unify (de : dist_estimate β) : tactic (inst α β γ) :=
 do
   let (lhs, rhs) := i.g.get_estimate_verts de,
-  prf ← attempt_refl lhs.exp rhs.exp,
-  -- success! we're done
-
+  prf ← attempt_refl lhs.exp rhs.exp, -- success! we're done
+  (i, _) ← i.add_edge lhs rhs prf how.defeq,
   -- It does not matter if the prf is "backwards", because we will traverse
   -- the refl edge the right way in the "backtrack" step.
-  (i, _) ← i.add_edge lhs rhs prf how.defeq,
   return i
 
 -- My job is to examine the specified side and to blow up the vertex once
 meta def examine_one (de : dist_estimate β) (s : side) : tactic (inst α β γ) := 
 do
   let v := i.g.get_vertex (de.side s),
-  -- let flip := match s with
-  --   | side.L := ff
-  --   | side.R := tt
-  -- end,
   all_rws ← all_rewrites_list i.rs ff v.exp,
   let all_rws := all_rws.map (λ t, (t.1, t.2.1, how.rewrite t.2.2.1 t.2.2.2)),
   (i, touched_verts, new_edges) ← i.store_new_equalities v all_rws,
@@ -545,9 +539,9 @@ do
 
   -- Flip the proof if neccessary in order to match the goal
   proof ← match vf.s with
-          | some side.L := tactic.mk_eq_symm proof
-          | _           := pure proof
-          end,
+  | some side.L := tactic.mk_eq_symm proof
+  | _           := pure proof
+  end,
 
   pp ← pretty_print proof,
   i.trace pp,
