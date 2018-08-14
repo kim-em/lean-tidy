@@ -283,6 +283,7 @@ meta structure strategy (α β : Type) :=
 structure config := 
 (trace      : bool := ff)
 (visualiser : bool := ff)
+(trace_summary : bool := ff)
 
 meta structure tracer (γ : Type) :=
 (init            : tactic γ)
@@ -505,38 +506,38 @@ match i.g.solving_edge with
   end
 end
 
-meta def backtrack_to_root_with : vertex → expr → tactic expr :=
-λ (cur : vertex) (prf_so_far : expr), do
+meta def backtrack_to_root_with : vertex → expr → ℕ → tactic (expr × ℕ) :=
+λ (cur : vertex) (prf_so_far : expr) (depth), do
 match cur.parent with
-| none := return prf_so_far
+| none := return (prf_so_far, depth)
 | some e := do
   let parent : vertex := i.g.get_vertex e.f,
   new_expr ← tactic.mk_eq_trans e.proof prf_so_far,
-  backtrack_to_root_with parent new_expr
+  backtrack_to_root_with parent new_expr (depth+1)
 end
 
 --FIXME code duplication with above
-meta def backtrack_to_root (cur : vertex) : tactic (option expr) := do
+meta def backtrack_to_root (cur : vertex) : tactic (option (expr × ℕ)) := do
 match cur.parent with
 | none := return none
 | some e := do
   let parent : vertex := i.g.get_vertex e.f,
-  proof ← i.backtrack_to_root_with parent e.proof,
-  return proof
+  (proof, depth) ← i.backtrack_to_root_with parent e.proof 0,
+  return (proof, depth)
 end
 
 meta def solve_goal (e : edge) : tactic string := 
 do
   let (vf, vt) := i.g.get_endpoints e,
 
-  rhs_half ← i.backtrack_to_root_with vf e.proof,
+  (rhs_half, rhs_depth) ← i.backtrack_to_root_with vf e.proof 0,
   rhs_half ← tactic.mk_eq_symm rhs_half,
   lhs_half ← i.backtrack_to_root vt,
 
   -- vt might be the root node, in which case we ignore it
-  proof ← match lhs_half with
-  | some lhs_half := tactic.mk_eq_trans lhs_half rhs_half
-  | none          := pure rhs_half
+  (proof, depth) ← match lhs_half with
+  | some (lhs_half, lhs_depth) := do prf ← tactic.mk_eq_trans lhs_half rhs_half, return (prf, rhs_depth + lhs_depth)
+  | none                       := pure (rhs_half, rhs_depth)
   end,
 
   -- Flip the proof if neccessary in order to match the goal
@@ -549,6 +550,15 @@ do
   i.trace pp,
   i.trace vf.to_string,
   i.trace vt.to_string,
+
+  if i.conf.trace_summary then do
+    let saw := i.g.vertices.length,
+    let visited := (i.g.vertices.filter (λ v : vertex, v.visited)).length,
+    let used := depth + 2, 
+    name ← decl_name,
+    tactic.trace format!"rewrite_search (saw/visited/used) {saw}/{visited}/{used} expressions during proof of {name}"
+  else 
+    skip,
 
   tactic.exact proof,
 
