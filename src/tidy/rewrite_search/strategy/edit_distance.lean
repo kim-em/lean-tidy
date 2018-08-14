@@ -27,9 +27,9 @@ meta def ed_step (g : global_state ed_searchstate ed_partial) (itr : ℕ)
     match g.interesting_pairs with
     | [] := (g, strategy_action.abort "all interesting pairs exhausted!")
     | (best_p :: rest) :=
-      let vl := g.get_vertex (best_p.side side.L) in
-      let s : side := if itr % 2 = 0 ∧ ¬vl.visited then side.L else side.R in
-      (g, strategy_action.examine best_p s)
+      let goal_side : side := if itr % 2 = 0 then side.L else side.R in
+      let v := g.get_vertex (best_p.side goal_side) in
+      (g, strategy_action.examine best_p (if ¬v.visited then goal_side else goal_side.other))
     end
   else
     (g, strategy_action.abort "max iterations reached")
