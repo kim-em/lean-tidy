@@ -5,6 +5,8 @@ import tidy.lib
 import tidy.pretty_print
 import tidy.rewrite_all
 
+open tactic
+
 namespace tidy.rewrite_search
 
 inductive side
@@ -57,10 +59,14 @@ def vertex_ref.next (r : vertex_ref) : vertex_ref := vertex_ref_from_nat (r + 1)
 def mk_vertex_ref_null : vertex_ref := vertex_ref_from_nat 0x8FFFFFFF
 def mk_vertex_ref_first : vertex_ref := vertex_ref_from_nat 0
 
+inductive how
+| rewrite : Π (rule_index : ℕ), Π (location : ℕ), how
+| defeq
+
 meta structure edge :=
 (f t   : vertex_ref)
 (proof : expr)
-(how   : ℕ) -- Scott: doen't we need to store two ℕs here? which rule, and which application?
+(how   : how)
 
 meta structure vertex :=
 (id      : vertex_ref)
@@ -111,7 +117,7 @@ meta def improve_estimate_fn (β : Type) := ℕ → vertex → vertex → bound_
 meta inductive status
 | going : ℕ → status
 | done : edge → status
-| abort
+| abort : string → status
 meta def status.next_itr : status → status
 | (status.going n) := status.going (n + 1)
 | other := other
@@ -135,7 +141,7 @@ meta def get_vertex (r : vertex_ref) : vertex :=
 list_at mk_null_vertex g.vertices r
 
 meta def set_vertex (v : vertex) : (global_state α β) :=
-⟨ g.next_id, list_set_at g.vertices v.id v, g.estimates, g.interesting_pairs, g.solving_edge, g.internal_strat_state ⟩
+{ g with vertices := list_set_at g.vertices v.id v }
 
 meta def get_endpoints (e : edge) : vertex × vertex :=
 (g.get_vertex e.f, g.get_vertex e.t)
@@ -149,13 +155,13 @@ meta def do_alloc_vertex (e : expr) (root : bool) (s : option side)
   : tactic (global_state α β × vertex) := 
 do (pp, tokens) ← tokenise_expr e,
    let v : vertex := ⟨ g.next_id, e, pp, tokens, root, ff, s, none, [] ⟩,
-   return (⟨ g.next_id.next, g.vertices.append [v], g.estimates, g.interesting_pairs, g.solving_edge,g.internal_strat_state ⟩, v)
+   return ({ g with next_id := g.next_id.next, vertices := g.vertices.append [v] }, v)
   
 -- Forcibly add a new pair to the interesting pair list. Probably should never be 
 -- called by a strategy and add_vertex to should used instead.
 meta def do_alloc_pair (de : dist_estimate β)
   : tactic (global_state α β) := 
-return (⟨ g.next_id, g.vertices, g.estimates.append [de], g.interesting_pairs.append [de], g.solving_edge, g.internal_strat_state ⟩)
+return {g with estimates := g.estimates.append [de], interesting_pairs := g.interesting_pairs.append [de]}
 
 private meta def find_vertex_aux (pp : string) : list vertex → option vertex
 | [] := none
@@ -302,6 +308,17 @@ meta def unit_tracer : tracer unit :=
   ⟨ unit_tracer_init, unit_tracer_publish_vertex, unit_tracer_publish_edge, unit_tracer_publish_pair,
     unit_tracer_publish_finished, unit_tracer_dump, unit_tracer_pause ⟩
 
+-- FIXME doesn't `unify` do exactly this??
+meta def attempt_refl (lhs rhs : expr) : tactic expr :=
+lock_tactic_state $
+do
+  gs ← get_goals,
+  m ← to_expr ``(%%lhs = %%rhs) >>= mk_meta_var,
+  set_goals [m],
+  refl ← mk_const `eq.refl,
+  tactic.apply_core refl {new_goals := new_goals.non_dep_only},
+  instantiate_mvars m
+
 meta structure inst (α β γ : Type) :=
 (conf   : config)
 (rs     : list (expr × bool))
@@ -393,7 +410,7 @@ i.add_vertex_aux e ff s
 meta def add_root_vertex (e : expr) (s : side) :=
 i.add_vertex_aux e tt s
 
-meta def add_edge (f t : vertex) (proof : expr) (how : ℕ) : tactic (inst α β γ × edge) := 
+meta def add_edge (f t : vertex) (proof : expr) (how : how) : tactic (inst α β γ × edge) := 
 do let new_edge : edge := ⟨ f.id, t.id, proof, how ⟩,
    tracer_edge_added i new_edge,
    g ← pure i.g,
@@ -418,11 +435,11 @@ meta def find_most_interesting : tactic (inst α β γ) :=
 do g ← i.g.find_most_interesting i.strat.improve_estimate_over,
    return (i.mutate g)
 
-meta def store_new_equalities (f : vertex) : inst α β γ → list (expr × expr × ℕ × ℕ) → tactic (inst α β γ × list vertex × list edge)
+meta def store_new_equalities (f : vertex) : inst α β γ → list (expr × expr × how) → tactic (inst α β γ × list vertex × list edge)
 | i [] := return (i, [], [])
-| i ((new_expr, prf, id, j) :: rest) := do
+| i ((new_expr, prf, how) :: rest) := do
     (i, v) ← i.add_vertex new_expr f.s,
-    (i, e) ← i.add_edge f v prf id,
+    (i, e) ← i.add_edge f v prf how,
     (i, vs, es) ← store_new_equalities i rest,
     return (i, (v :: vs), (e :: es))
 
@@ -431,6 +448,18 @@ meta def add_new_interestings (v : vertex) : inst α β γ → list vertex → t
 | i (a :: rest) := do
     i ← i.add_pair v a,
     add_new_interestings i rest
+
+/-- Check if `eq.refl _` suffices to prove the two sides are equal. -/
+meta def unify (de : dist_estimate β) : tactic (inst α β γ) :=
+do
+  let lhs := i.g.get_vertex (de.side side.L),
+  let rhs := i.g.get_vertex (de.side side.R),
+  prf ← attempt_refl lhs.exp rhs.exp,
+  -- success! we're done
+  (i, _, _) ← i.store_new_equalities lhs [(rhs.exp, prf, how.defeq)], -- TODO perhaps this proof is backwards? does it even matter?!
+  i ← pure (i.mutate (i.g.mark_vertex_visited lhs.id)),
+  i ← pure (i.mutate (i.g.mark_vertex_visited rhs.id)),    
+  pure (i.mutate (i.g.register_solved ⟨ de.side side.L, de.side side.R, prf, how.defeq ⟩))
 
 -- My job is to examine the specified side and to blow up the vertex once
 meta def examine_one (de : dist_estimate β) (s : side) : tactic (inst α β γ) := 
@@ -441,6 +470,7 @@ do
   --   | side.R := tt
   -- end,
   all_rws ← all_rewrites_list i.rs ff v.exp,
+  let all_rws := all_rws.map (λ t, (t.1, t.2.1, how.rewrite t.2.2.1 t.2.2.2)),
   (i, touched_verts, new_edges) ← i.store_new_equalities v all_rws,
   i ← pure (i.mutate (i.g.mark_vertex_visited v.id)),
   --FIXME this next line could use some improving
@@ -462,16 +492,16 @@ match i.g.solving_edge with
     i.trace format!"examine ({target.pp})↔({buddy.pp})",
     if target.visited then do
       i.trace format!"abort: already visited vertex!",
-      return (i, status.abort)
+      return (i, status.abort "search strategy invalid: visiting a vertex twice")
     else do
-      i ← i.examine_one de s,
+      i ← (i.unify de) <|> (i.examine_one de s),
       return (i, status.going (itr + 1))
   | refresh ref_fn := do
     i.trace format!"refresh",
     return (i.mutate (ref_fn i.g), status.going (itr + 1))
   | abort reason := do
     i.trace format!"abort: {reason}",
-    return (i, status.abort)
+    return (i, status.abort reason)
   end
 end
 
@@ -522,14 +552,14 @@ do
 
   tactic.exact proof,
 
-  return "pretty version"
+  return "[rewrite_search]"
 
 meta def search_until_abort_aux : inst α β γ → ℕ → tactic search_result
 | i itr := do
   (i, s) ← i.step_once itr,
   match s with
   | status.going k := search_until_abort_aux i (itr + 1)
-  | status.abort   := return (search_result.failure "aborted")
+  | status.abort r  := return (search_result.failure ("aborted: " ++ r))
   | status.done e  := do
     str ← i.solve_goal e,
     return (search_result.success str)

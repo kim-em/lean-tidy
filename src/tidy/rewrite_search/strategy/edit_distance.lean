@@ -23,7 +23,7 @@ meta def ed_searchstate_init : ed_searchstate := ⟨ 1 ⟩
 
 meta def ed_step (g : global_state ed_searchstate ed_partial) (itr : ℕ)
   : global_state ed_searchstate ed_partial × (@strategy_action ed_searchstate ed_partial) :=
-  if itr <= 50 then
+  if itr <= 500 then
     match g.interesting_pairs with
     | [] := (g, strategy_action.abort "all interesting pairs exhausted!")
     | (best_p :: rest) :=
