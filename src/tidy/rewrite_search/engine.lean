@@ -456,10 +456,11 @@ do
   let rhs := i.g.get_vertex (de.side side.R),
   prf ← attempt_refl lhs.exp rhs.exp,
   -- success! we're done
-  (i, _, _) ← i.store_new_equalities lhs [(rhs.exp, prf, how.defeq)], -- TODO perhaps this proof is backwards? does it even matter?!
-  i ← pure (i.mutate (i.g.mark_vertex_visited lhs.id)),
-  i ← pure (i.mutate (i.g.mark_vertex_visited rhs.id)),    
-  pure (i.mutate (i.g.register_solved ⟨ de.side side.L, de.side side.R, prf, how.defeq ⟩))
+
+  -- It does not matter if the prf is "backwards", because we will traverse
+  -- the refl edge the right way in the "backtrack" step.
+  let solving_edge : edge := ⟨ de.side side.L, de.side side.R, prf, how.defeq ⟩,
+  return (i.mutate (i.g.register_solved solving_edge))
 
 -- My job is to examine the specified side and to blow up the vertex once
 meta def examine_one (de : dist_estimate β) (s : side) : tactic (inst α β γ) := 
