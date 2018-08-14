@@ -5,6 +5,8 @@ import tidy.lib
 import tidy.pretty_print
 import tidy.rewrite_all
 
+open tactic
+
 namespace tidy.rewrite_search
 
 inductive side
@@ -57,10 +59,14 @@ def vertex_ref.next (r : vertex_ref) : vertex_ref := vertex_ref_from_nat (r + 1)
 def mk_vertex_ref_null : vertex_ref := vertex_ref_from_nat 0x8FFFFFFF
 def mk_vertex_ref_first : vertex_ref := vertex_ref_from_nat 0
 
+inductive how
+| rewrite : Π (rule_index : ℕ), Π (location : ℕ), how
+| defeq
+
 meta structure edge :=
 (f t   : vertex_ref)
 (proof : expr)
-(how   : ℕ) -- Scott: doen't we need to store two ℕs here? which rule, and which application?
+(how   : how)
 
 meta structure vertex :=
 (id      : vertex_ref)
@@ -393,8 +399,8 @@ i.add_vertex_aux e ff s
 meta def add_root_vertex (e : expr) (s : side) :=
 i.add_vertex_aux e tt s
 
-meta def add_edge (f t : vertex) (proof : expr) (how : ℕ) : tactic (inst α β γ × edge) := 
-do let new_edge : edge := ⟨ f.id, t.id, proof, how ⟩,
+meta def add_edge (f t : vertex) (proof : expr) (rule_index : ℕ) (location : ℕ) : tactic (inst α β γ × edge) := 
+do let new_edge : edge := ⟨ f.id, t.id, proof, how.rewrite rule_index location ⟩,
    tracer_edge_added i new_edge,
    g ← pure i.g,
    (g, f) ← g.add_adj f new_edge,
@@ -420,9 +426,9 @@ do g ← i.g.find_most_interesting i.strat.improve_estimate_over,
 
 meta def store_new_equalities (f : vertex) : inst α β γ → list (expr × expr × ℕ × ℕ) → tactic (inst α β γ × list vertex × list edge)
 | i [] := return (i, [], [])
-| i ((new_expr, prf, id, j) :: rest) := do -- FIXME it's essential we record j here, for writing the tactic script
+| i ((new_expr, prf, id, j) :: rest) := do
     (i, v) ← i.add_vertex new_expr f.s,
-    (i, e) ← i.add_edge f v prf id,
+    (i, e) ← i.add_edge f v prf id j,
     (i, vs, es) ← store_new_equalities i rest,
     return (i, (v :: vs), (e :: es))
 
@@ -432,12 +438,22 @@ meta def add_new_interestings (v : vertex) : inst α β γ → list vertex → t
     i ← i.add_pair v a,
     add_new_interestings i rest
 
+-- FIXME doesn't `unify` do exactly this??
+meta def attempt_refl (lhs rhs : expr) : tactic expr :=
+lock_tactic_state $
+do
+  gs ← get_goals,
+  m ← to_expr ``(%%lhs = %%rhs) >>= mk_meta_var,
+  set_goals [m],
+  refl ← mk_const `eq.refl,
+  tactic.apply_core refl {new_goals := new_goals.non_dep_only},
+  instantiate_mvars m
+
 /-- Check if `eq.refl _` suffices to prove the two sides are equal. -/
 meta def unify (de : dist_estimate β) : tactic (inst α β γ) :=
 do
-  let lhs := i.g.get_vertex (de.side side.L),
-  let rhs := i.g.get_vertex (de.side side.R),
-  tactic.failed -- FIXME finish this implementation
+  prf ← attempt_refl (i.g.get_vertex (de.side side.L)).exp (i.g.get_vertex (de.side side.R)).exp,
+  pure (i.mutate (i.g.register_solved ⟨ de.side side.L, de.side side.R, prf, how.defeq ⟩))
 
 -- My job is to examine the specified side and to blow up the vertex once
 meta def examine_one (de : dist_estimate β) (s : side) : tactic (inst α β γ) := 
