@@ -410,8 +410,8 @@ i.add_vertex_aux e ff s
 meta def add_root_vertex (e : expr) (s : side) :=
 i.add_vertex_aux e tt s
 
-meta def add_edge (f t : vertex) (proof : expr) (rule_index : ℕ) (location : ℕ) : tactic (inst α β γ × edge) := 
-do let new_edge : edge := ⟨ f.id, t.id, proof, how.rewrite rule_index location ⟩,
+meta def add_edge (f t : vertex) (proof : expr) (how : how) : tactic (inst α β γ × edge) := 
+do let new_edge : edge := ⟨ f.id, t.id, proof, how ⟩,
    tracer_edge_added i new_edge,
    g ← pure i.g,
    (g, f) ← g.add_adj f new_edge,
@@ -435,11 +435,11 @@ meta def find_most_interesting : tactic (inst α β γ) :=
 do g ← i.g.find_most_interesting i.strat.improve_estimate_over,
    return (i.mutate g)
 
-meta def store_new_equalities (f : vertex) : inst α β γ → list (expr × expr × ℕ × ℕ) → tactic (inst α β γ × list vertex × list edge)
+meta def store_new_equalities (f : vertex) : inst α β γ → list (expr × expr × how) → tactic (inst α β γ × list vertex × list edge)
 | i [] := return (i, [], [])
-| i ((new_expr, prf, id, j) :: rest) := do
+| i ((new_expr, prf, how) :: rest) := do
     (i, v) ← i.add_vertex new_expr f.s,
-    (i, e) ← i.add_edge f v prf id j,
+    (i, e) ← i.add_edge f v prf how,
     (i, vs, es) ← store_new_equalities i rest,
     return (i, (v :: vs), (e :: es))
 
@@ -452,7 +452,13 @@ meta def add_new_interestings (v : vertex) : inst α β γ → list vertex → t
 /-- Check if `eq.refl _` suffices to prove the two sides are equal. -/
 meta def unify (de : dist_estimate β) : tactic (inst α β γ) :=
 do
-  prf ← attempt_refl (i.g.get_vertex (de.side side.L)).exp (i.g.get_vertex (de.side side.R)).exp,
+  let lhs := i.g.get_vertex (de.side side.L),
+  let rhs := i.g.get_vertex (de.side side.R),
+  prf ← attempt_refl lhs.exp rhs.exp,
+  -- success! we're done
+  (i, _, _) ← i.store_new_equalities lhs [(rhs.exp, prf, how.defeq)], -- TODO perhaps this proof is backwards? does it even matter?!
+  i ← pure (i.mutate (i.g.mark_vertex_visited lhs.id)),
+  i ← pure (i.mutate (i.g.mark_vertex_visited rhs.id)),    
   pure (i.mutate (i.g.register_solved ⟨ de.side side.L, de.side side.R, prf, how.defeq ⟩))
 
 -- My job is to examine the specified side and to blow up the vertex once
@@ -464,6 +470,7 @@ do
   --   | side.R := tt
   -- end,
   all_rws ← all_rewrites_list i.rs ff v.exp,
+  let all_rws := all_rws.map (λ t, (t.1, t.2.1, how.rewrite t.2.2.1 t.2.2.2)),
   (i, touched_verts, new_edges) ← i.store_new_equalities v all_rws,
   i ← pure (i.mutate (i.g.mark_vertex_visited v.id)),
   --FIXME this next line could use some improving
