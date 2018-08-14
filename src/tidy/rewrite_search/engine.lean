@@ -135,6 +135,9 @@ meta structure global_state (α β : Type) :=
 namespace global_state
 variables {α β : Type} (g : global_state α β)
 
+meta def mutate_strategy (new_state : α) : global_state α β :=
+{ g with internal_strat_state := new_state }
+
 -- Retrieve the vertex with the given ref, or the null vertex if it is not
 -- present.
 meta def get_vertex (r : vertex_ref) : vertex :=
