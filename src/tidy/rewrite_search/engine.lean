@@ -117,7 +117,7 @@ meta def improve_estimate_fn (β : Type) := ℕ → vertex → vertex → bound_
 meta inductive status
 | going : ℕ → status
 | done : edge → status
-| abort
+| abort : string → status
 meta def status.next_itr : status → status
 | (status.going n) := status.going (n + 1)
 | other := other
@@ -308,6 +308,17 @@ meta def unit_tracer : tracer unit :=
   ⟨ unit_tracer_init, unit_tracer_publish_vertex, unit_tracer_publish_edge, unit_tracer_publish_pair,
     unit_tracer_publish_finished, unit_tracer_dump, unit_tracer_pause ⟩
 
+-- FIXME doesn't `unify` do exactly this??
+meta def attempt_refl (lhs rhs : expr) : tactic expr :=
+lock_tactic_state $
+do
+  gs ← get_goals,
+  m ← to_expr ``(%%lhs = %%rhs) >>= mk_meta_var,
+  set_goals [m],
+  refl ← mk_const `eq.refl,
+  tactic.apply_core refl {new_goals := new_goals.non_dep_only},
+  instantiate_mvars m
+
 meta structure inst (α β γ : Type) :=
 (conf   : config)
 (rs     : list (expr × bool))
@@ -438,17 +449,6 @@ meta def add_new_interestings (v : vertex) : inst α β γ → list vertex → t
     i ← i.add_pair v a,
     add_new_interestings i rest
 
--- FIXME doesn't `unify` do exactly this??
-meta def attempt_refl (lhs rhs : expr) : tactic expr :=
-lock_tactic_state $
-do
-  gs ← get_goals,
-  m ← to_expr ``(%%lhs = %%rhs) >>= mk_meta_var,
-  set_goals [m],
-  refl ← mk_const `eq.refl,
-  tactic.apply_core refl {new_goals := new_goals.non_dep_only},
-  instantiate_mvars m
-
 /-- Check if `eq.refl _` suffices to prove the two sides are equal. -/
 meta def unify (de : dist_estimate β) : tactic (inst α β γ) :=
 do
@@ -485,7 +485,7 @@ match i.g.solving_edge with
     i.trace format!"examine ({target.pp})↔({buddy.pp})",
     if target.visited then do
       i.trace format!"abort: already visited vertex!",
-      return (i, status.abort)
+      return (i, status.abort "search strategy invalid: visiting a vertex twice")
     else do
       i ← (i.unify de) <|> (i.examine_one de s),
       return (i, status.going (itr + 1))
@@ -494,7 +494,7 @@ match i.g.solving_edge with
     return (i.mutate (ref_fn i.g), status.going (itr + 1))
   | abort reason := do
     i.trace format!"abort: {reason}",
-    return (i, status.abort)
+    return (i, status.abort reason)
   end
 end
 
@@ -545,14 +545,14 @@ do
 
   tactic.exact proof,
 
-  return "pretty version"
+  return "[rewrite_search]"
 
 meta def search_until_abort_aux : inst α β γ → ℕ → tactic search_result
 | i itr := do
   (i, s) ← i.step_once itr,
   match s with
   | status.going k := search_until_abort_aux i (itr + 1)
-  | status.abort   := return (search_result.failure "aborted")
+  | status.abort r  := return (search_result.failure ("aborted: " ++ r))
   | status.done e  := do
     str ← i.solve_goal e,
     return (search_result.success str)
