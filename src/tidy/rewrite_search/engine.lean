@@ -44,8 +44,8 @@ def bound_progress.sure {β : Type} : bound_progress β → bool
 | (exactly _ _)  := tt
 | (at_least _ _) := ff
 def bound_progress.to_string {β : Type} : bound_progress β → string
-| (exactly n _)  := "=" ++ to_string n
-| (at_least n _) := "≥" ++ to_string n
+| (exactly n _)  := "= " ++ to_string n
+| (at_least n _) := "≥ " ++ to_string n
 
 meta def tokenise_expr (e : expr) : tactic (string × list string) := do
   pp ← pretty_print e,
@@ -230,9 +230,9 @@ private meta def sort_most_interesting (fn : improve_estimate_fn β) : dist_esti
 | a b := do
 match try_to_beat fn a.bnd b.bnd (g.get_vertex b.l) (g.get_vertex b.r) with
   -- b is guarenteed closer, so return it:
-  | (new_b, ff) := return ({ b with bnd := new_b }, a)
+  | (new_b, tt) := return ({ b with bnd := new_b }, a)
   -- otherwise:
-  | (new_b, tt) := match a.bnd with
+  | (new_b, ff) := match a.bnd with
     -- b is further than the current estimate for a and the estimate for a is exact:
     | exactly k _  := return (a, { b with bnd := new_b })
     -- or, b is futher than the current estimate for a but a might actually be worse, so check:
@@ -504,7 +504,7 @@ match i.g.solving_edge with
   | examine de := do
     lhs ← pure (g.get_vertex (de.side side.L)),
     rhs ← pure (g.get_vertex (de.side side.R)),
-    i.trace format!"examine({lhs.id.to_nat},{rhs.id.to_nat}) ({lhs.pp}) = ({rhs.pp})",
+    i.trace format!"examine({lhs.id.to_nat}, {rhs.id.to_nat}) distance {de.bnd.to_string}: ({lhs.pp}) = ({rhs.pp})",
     i ← (i.unify de) <|> (i.examine_both de),
     return (i, status.going (itr + 1))
   | refresh ref_fn := do
