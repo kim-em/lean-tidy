@@ -166,10 +166,10 @@ meta def do_alloc_pair (de : dist_estimate β)
   : tactic (global_state α β) := 
 return {g with estimates := g.estimates.append [de], interesting_pairs := g.interesting_pairs.append [de]}
 
--- FIXME eek, we're assuming that this is only ever called on the head.
--- (It's getting late, sorry --Scott)
 meta def remove_interesting_pair (de : dist_estimate β) : tactic (global_state α β) :=
-return {g with interesting_pairs := g.interesting_pairs.tail}
+do
+  let new := g.interesting_pairs.erase_such_that (λ de', de'.l = de.l ∧ de'.r = de.r),
+  return {g with interesting_pairs := new}
 
 private meta def find_vertex_aux (pp : string) : list vertex → option vertex
 | [] := none
