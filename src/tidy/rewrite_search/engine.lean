@@ -263,7 +263,7 @@ meta def refresh_fn (α β : Type) : Type :=
 global_state α β → global_state α β
 
 meta inductive strategy_action {α β : Type}
-| examine : dist_estimate β → side → strategy_action
+| examine : dist_estimate β → strategy_action
 | refresh : refresh_fn α β → strategy_action
 | abort   : string → strategy_action
   
@@ -500,11 +500,11 @@ match i.g.solving_edge with
 | none :=
   let (g, action) := i.strat.step i.g itr in
   let i := i.mutate g in
-  match action with -- FIXME get rid of lots of sides here, that are no longer used.
-  | examine de s := do
-    target ← pure (g.get_vertex (de.side s)),
-    buddy ← pure (g.get_vertex (de.side s.other)),
-    i.trace format!"examine({target.id.to_nat},{buddy.id.to_nat}) ({target.pp}) = ({buddy.pp})",
+  match action with 
+  | examine de := do
+    lhs ← pure (g.get_vertex (de.side side.L)),
+    rhs ← pure (g.get_vertex (de.side side.R)),
+    i.trace format!"examine({lhs.id.to_nat},{rhs.id.to_nat}) ({lhs.pp}) = ({rhs.pp})",
     i ← (i.unify de) <|> (i.examine_both de),
     return (i, status.going (itr + 1))
   | refresh ref_fn := do
