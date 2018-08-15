@@ -5,15 +5,14 @@
 import .force 
 import .backwards_reasoning 
 import .forwards_reasoning
-import .fsplit .automatic_induction .tidy_attributes .intro_at_least_one
+import .fsplit 
+import .automatic_induction 
+import .tidy_attributes 
+import .intro_at_least_one
 import .chain
-import .recover
 import .rewrite_search
 import .injections
-import .if_then_else
 import tactic.interactive
-
-import data.list
 
 universe variables u v
 

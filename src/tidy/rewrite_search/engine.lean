@@ -493,7 +493,7 @@ match i.g.solving_edge with
   | examine de s := do
     target ← pure (g.get_vertex (de.side s)),
     buddy ← pure (g.get_vertex (de.side s.other)),
-    i.trace format!"examine ({target.pp})↔({buddy.pp})",
+    i.trace format!"examine({target.id.to_nat},{buddy.id.to_nat}) ({target.pp}) = ({buddy.pp})",
     if target.visited then do
       i.trace format!"abort: already visited vertex!",
       return (i, status.abort "search strategy invalid: visiting a vertex twice")
