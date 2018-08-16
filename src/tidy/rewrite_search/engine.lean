@@ -284,9 +284,9 @@ meta structure strategy (α β : Type) :=
 (improve_estimate_over : improve_estimate_fn β)
 
 structure config := 
-(trace      : bool := ff)
-(visualiser : bool := ff)
+(trace         : bool := ff)
 (trace_summary : bool := ff)
+(visualise     : bool := ff)
 
 meta structure tracer (γ : Type) :=
 (init            : tactic γ)

@@ -42,7 +42,7 @@ meta def do_rewrite_search (rs : list (expr × bool)) (cfg : config := {}) : tac
     -- FIXME how to dynamically select these via a nicely-named argument? Typeclasses
     -- are getting in the way. Perhaps the best way is to fix universe issues which forced this
     result ← (
-      if cfg.visualiser then do
+      if cfg.visualise then do
         i ← mk_search_instance cfg rs strat lhs rhs graph_tracer,
         i.search_until_abort
       else do
