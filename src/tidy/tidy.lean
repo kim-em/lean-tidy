@@ -5,15 +5,14 @@
 import .force 
 import .backwards_reasoning 
 import .forwards_reasoning
-import .fsplit .automatic_induction .tidy_attributes .intro_at_least_one
+import .fsplit 
+import .automatic_induction 
+import .tidy_attributes 
+import .intro_at_least_one
 import .chain
-import .recover
 import .rewrite_search
 import .injections
-import .if_then_else
 import tactic.interactive
-
-import data.list
 
 universe variables u v
 
@@ -67,7 +66,7 @@ meta def obviously_tactics : list (tactic string) :=
 [ tactic.interactive.rewrite_search_using [`ematch] ] -- TODO should switch this back to search eventually
 
 meta def obviously'  : tactic unit := tidy { tactics := default_tidy_tactics ++ obviously_tactics, trace_result := tt, trace_steps := ff }
-meta def obviously_vis  : tactic unit := tidy { tactics := default_tidy_tactics ++ [ tactic.interactive.rewrite_search_using [`ematch] { visualise := tt } ], trace_result := tt, trace_steps := ff }
+meta def obviously_vis  : tactic unit := tidy { tactics := default_tidy_tactics ++ [ tactic.interactive.rewrite_search_using [`ematch] { trace_summary := tt, visualise := tt } ], trace_result := tt, trace_steps := ff }
 
 instance subsingleton_pempty : subsingleton pempty := by tidy
 instance subsingleton_punit  : subsingleton punit  := by tidy
