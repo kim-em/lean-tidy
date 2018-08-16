@@ -16,6 +16,7 @@ if __name__ == "__main__":
     sys.stdout.flush()
 
     fifo = open(FIFO_PATH, "w")
+    
     for line in sys.stdin:
         fifo.write(line)
         fifo.flush()

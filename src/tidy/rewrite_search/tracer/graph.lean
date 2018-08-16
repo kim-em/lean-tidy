@@ -1,4 +1,5 @@
 import tidy.rewrite_search.engine
+import tidy.lib
 
 import system.io
 
@@ -21,13 +22,19 @@ def args (dir : string) (app : string) : io.process.spawn_args := {
   stdin  := piped,
   stdout := piped,
   stderr := inherit,
-  env    := [("PYTHONPATH", some (dir ++ "/pygraphvis.zip"))],
+  env    := [
+    ("PYTHONPATH", some (dir ++ "/pygraphvis.zip")),
+    -- FIXME implement utf8decode_char in lib.lean so we don't have to do this
+    -- (and so we get pretty characters as a consequence!)
+    ("PYTHONIOENCODING", "latin-1")
+  ],
 }
 
 structure visualiser :=
   (proc : io.proc.child)
-meta def visualiser.publish (v : visualiser) (s : string) : tactic unit := do
-  tactic.unsafe_run_io (io.fs.write v.proc.stdin s.to_char_buffer)
+meta def visualiser.publish (v : visualiser) (s : string) : tactic unit :=
+  let chrs : list char := (s.to_list.stripl ['\n', '\x0D']).append ['\n'] in
+  tactic.unsafe_run_io (io.fs.write v.proc.stdin (char_buffer.from_list (utf8decode chrs)))
 meta def visualiser.pause (v : visualiser) : tactic unit :=
   tactic.unsafe_run_io (do io.fs.read v.proc.stdout 1, return ())
 
