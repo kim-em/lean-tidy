@@ -1,4 +1,6 @@
 import data.buffer
+import data.pnat
+import data.nat.basic
 
 universe u
 
@@ -39,6 +41,39 @@ def list.stripl {α : Type u} [decidable_eq α] (l : list α) (vs : list α) : l
   l.erase_such_that (λ c, c ∈ vs)
 
 def char_buffer.from_list (l : list char) : char_buffer := buffer.nil.append_list l
+
+lemma nat.succ_pred (n : ℕ) (h : n ≠ 0) : nat.succ (nat.pred n) = n := 
+begin
+  cases n,
+  contradiction,
+  simp,
+end
+
+lemma fin.with_max (n m : ℕ) (h : m ≠ 0): fin m := 
+⟨ min n (m-1), begin 
+                 have p := min_le_right n (nat.pred m), 
+                 have q := nat.lt_succ_of_le p, 
+                 rw nat.succ_pred at q,
+                 exact q,
+                 assumption
+               end ⟩
+
+lemma pnat.succ_pred (n : pnat) : nat.succ (nat.pred n) = n := 
+begin
+  cases n with n h,
+  cases n,
+  have := lt_irrefl _ h ; contradiction,
+  simp,
+end
+
+lemma fin.with_max' (n : ℕ) (m : pnat) : fin m := 
+⟨ min n (m-1), begin 
+                 have p := min_le_right n (nat.pred m), 
+                 have q := nat.lt_succ_of_le p, 
+                 rw nat.succ_pred at q,
+                 exact q,
+                 exact nat.pos_iff_ne_zero.mp m.property,
+               end ⟩
 
 def TAG_CONT    := 0b10000000
 def TAG_TWO_B   := 0b11000000
