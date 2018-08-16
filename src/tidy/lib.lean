@@ -1,3 +1,6 @@
+import data.pnat
+import data.nat.basic
+
 universe u
 
 --FIXME the fact that we use this is really sad (ARRAYS DO IT)
@@ -29,3 +32,36 @@ def string.split_on (c : char) (s : string) := (s.to_list.split_on c).map(λ l, 
 def list.erase_such_that {α : Type u} (f : α → Prop) [decidable_pred f] : list α → list α
 | [] := []
 | (h :: t) := if f h then t else h :: t.erase_such_that
+
+lemma nat.succ_pred (n : ℕ) (h : n ≠ 0) : nat.succ (nat.pred n) = n := 
+begin
+  cases n,
+  contradiction,
+  simp,
+end
+
+lemma fin.with_max (n m : ℕ) (h : m ≠ 0): fin m := 
+⟨ min n (m-1), begin 
+                 have p := min_le_right n (nat.pred m), 
+                 have q := nat.lt_succ_of_le p, 
+                 rw nat.succ_pred at q,
+                 exact q,
+                 assumption
+               end ⟩
+
+lemma pnat.succ_pred (n : pnat) : nat.succ (nat.pred n) = n := 
+begin
+  cases n with n h,
+  cases n,
+  have := lt_irrefl _ h ; contradiction,
+  simp,
+end
+
+lemma fin.with_max' (n : ℕ) (m : pnat) : fin m := 
+⟨ min n (m-1), begin 
+                 have p := min_le_right n (nat.pred m), 
+                 have q := nat.lt_succ_of_le p, 
+                 rw nat.succ_pred at q,
+                 exact q,
+                 exact nat.pos_iff_ne_zero.mp m.property,
+               end ⟩               

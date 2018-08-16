@@ -47,7 +47,7 @@ meta def default_tidy_tactics : list (tactic string) :=
   fsplit                                      >> pure "fsplit", 
   injections_and_clear                        >> pure "injections_and_clear",
   terminal_goal >> (`[solve_by_elim])         >> pure "solve_by_elim",
-  recover'                                    >> pure "recover'",
+  -- recover'                                    >> pure "recover'",
   run_tidy_tactics ]
 
 meta structure tidy_cfg extends chain_cfg :=
