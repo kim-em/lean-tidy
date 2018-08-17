@@ -15,7 +15,7 @@ if __name__ == "__main__":
     print("S")
     sys.stdout.flush()
 
-    fifo = open(FIFO_PATH, "w")
+    fifo = open(FIFO_PATH, "w", encoding = "utf-8")
     
     for line in sys.stdin:
         fifo.write(line)

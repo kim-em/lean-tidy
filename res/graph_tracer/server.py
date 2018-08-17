@@ -110,7 +110,7 @@ FIFO_PATH = "rewrite_search.fifo"
 def listen_loop():
     try:
         while True:
-            fifo = open(FIFO_PATH, "r")
+            fifo = open(FIFO_PATH, "r", encoding = "utf-8")
             for line in fifo:
                 sys.stderr.flush()
                 process_line(line[:-1])
