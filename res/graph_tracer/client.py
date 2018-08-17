@@ -2,7 +2,7 @@ import os
 import time
 import sys
 import subprocess
-import importlib
+from importlib import util
 
 FIFO_PATH = "rewrite_search.fifo"
 
@@ -10,7 +10,7 @@ SUCCESS_CHAR = "S"
 ERROR_CHAR = "E"
 
 if __name__ == "__main__":
-    if importlib.util.find_spec("pygame") is None:
+    if util.find_spec("pygame") is None:
         print(ERROR_CHAR + "pygame missing, please install it with \"pip3 install pygame\" (you'll need pip3), or similar")
         sys.stdout.flush()
     else:
