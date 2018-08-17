@@ -288,7 +288,7 @@ meta structure tracer (γ : Type) :=
 (publish_vertex  : γ → vertex → tactic unit)
 (publish_edge    : γ → edge → tactic unit)
 (publish_pair    : γ → vertex_ref → vertex_ref → tactic unit)
-(publish_finished: γ → tactic unit)
+(publish_finished: γ → list edge → tactic unit)
 (dump            : γ → string → tactic unit)
 (pause           : γ → tactic unit)
 
@@ -300,7 +300,7 @@ meta def unit_tracer_init : tactic unit := return ()
 meta def unit_tracer_publish_vertex (_ : unit) (_ : vertex) : tactic unit := tactic.skip
 meta def unit_tracer_publish_edge (_ : unit) (_ : edge) : tactic unit := tactic.skip
 meta def unit_tracer_publish_pair (_ : unit) (_ _ : vertex_ref) : tactic unit := tactic.skip
-meta def unit_tracer_publish_finished (_ : unit) : tactic unit := tactic.skip
+meta def unit_tracer_publish_finished (_ : unit) (_ : list edge) : tactic unit := tactic.skip
 meta def unit_tracer_dump (_ : unit) (_ : string) : tactic unit := tactic.skip
 meta def unit_tracer_pause (_ : unit) : tactic unit := tactic.skip
 meta def unit_tracer : tracer unit :=
@@ -359,10 +359,10 @@ do --FIXME guard all of these with an if (to prevent pointless string building)
    i.trace str,
    i.tr_state.tr.dump i.tr_state.internal str
 
-meta def tracer_search_finished : tactic unit := 
+meta def tracer_search_finished (es : list edge) : tactic unit :=
 do --FIXME guard all of these with an if (to prevent pointless string building)
    i.trace format!"DONE!",
-   i.tr_state.tr.publish_finished i.tr_state.internal
+   i.tr_state.tr.publish_finished i.tr_state.internal es
 
 meta def dump_rws : list (expr × expr × ℕ × ℕ) → tactic unit
 | [] := tactic.skip
@@ -382,7 +382,7 @@ meta def dump_edges : list edge → tactic unit
 | [] := tactic.skip
 | (a :: rest) := do
     let (vf, vt) := i.g.get_endpoints a,
-    tracer_dump i "E:{vf.pp}→{vt.pp}",
+    tracer_dump i format!"E:{vf.pp}→{vt.pp}",
     dump_edges rest
 
 meta def dump_estimates : list (dist_estimate β) → tactic unit
@@ -516,45 +516,47 @@ match i.g.solving_edge with
   end
 end
 
-meta def backtrack_to_root_with : vertex → expr → ℕ → tactic (expr × ℕ) :=
+meta def backtrack_to_root_with : vertex → expr → ℕ → tactic (expr × list edge) :=
 λ (cur : vertex) (prf_so_far : expr) (depth), do
 match cur.parent with
-| none := return (prf_so_far, depth)
+| none := return (prf_so_far, [])
 | some e := do
   let parent : vertex := i.g.get_vertex e.f,
   new_expr ← tactic.mk_eq_trans e.proof prf_so_far,
-  backtrack_to_root_with parent new_expr (depth+1)
+  (exp, es) ← backtrack_to_root_with parent new_expr (depth + 1),
+  return (exp, (e :: es))
 end
 
 --FIXME code duplication with above
-meta def backtrack_to_root (cur : vertex) : tactic (option (expr × ℕ)) := do
+meta def backtrack_to_root (cur : vertex) : tactic (option (expr × list edge)) := do
 match cur.parent with
 | none := return none
 | some e := do
   let parent : vertex := i.g.get_vertex e.f,
-  (proof, depth) ← i.backtrack_to_root_with parent e.proof 0,
-  return (proof, depth)
+  (proof, es) ← i.backtrack_to_root_with parent e.proof 0,
+  return (proof, (e :: es))
 end
 
-meta def solve_goal (e : edge) : tactic string := 
+meta def solve_goal (e : edge) : tactic (string × list edge) := 
 do
   let (vf, vt) := i.g.get_endpoints e,
 
-  (rhs_half, rhs_depth) ← i.backtrack_to_root_with vf e.proof 0,
+  (rhs_half, rhs_es) ← i.backtrack_to_root_with vf e.proof 0,
   rhs_half ← tactic.mk_eq_symm rhs_half,
   lhs_half ← i.backtrack_to_root vt,
 
   -- vt might be the root node, in which case we ignore it
-  (proof, depth) ← match lhs_half with
-  | some (lhs_half, lhs_depth) := do prf ← tactic.mk_eq_trans lhs_half rhs_half, return (prf, rhs_depth + lhs_depth)
-  | none                       := pure (rhs_half, rhs_depth)
+  (proof, es) ← match lhs_half with
+  | some (lhs_half, lhs_es) := do prf ← tactic.mk_eq_trans lhs_half rhs_half, return (prf, rhs_es ++ lhs_es)
+  | none                    := pure (rhs_half, rhs_es)
   end,
+  let es := es ++ [e],
 
   -- Flip the proof if neccessary in order to match the goal
   proof ← match vf.s with
-          | some side.L := tactic.mk_eq_symm proof
-          | _           := pure proof
-          end,
+  | some side.L := tactic.mk_eq_symm proof
+  | _           := pure proof
+  end,
 
   pp ← pretty_print proof,
   i.trace pp,
@@ -564,15 +566,14 @@ do
   if i.conf.trace_summary then do
     let saw := i.g.vertices.length,
     let visited := (i.g.vertices.filter (λ v : vertex, v.visited)).length,
-    let used := depth + 2, 
     name ← decl_name,
-    tactic.trace format!"rewrite_search (saw/visited/used) {saw}/{visited}/{used} expressions during proof of {name}"
+    tactic.trace format!"rewrite_search (saw/visited/used) {saw}/{visited}/{es.length} expressions during proof of {name}"
   else 
     skip,
 
   tactic.exact proof,
 
-  return "[rewrite_search]"
+  return ("[rewrite_search]", es)
 
 meta def search_until_abort_aux : inst α β γ → ℕ → tactic search_result
 | i itr := do
@@ -581,14 +582,14 @@ meta def search_until_abort_aux : inst α β γ → ℕ → tactic search_result
   | status.going k := search_until_abort_aux i (itr + 1)
   | status.abort r  := return (search_result.failure ("aborted: " ++ r))
   | status.done e  := do
-    str ← i.solve_goal e,
+    (str, es) ← i.solve_goal e,
+    i.tracer_search_finished es,
     return (search_result.success str)
   end
 
 meta def search_until_abort : tactic search_result := 
 do
   res ← i.search_until_abort_aux 0,
-  i.tracer_search_finished,
   return res
 
 end inst

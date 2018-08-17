@@ -121,6 +121,6 @@ constant h : ℕ → ℕ
 @[search,simp] axiom a3 : h 2 = h 3
 @[search,simp] axiom a4 : h 3 = h 4
 
-lemma test2 : h 0 = h 4 := by rewrite_search_using [`search] {trace := tt}
+lemma test2 : h 0 = h 4 := by rewrite_search_using [`search] {}
 
 end tidy.rewrite_search.examples

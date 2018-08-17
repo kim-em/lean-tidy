@@ -73,8 +73,19 @@ def process_line(line):
         vr = verts[r]
 
         v.lock.acquire()
-        vl.adj.add(vr)
-        vr.adj.add(vl)
+        vl.adj[vr] = None
+        vr.adj[vl] = None
+        v.lock.release()
+
+        # print("E|" + str(l) + "|" + str(r))
+    elif parts[0] == "F":
+        l, r = parts[1:]
+        vl = verts[l]
+        vr = verts[r]
+
+        v.lock.acquire()
+        vl.adj[vr] = (2, (0, 200, 0))
+        vr.adj[vl] = (2, (0, 200, 0))
         v.lock.release()
 
         # print("E|" + str(l) + "|" + str(r))
@@ -84,8 +95,8 @@ def process_line(line):
         vr = verts[r]
 
         # v.lock.acquire()
-        # vl.adj.add(vr)
-        # vr.adj.add(vl)
+        # vl.adj[vr] = None
+        # vr.adj[vl] = None
         # v.lock.release()
 
         # print("P|" + str(l) + "|" + str(r))
