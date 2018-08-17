@@ -1,6 +1,8 @@
 import data.buffer
 import data.pnat
 import data.nat.basic
+import tactic.norm_num
+
 
 universe u
 
@@ -74,6 +76,9 @@ lemma fin.with_max' (n : ℕ) (m : pnat) : fin m :=
                  exact q,
                  exact nat.pos_iff_ne_zero.mp m.property,
                end ⟩
+
+def nat.trunc_to_char (n : nat) : char :=
+if h : n > 255 then ⟨ 255, begin unfold is_valid_char, norm_num end ⟩ else ⟨ n, begin unfold is_valid_char, simp at h, left, transitivity 256, apply nat.lt_succ_of_le, assumption, norm_num end ⟩ 
 
 def TAG_CONT    := 0b10000000
 def TAG_TWO_B   := 0b11000000

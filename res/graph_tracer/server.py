@@ -84,8 +84,8 @@ def process_line(line):
         vr = verts[r]
 
         v.lock.acquire()
-        vl.adj[vr] = (2, (0, 200, 0))
-        vr.adj[vl] = (2, (0, 200, 0))
+        vl.adj[vr] = (2, (230, 0, 0))
+        vr.adj[vl] = (2, (230, 0, 0))
         v.lock.release()
 
         # print("E|" + str(l) + "|" + str(r))
