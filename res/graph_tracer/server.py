@@ -4,9 +4,10 @@ import sys
 import os
 import atexit
 
-from enum import Enum
 from pygraphvis import *
 from threading import *
+
+SPAWN_DIST = 5
 
 class NodePrivateData():
     manually_static = False
@@ -51,13 +52,10 @@ def process_line(line):
 
         v.lock.acquire()
         if id in ["0", "1"]:
-            colour = (140, 101, 211) if side == "L" else (0, 197, 144)
             pos = (-20, 0) if side == "L" else (20, 0)
-
-            vert = create_new_node((0, 0), name, False)
+            vert = create_new_node(pos, name, False)
+            vert.style.value.colour = (140, 101, 211) if side == "L" else (0, 197, 144)
             vert.static = True
-            vert.pos = pos
-            vert.style.value.colour = colour
         else:
             root = verts["0"] if side == "L" else verts["1"]
             vert = create_new_node(root.pos, name, False)
@@ -128,7 +126,6 @@ if __name__ == "__main__":
     if os.path.exists(FIFO_PATH):
         sys.exit(0)
 
-    highest_degree = 1
     v = vis.Visualiser(graphs.DynamicGraph(), size = (1200, 1000),
         event_handler = event_handler, title = "leangraphvis")
 
