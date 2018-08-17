@@ -103,18 +103,18 @@ meta def rewrite_is_of_entire : expr → bool
 
 meta def rewrite_F (r : expr × bool) (l : expr_lens) (e : expr) (state : list (expr × expr)) : tactic (list (expr × expr)) := 
 do 
-  pp_e ← pretty_print e,
-  pp_r ← pretty_print r.1,
-  tactic.trace ("attempting rewrite on " ++ pp_e ++ " using " ++ (if r.2 then "←" else "") ++ pp_r),
+  -- pp_e ← pretty_print e,
+  -- pp_r ← pretty_print r.1,
+  -- tactic.trace ("attempting rewrite on " ++ pp_e ++ " using " ++ (if r.2 then "←" else "") ++ pp_r),
   (v, pr) ← rewrite_without_new_mvars r.1 e {symm := r.2, md := semireducible},
-  pp_v ← pretty_print v,
-  tactic.trace pp_v,
-  pp_pr ← pretty_print pr tt,
-  tactic.trace pp_pr,
+  -- pp_v ← pretty_print v,
+  -- tactic.trace pp_v,
+  -- pp_pr ← pretty_print pr tt,
+  -- tactic.trace pp_pr,
   -- Now we determine whether the rewrite transforms the entire expression or not:
   if rewrite_is_of_entire pr then
   do
-    tactic.trace ("rewrite succeeded, complete!"),
+    -- tactic.trace ("rewrite succeeded, complete!"),
     let w' := l.replace v,
     qr' ←  try_core (l.congr pr),
     match qr' with
@@ -123,7 +123,7 @@ do
     end
   else 
   do 
-    tactic.trace ("rewrite succeeded, tunneling!"),
+    -- tactic.trace ("rewrite succeeded, tunneling!"),
     pure state
 
 def remove_adjacent_duplicates {α β} (f : α → β) [decidable_eq β] : list α → list α
