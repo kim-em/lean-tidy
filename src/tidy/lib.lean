@@ -1,6 +1,7 @@
 import data.buffer
 import data.pnat
 import data.nat.basic
+import data.num.bitwise
 import tactic.norm_num
 
 universe u
@@ -87,24 +88,31 @@ def MAX_ONE_B   := 0x80
 def MAX_TWO_B   := 0x800
 def MAX_THREE_B := 0x10000
 
---FIXME implment me! This will get proper characters in the visualiser!
-def utf8decode_char (c : char) : list char := [c]
-  -- let code : nat := c.to_nat in
-  -- if code < MAX_ONE_B then
-  --   ⟨ code.to_char, _ ⟩
-  -- else if code < MAX_TWO_B then
-  --       b.push_back(:= code >> 6 & 0x1F) | TAG_TWO_B);
-  --       b.push_back(:= code & 0x3F) | TAG_CONT);
-  --   } else if (code < MAX_THREE_B) {
-  --       b.push_back(:= code >> 12 & 0x0F) | TAG_THREE_B);
-  --       b.push_back(:= code >>  6 & 0x3F) | TAG_CONT);
-  --       b.push_back(:= code & 0x3F) | TAG_CONT);
-  --   } else {
-  --       b.push_back(:= code >> 18 & 0x07) | TAG_FOUR_B);
-  --       b.push_back(:= code >> 12 & 0x3F) | TAG_CONT);
-  --       b.push_back(:= code >>  6 & 0x3F) | TAG_CONT);
-  --       b.push_back(:= code & 0x3F) | TAG_CONT);
-  --   }
+open num
+
+def utf8decode_char (c : char) : list char :=
+  let code : nat := c.to_nat in
+  let bytes : list ℕ :=
+    if code < MAX_ONE_B then [
+      code
+    ]
+    else if code < MAX_TWO_B then [
+      lor (land (shiftl code 6) 0x1F) TAG_TWO_B,
+      lor (land (shiftl code 0) 0x3F) TAG_CONT
+    ]
+    else if code < MAX_THREE_B then [
+      lor (land (shiftl code 12) 0x0F) TAG_THREE_B,
+      lor (land (shiftl code  6) 0x3F) TAG_CONT,
+      lor (land (shiftl code  0) 0x3F) TAG_CONT
+    ]
+    else [
+      lor (land (shiftl code 18) 0x07) TAG_FOUR_B,
+      lor (land (shiftl code 12) 0x3F) TAG_CONT,
+      lor (land (shiftl code  6) 0x3F) TAG_CONT,
+      lor (land (shiftl code  0) 0x3F) TAG_CONT
+    ]
+  in
+  bytes.map nat.trunc_to_char
 
 def utf8decode_aux : list char → list char → list char
 | p []       := p
