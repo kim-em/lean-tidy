@@ -23,7 +23,7 @@ def args (dir : string) (app : string) : io.process.spawn_args := {
   stdout := piped,
   stderr := inherit,
   env    := [
-    ("PYTHONPATH", some (dir ++ "/pygraphvis.zip")),
+    ("PYTHONPATH", some (dir ++ "/pygraphvis.zip/pygraphvis")),
     -- FIXME implement utf8decode_char in lib.lean so we don't have to do this
     -- (and so we get pretty characters as a consequence!)
     ("PYTHONIOENCODING", "latin-1")
@@ -82,8 +82,8 @@ meta def graph_tracer_publish_edge (vs : visualiser) (e : edge) : tactic unit :=
 meta def graph_tracer_publish_pair (vs : visualiser) (l r : vertex_ref) : tactic unit :=
   vs.publish (to_string (format!"P|{l.to_string}|{r.to_string}\n"))
 
-meta def graph_tracer_publish_finished (vs : visualiser) : tactic unit :=
-  tactic.skip
+meta def graph_tracer_publish_finished (vs : visualiser) (es : list edge) : tactic unit :=
+  es.mmap' (λ e : edge, vs.publish (to_string (format!"F|{e.f.to_string}|{e.t.to_string}\n")))
 
 meta def graph_tracer_dump (vs : visualiser) (str : string) : tactic unit :=
   vs.publish (str ++ "\n")

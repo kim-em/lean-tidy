@@ -113,7 +113,7 @@ constants f g : ℕ → ℕ → ℕ → ℕ
 @[search] axiom g_2_2 : ∀ a b c : ℕ, g a b c = g a b 2
 @[search] axiom f_g : f 0 1 2 = g 2 0 1
 
-lemma test : f 0 0 0 = g 0 0 0 := by rewrite_search_using [`search] {trace := tt, trace_summary := tt/-, visualise := tt-/}
+lemma test : f 0 0 0 = g 0 0 0 := by rewrite_search_using [`search] {trace:=tt,trace_summary := tt, visualise := ff}
 
 constant h : ℕ → ℕ
 @[search,simp] axiom a1 : h 0 = h 1
@@ -121,6 +121,6 @@ constant h : ℕ → ℕ
 @[search,simp] axiom a3 : h 2 = h 3
 @[search,simp] axiom a4 : h 3 = h 4
 
-lemma test2 : h 0 = h 4 := by rewrite_search_using [`search] {trace := tt}
+lemma test2 : h 0 = h 4 := by rewrite_search_using [`search] {}
 
 end tidy.rewrite_search.examples
