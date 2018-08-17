@@ -8,46 +8,16 @@ from enum import Enum
 from pygraphvis import *
 from threading import *
 
-SPAWN_DIST = 10
-MAX_DEFAULT_DRAW_NODES = 20
-
-draw_name_default = True
-
 class NodePrivateData():
-    real_name = None
-    force_draw_name = False
     manually_static = False
 
-    def __init__(self, real_name, force_draw_name, manually_static):
-        self.real_name = real_name
-        self.force_draw_name = force_draw_name
-        self.manually_static = manually_static
-
 # Called under v.lock()
-def update_node_name(n):
-    should_draw = n.private.force_draw_name or draw_name_default
-    n.style.value.name = n.private.real_name if should_draw else ""
-    n.style.invalidate()
-
-# Called under v.lock()
-def update_node_names():
-    for n in v.graph.nodes:
-        update_node_name(n)
-
-# Called under v.lock()
-def create_new_node(parent_pos, name, random_off = True, static = False, force_draw_name = False):
-    if len(v.graph.nodes) >= MAX_DEFAULT_DRAW_NODES:
-        global draw_name_default
-        draw_name_default = False
-        update_node_names()
-
+def create_new_node(parent_pos, name, random_off = True):
     spawn_dist = SPAWN_DIST if random_off else 0
     angle = random.uniform(0, 2 * math.pi)
     pos = vec.add(parent_pos, vec.rotate2d((spawn_dist, 0), angle))
-    n = Node(pos = pos, colour = (100, 100, 100), static = static)
-    n.private = NodePrivateData(name, force_draw_name, static)
-
-    update_node_name(n)
+    n = Node(name = name, pos = pos, colour = (100, 100, 100))
+    n.private = NodePrivateData()
     v.graph.nodes.add(n)
     return n
 
@@ -61,13 +31,7 @@ def event_handler(e):
     if node == None:
         return
 
-    if e.type == InputType.MB_RIGHT and e.state == MouseState.UP:
-        node.private.force_draw_name = not node.private.force_draw_name
-
-        v.lock.acquire()
-        update_node_name(node)
-        v.lock.release()
-    elif e.type == InputType.MB_MIDDLE and e.state == MouseState.UP:
+    if e.type == InputType.MB_MIDDLE and e.state == MouseState.UP:
         node.private.manually_static = not node.private.manually_static
         node.static = node.private.manually_static
 
@@ -90,12 +54,13 @@ def process_line(line):
             colour = (140, 101, 211) if side == "L" else (0, 197, 144)
             pos = (-20, 0) if side == "L" else (20, 0)
 
-            vert = create_new_node((0, 0), name, False, static = True, force_draw_name = False)
+            vert = create_new_node((0, 0), name, False)
+            vert.static = True
             vert.pos = pos
             vert.style.value.colour = colour
         else:
             root = verts["0"] if side == "L" else verts["1"]
-            vert = create_new_node(root.pos, name)
+            vert = create_new_node(root.pos, name, False)
             vert.style.value.colour = (202, 185, 241) if side == "L" else (181, 249, 211)
         v.lock.release()
 
