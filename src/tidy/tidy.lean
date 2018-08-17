@@ -5,15 +5,14 @@
 import .force 
 import .backwards_reasoning 
 import .forwards_reasoning
-import .fsplit .automatic_induction .tidy_attributes .intro_at_least_one
+import .fsplit 
+import .automatic_induction 
+import .tidy_attributes 
+import .intro_at_least_one
 import .chain
-import .recover
 import .rewrite_search
 import .injections
-import .if_then_else
 import tactic.interactive
-
-import data.list
 
 universe variables u v
 
@@ -48,7 +47,7 @@ meta def default_tidy_tactics : list (tactic string) :=
   fsplit                                      >> pure "fsplit", 
   injections_and_clear                        >> pure "injections_and_clear",
   terminal_goal >> (`[solve_by_elim])         >> pure "solve_by_elim",
-  recover'                                    >> pure "recover'",
+  -- recover'                                    >> pure "recover'",
   run_tidy_tactics ]
 
 meta structure tidy_cfg extends chain_cfg :=
@@ -64,10 +63,10 @@ do
     tactic.skip
 
 meta def obviously_tactics : list (tactic string) :=
-[ tactic.interactive.rewrite_search_using [`ematch] ] -- TODO should switch this back to search eventually
+[ tactic.interactive.rewrite_search_using [`ematch] { trace_summary := tt } ] -- TODO should switch this back to search eventually
 
 meta def obviously'  : tactic unit := tidy { tactics := default_tidy_tactics ++ obviously_tactics, trace_result := tt, trace_steps := ff }
-meta def obviously_vis  : tactic unit := tidy { tactics := default_tidy_tactics ++ [ tactic.interactive.rewrite_search_using [`ematch] { visualiser := tt } ], trace_result := tt, trace_steps := ff }
+meta def obviously_vis  : tactic unit := tidy { tactics := default_tidy_tactics ++ [ tactic.interactive.rewrite_search_using [`ematch] { trace_summary := tt, visualiser := tt } ], trace_result := tt, trace_steps := ff }
 
 instance subsingleton_pempty : subsingleton pempty := by tidy
 instance subsingleton_punit  : subsingleton punit  := by tidy

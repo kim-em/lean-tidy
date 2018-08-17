@@ -9,7 +9,7 @@ example : [[7],[6]] = [[5],[5]] :=
 begin
  success_if_fail { rewrite_search [] },
 -- rw [←foo', bar']
- rewrite_search [←foo', bar'],
+ rewrite_search [←foo', bar'] {trace:=tt},
 end
 
 @[search] private axiom foo : [0] = [1]
@@ -113,7 +113,7 @@ constants f g : ℕ → ℕ → ℕ → ℕ
 @[search] axiom g_2_2 : ∀ a b c : ℕ, g a b c = g a b 2
 @[search] axiom f_g : f 0 1 2 = g 2 0 1
 
-lemma test : f 0 0 0 = g 0 0 0 := by rewrite_search_using [`search] {trace := tt, trace_summary := tt, visualiser := tt}
+lemma test : f 0 0 0 = g 0 0 0 := by rewrite_search_using [`search] {trace := tt, trace_summary := tt/-, visualiser := tt-/}
 
 constant h : ℕ → ℕ
 @[search,simp] axiom a1 : h 0 = h 1

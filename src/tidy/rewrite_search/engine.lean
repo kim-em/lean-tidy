@@ -44,8 +44,8 @@ def bound_progress.sure {β : Type} : bound_progress β → bool
 | (exactly _ _)  := tt
 | (at_least _ _) := ff
 def bound_progress.to_string {β : Type} : bound_progress β → string
-| (exactly n _)  := "=" ++ to_string n
-| (at_least n _) := "≥" ++ to_string n
+| (exactly n _)  := "= " ++ to_string n
+| (at_least n _) := "≥ " ++ to_string n
 
 meta def tokenise_expr (e : expr) : tactic (string × list string) := do
   pp ← pretty_print e,
@@ -166,6 +166,11 @@ meta def do_alloc_pair (de : dist_estimate β)
   : tactic (global_state α β) := 
 return {g with estimates := g.estimates.append [de], interesting_pairs := g.interesting_pairs.append [de]}
 
+meta def remove_interesting_pair (de : dist_estimate β) : tactic (global_state α β) :=
+do
+  let new := g.interesting_pairs.erase_such_that (λ de', de'.l = de.l ∧ de'.r = de.r),
+  return {g with interesting_pairs := new}
+
 private meta def find_vertex_aux (pp : string) : list vertex → option vertex
 | [] := none
 | (a :: rest) := if a.pp = pp then some a else find_vertex_aux rest
@@ -225,9 +230,9 @@ private meta def sort_most_interesting (fn : improve_estimate_fn β) : dist_esti
 | a b := do
 match try_to_beat fn a.bnd b.bnd (g.get_vertex b.l) (g.get_vertex b.r) with
   -- b is guarenteed closer, so return it:
-  | (new_b, ff) := return ({ b with bnd := new_b }, a)
+  | (new_b, tt) := return ({ b with bnd := new_b }, a)
   -- otherwise:
-  | (new_b, tt) := match a.bnd with
+  | (new_b, ff) := match a.bnd with
     -- b is further than the current estimate for a and the estimate for a is exact:
     | exactly k _  := return (a, { b with bnd := new_b })
     -- or, b is futher than the current estimate for a but a might actually be worse, so check:
@@ -238,25 +243,15 @@ end
 private meta def find_most_interesting_aux_1 (fn : improve_estimate_fn β) : dist_estimate β → list (dist_estimate β) → list (dist_estimate β) → tactic (dist_estimate β × list (dist_estimate β)) -- Scott: why is this a tactic?
 | current_best seen [] := return (current_best, seen)
 | current_best seen (a :: rest) := do
-  (vl, vr) ← pure (g.get_estimate_verts a),
-  -- Drop "interesting" vertices which have had both ends visited, and hence aren't interesting
-  -- any more.
-  if vl.visited ∧ vr.visited then
-    find_most_interesting_aux_1 current_best seen rest
-  else do
-    (better, worse) ← sort_most_interesting g fn current_best a,
-    r ← find_most_interesting_aux_1 better (worse :: seen) rest,
-    return r
+  (better, worse) ← sort_most_interesting g fn current_best a,
+  r ← find_most_interesting_aux_1 better (worse :: seen) rest,
+  return r
 
 private meta def find_most_interesting_aux_2 (fn : improve_estimate_fn β) : list (dist_estimate β) → tactic (list (dist_estimate β))
 | [] := return []
 | (a :: rest) := do
-  (vl, vr) ← pure (g.get_estimate_verts a),
-  if vl.visited ∧ vr.visited then
-    find_most_interesting_aux_2 rest
-  else do
-    (best, others) ← find_most_interesting_aux_1 g fn a [] rest,
-    return (best :: others)
+  (best, others) ← find_most_interesting_aux_1 g fn a [] rest,
+  return (best :: others)
 
 meta def find_most_interesting (fn : improve_estimate_fn β) : tactic (global_state α β) := 
 do new_interestings ← find_most_interesting_aux_2 g fn g.interesting_pairs,
@@ -268,7 +263,7 @@ meta def refresh_fn (α β : Type) : Type :=
 global_state α β → global_state α β
 
 meta inductive strategy_action {α β : Type}
-| examine : dist_estimate β → side → strategy_action
+| examine : dist_estimate β → strategy_action
 | refresh : refresh_fn α β → strategy_action
 | abort   : string → strategy_action
   
@@ -435,16 +430,20 @@ do tracer_pair_added i l.id r.id,
                 return (i.mutate g)
    end
 
+meta def remove_interesting_pair (de : dist_estimate β) : tactic (inst α β γ) :=
+do g ← i.g.remove_interesting_pair de,
+   return (i.mutate g)
+
 meta def find_most_interesting : tactic (inst α β γ) := 
 do g ← i.g.find_most_interesting i.strat.improve_estimate_over,
    return (i.mutate g)
 
-meta def store_new_equalities (f : vertex) : inst α β γ → list (expr × expr × how) → tactic (inst α β γ × list vertex × list edge)
+meta def process_new_rewrites (f : vertex) : inst α β γ → list (expr × expr × how) → tactic (inst α β γ × list vertex × list edge)
 | i [] := return (i, [], [])
 | i ((new_expr, prf, how) :: rest) := do
     (i, v) ← i.add_vertex new_expr f.s,
     (i, e) ← i.add_edge f v prf how,
-    (i, vs, es) ← store_new_equalities i rest,
+    (i, vs, es) ← process_new_rewrites i rest,
     return (i, (v :: vs), (e :: es))
 
 meta def add_new_interestings (v : vertex) : inst α β γ → list vertex → tactic (inst α β γ)
@@ -465,21 +464,33 @@ do
   (i, _) ← i.add_edge lhs rhs prf how.defeq,
   return i
 
+meta def neighbours (v : vertex) : tactic ((inst α β γ) × (list vertex)) :=
+do
+  match v.visited with
+  | tt := do
+            let vertices := v.adj.map (λ e, i.g.get_vertex e.t),
+            return (i, vertices)
+  | ff := do
+            all_rws ← all_rewrites_list i.rs ff v.exp,
+            let all_rws := all_rws.map (λ t, (t.1, t.2.1, how.rewrite t.2.2.1 t.2.2.2)),
+            (i, adjacent_vertices, _) ← i.process_new_rewrites v all_rws,
+            i ← pure (i.mutate (i.g.mark_vertex_visited v.id)),
+            return (i, adjacent_vertices)
+  end
+
 -- My job is to examine the specified side and to blow up the vertex once
 meta def examine_one (de : dist_estimate β) (s : side) : tactic (inst α β γ) := 
 do
   let v := i.g.get_vertex (de.side s),
-  -- let flip := match s with
-  --   | side.L := ff
-  --   | side.R := tt
-  -- end,
-  all_rws ← all_rewrites_list i.rs ff v.exp,
-  let all_rws := all_rws.map (λ t, (t.1, t.2.1, how.rewrite t.2.2.1 t.2.2.2)),
-  (i, touched_verts, new_edges) ← i.store_new_equalities v all_rws,
-  i ← pure (i.mutate (i.g.mark_vertex_visited v.id)),
-  --FIXME this next line could use some improving
-  --we might also want to mark all of the immediate children of "(i.g.get_vertex (de.side s.other))" as interesting
-  i ← i.add_new_interestings (i.g.get_vertex (de.side s.other)) touched_verts,
+  (i, nbhd) ← i.neighbours v,
+  i ← i.add_new_interestings (i.g.get_vertex (de.side s.other)) nbhd,
+  return i
+
+meta def examine_both (de : dist_estimate β) : tactic (inst α β γ ) :=
+do
+  i ← i.examine_one de side.L,
+  i ← i.examine_one de side.R,
+  i ← i.remove_interesting_pair de, -- FIXME this feels a bit silly: isn't `de` always the head of the list?
   i ← i.find_most_interesting,
   return i
 
@@ -489,17 +500,13 @@ match i.g.solving_edge with
 | none :=
   let (g, action) := i.strat.step i.g itr in
   let i := i.mutate g in
-  match action with
-  | examine de s := do
-    target ← pure (g.get_vertex (de.side s)),
-    buddy ← pure (g.get_vertex (de.side s.other)),
-    i.trace format!"examine ({target.pp})↔({buddy.pp})",
-    if target.visited then do
-      i.trace format!"abort: already visited vertex!",
-      return (i, status.abort "search strategy invalid: visiting a vertex twice")
-    else do
-      i ← (i.unify de) <|> (i.examine_one de s),
-      return (i, status.going (itr + 1))
+  match action with 
+  | examine de := do
+    lhs ← pure (g.get_vertex (de.side side.L)),
+    rhs ← pure (g.get_vertex (de.side side.R)),
+    i.trace format!"examine({lhs.id.to_nat}, {rhs.id.to_nat}) distance {de.bnd.to_string}: ({lhs.pp}) = ({rhs.pp})",
+    i ← (i.unify de) <|> (i.examine_both de),
+    return (i, status.going (itr + 1))
   | refresh ref_fn := do
     i.trace format!"refresh",
     return (i.mutate (ref_fn i.g), status.going (itr + 1))

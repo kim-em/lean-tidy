@@ -7,9 +7,6 @@ namespace tidy.rewrite_search.strategy.edit_distance
 
 variables {α : Type} [decidable_eq α]
 
-meta structure ed_searchstate :=
-  (goal_side : side)
-
 @[derive decidable_eq]
 structure ed_partial := 
   (prefix_length : ℕ)
@@ -19,19 +16,14 @@ structure ed_partial :=
 def empty_partial_edit_distance_data (l₁ l₂: list string) : ed_partial :=
   ⟨ 0, l₁, (list.range l₂.length).map(λ n, n + 1) ⟩
 
-meta def ed_searchstate_init : ed_searchstate := ⟨ side.L ⟩
+meta def ed_searchstate_init : unit := ()
 
-meta def ed_step (g : global_state ed_searchstate ed_partial) (itr : ℕ)
-  : global_state ed_searchstate ed_partial × (@strategy_action ed_searchstate ed_partial) :=
+meta def ed_step (g : global_state unit ed_partial) (itr : ℕ) : global_state unit ed_partial × (@strategy_action unit ed_partial) :=
   if itr <= 500 then
     match g.interesting_pairs with
     | [] := (g, strategy_action.abort "all interesting pairs exhausted!")
     | (best_p :: rest) :=
-      let goal_side : side := g.internal_strat_state.goal_side in
-      let v := g.get_vertex (best_p.side goal_side) in
-      let goal_side : side := if ¬v.visited then goal_side else goal_side.other in
-      let g := g.mutate_strategy ⟨ goal_side.other ⟩ in
-      (g, strategy_action.examine best_p goal_side)
+      (g, strategy_action.examine best_p)
     end
   else
     (g, strategy_action.abort "max iterations reached")
@@ -73,7 +65,7 @@ namespace tidy.rewrite_search.strategy
 
 open tidy.rewrite_search.strategy.edit_distance
 
-meta def edit_distance_strategy : strategy ed_searchstate ed_partial :=
+meta def edit_distance_strategy : strategy unit ed_partial :=
   ⟨ ed_searchstate_init, ed_step, ed_init_bound, ed_improve_estimate_over ⟩
 
 end tidy.rewrite_search.strategy
