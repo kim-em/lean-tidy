@@ -7,7 +7,7 @@ FIFO_PATH = "rewrite_search.fifo"
 
 if __name__ == "__main__":
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    subprocess.Popen(["python3", dir_path + "/server.py"])
+    subprocess.Popen(["python3", dir_path + "/server.py"], stderr=sys.stderr)
 
     while not os.path.exists(FIFO_PATH):
         time.sleep(0.05)
