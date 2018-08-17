@@ -8,7 +8,8 @@ namespace tidy.rewrite_search
 open tactic
 open io.process.stdio
 
-def LAUNCH_CHAR : string := "S"
+def SUCCESS_CHAR : string := "S"
+def ERROR_CHAR   : string := "E"
 def SEARCH_PATHS : list string := [
   "_target/deps/lean-tidy/res/graph_tracer",
   "res/graph_tracer"
@@ -41,30 +42,65 @@ def file_exists (path : string) : io bool := do
   retval ← io.proc.wait c,
   return (retval = 0)
 
-meta def try_launch_with_path (path : string) : io (option io.proc.child) := do
+inductive spawn_result
+| success : io.proc.child → spawn_result -- Client launched and the client reported success status
+| abort : string → spawn_result          -- Client launched and we got a bad response code
+| failure                                -- Could not launch client
+| missing                                -- The script we tried to launch does't exist
+
+meta def read_until_nl (h : io.handle) : io string := do
+  c ← io.fs.read h 1,
+  match c.to_list with
+  | ['\n'] := return ""
+  | [c]    := do r ← read_until_nl, return (c.to_string ++ r)
+  | _      := return ""
+  end
+
+meta def try_launch_with_path (path : string) : io spawn_result := do
   ex ← file_exists (get_app_path path "client"),
   if ex then do
     c ← io.proc.spawn (args path "client"),
     buff ← io.fs.read c.stdout 1,
     str ← pure (buff.to_string),
-    return (if str = LAUNCH_CHAR then c else none)
+    if str = SUCCESS_CHAR then
+      return (spawn_result.success c)
+    else if str = ERROR_CHAR then do
+      reason ← read_until_nl c.stdout,
+      return (spawn_result.abort reason)
+    else if str = "" then
+      return spawn_result.failure
+    else
+      return (spawn_result.abort (format!"bug: unknown client status character \"{str}\"").to_string)
   else
-    return none
+    return spawn_result.missing
 
-meta def try_launch_with_paths : list string → io (option io.proc.child)
-| []          := return none
+meta def try_launch_with_paths : list string → io spawn_result
+| []          := return spawn_result.failure
 | (p :: rest) := do
-  c ← try_launch_with_path p,
-  match c with
-  | none   := try_launch_with_paths rest
-  | some c := return c
+  sr ← try_launch_with_path p,
+  match sr with
+  | spawn_result.success c    := return sr
+  | spawn_result.abort reason := return sr
+  | spawn_result.failure      := return sr
+  | spawn_result.missing      := try_launch_with_paths rest
+  end
+
+meta def diagnose_launch_failure : io string := do
+  c ← io.proc.spawn { cmd := "python3", args := ["--version"], stdin := piped, stdout := piped, stderr := piped },
+  r ← io.proc.wait c,
+  match r with
+  | 255 := return "python3 is missing, and the graph visualiser requires it. Please install python3."
+  | 0   := return "bug: python3 present but could not launch client!"
+  | ret := return (format!"bug: unexpected return code {ret} during launch failure diagnosis").to_string
   end
 
 meta def graph_tracer_init : tactic visualiser := do
   c ← tactic.unsafe_run_io (try_launch_with_paths SEARCH_PATHS),
   match c with
-  | none   := fail "could not open child"
-  | some c := let vs : visualiser := ⟨ c ⟩ in do vs.publish "D\n", return vs
+  | spawn_result.success c    := let vs : visualiser := ⟨ c ⟩ in do vs.publish "D\n", return vs
+  | spawn_result.abort reason := fail format!"Error! {reason}"
+  | spawn_result.failure      := do reason ← tactic.unsafe_run_io diagnose_launch_failure, fail format!"Error! {reason}"
+  | spawn_result.missing      := fail format!"Error! bug: could not determine client location"
   end
 
 meta def graph_tracer_publish_vertex (vs : visualiser) (v : vertex) : tactic unit := do
