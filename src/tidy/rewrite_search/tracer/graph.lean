@@ -24,9 +24,7 @@ def args (dir : string) (app : string) : io.process.spawn_args := {
   stderr := inherit,
   env    := [
     ("PYTHONPATH", some (dir ++ "/pygraphvis.zip/pygraphvis")),
-    -- FIXME implement utf8decode_char in lib.lean so we don't have to do this
-    -- (and so we get pretty characters as a consequence!)
-    ("PYTHONIOENCODING", "latin-1")
+    ("PYTHONIOENCODING", "utf-8")
   ],
 }
 

@@ -97,19 +97,19 @@ def utf8decode_char (c : char) : list char :=
       code
     ]
     else if code < MAX_TWO_B then [
-      lor (land (shiftl code 6) 0x1F) TAG_TWO_B,
-      lor (land (shiftl code 0) 0x3F) TAG_CONT
+      lor (land (shiftr code 6) 0x1F) TAG_TWO_B,
+      lor (land (shiftr code 0) 0x3F) TAG_CONT
     ]
     else if code < MAX_THREE_B then [
-      lor (land (shiftl code 12) 0x0F) TAG_THREE_B,
-      lor (land (shiftl code  6) 0x3F) TAG_CONT,
-      lor (land (shiftl code  0) 0x3F) TAG_CONT
+      lor (land (shiftr code 12) 0x0F) TAG_THREE_B,
+      lor (land (shiftr code  6) 0x3F) TAG_CONT,
+      lor (land (shiftr code  0) 0x3F) TAG_CONT
     ]
     else [
-      lor (land (shiftl code 18) 0x07) TAG_FOUR_B,
-      lor (land (shiftl code 12) 0x3F) TAG_CONT,
-      lor (land (shiftl code  6) 0x3F) TAG_CONT,
-      lor (land (shiftl code  0) 0x3F) TAG_CONT
+      lor (land (shiftr code 18) 0x07) TAG_FOUR_B,
+      lor (land (shiftr code 12) 0x3F) TAG_CONT,
+      lor (land (shiftr code  6) 0x3F) TAG_CONT,
+      lor (land (shiftr code  0) 0x3F) TAG_CONT
     ]
   in
   bytes.map nat.trunc_to_char
