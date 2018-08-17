@@ -141,10 +141,10 @@ meta def mutate_strategy (new_state : α) : global_state α β :=
 -- Retrieve the vertex with the given ref, or the null vertex if it is not
 -- present.
 meta def get_vertex (r : vertex_ref) : vertex :=
-list_at mk_null_vertex g.vertices r
+list.at mk_null_vertex g.vertices r
 
 meta def set_vertex (v : vertex) : (global_state α β) :=
-{ g with vertices := list_set_at g.vertices v.id v }
+{ g with vertices := list.set_at g.vertices v.id v }
 
 meta def get_endpoints (e : edge) : vertex × vertex :=
 (g.get_vertex e.f, g.get_vertex e.t)

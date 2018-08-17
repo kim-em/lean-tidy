@@ -3,21 +3,20 @@ import data.pnat
 import data.nat.basic
 import tactic.norm_num
 
-
 universe u
 
 --FIXME the fact that we use this is really sad (ARRAYS DO IT)
-def list_at {α : Type u} (default : α) : list α → ℕ → α
+def list.at {α : Type u} (default : α) : list α → ℕ → α
 | [] _ := default -- FIXME catastrophic failure
-| (a :: rest) k := if k = 0 then a else list_at rest (k - 1)
+| (a :: rest) k := if k = 0 then a else list.at rest (k - 1)
 
-def list_set_at_aux {α : Type u} (val : α) : list α → list α → ℕ → list α
+private def list_set_at_aux {α : Type u} (val : α) : list α → list α → ℕ → list α
 | _ [] _          := [] -- FIXME catastrophic failure
 | l (a :: rest) 0 := l.append (val :: rest)
 | l (a :: rest) k := list_set_at_aux (l.append [a]) rest (k - 1)
 
 --FIXME the fact that we use this is really sad (ARRAYS DO IT)
-def list_set_at {α : Type u} (l : list α) (idx : ℕ) (val : α) : list α :=
+def list.set_at {α : Type u} (l : list α) (idx : ℕ) (val : α) : list α :=
   list_set_at_aux val [] l idx
 
 def list.split_on_aux {α : Type u} [decidable_eq α] (a : α) : list α → list α → list (list α) 
