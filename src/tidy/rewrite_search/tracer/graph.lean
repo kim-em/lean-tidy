@@ -1,37 +1,97 @@
 import tidy.rewrite_search.engine
+import tidy.lib
 
-import tactic.debug
+import system.io
 
 namespace tidy.rewrite_search
 
 open tactic
+open io.process.stdio
 
-meta def graph_tracer_init : tactic debug.handle :=
-  debug.mk_handle "rewrite_search.socket"
+def LAUNCH_CHAR : string := "S"
+def SEARCH_PATHS : list string := [
+  "_target/deps/lean-tidy/res/graph_tracer",
+  "res/graph_tracer"
+]
 
-meta def graph_tracer_publish_vertex (h : debug.handle) (v : vertex) : tactic unit := do
+def get_app_path (dir : string) (app : string) : string := dir ++ "/" ++ app ++ ".py"
+
+def args (dir : string) (app : string) : io.process.spawn_args := {
+  cmd    := "python3",
+  args   := [get_app_path dir app],
+  stdin  := piped,
+  stdout := piped,
+  stderr := inherit,
+  env    := [
+    ("PYTHONPATH", some (dir ++ "/pygraphvis.zip")),
+    -- FIXME implement utf8decode_char in lib.lean so we don't have to do this
+    -- (and so we get pretty characters as a consequence!)
+    ("PYTHONIOENCODING", "latin-1")
+  ],
+}
+
+structure visualiser :=
+  (proc : io.proc.child)
+meta def visualiser.publish (v : visualiser) (s : string) : tactic unit :=
+  let chrs : list char := (s.to_list.stripl ['\n', '\x0D']).append ['\n'] in
+  tactic.unsafe_run_io (io.fs.write v.proc.stdin (char_buffer.from_list (utf8decode chrs)))
+meta def visualiser.pause (v : visualiser) : tactic unit :=
+  tactic.unsafe_run_io (do io.fs.read v.proc.stdout 1, return ())
+
+def file_exists (path : string) : io bool := do
+  c ← io.proc.spawn { cmd := "test", args := ["-f", path] },
+  retval ← io.proc.wait c,
+  return (retval = 0)
+
+meta def try_launch_with_path (path : string) : io (option io.proc.child) := do
+  ex ← file_exists (get_app_path path "client"),
+  if ex then do
+    c ← io.proc.spawn (args path "client"),
+    buff ← io.fs.read c.stdout 1,
+    str ← pure (buff.to_string),
+    return (if str = LAUNCH_CHAR then c else none)
+  else
+    return none
+
+meta def try_launch_with_paths : list string → io (option io.proc.child)
+| []          := return none
+| (p :: rest) := do
+  c ← try_launch_with_path p,
+  match c with
+  | none   := try_launch_with_paths rest
+  | some c := return c
+  end
+
+meta def graph_tracer_init : tactic visualiser := do
+  c ← tactic.unsafe_run_io (try_launch_with_paths SEARCH_PATHS),
+  match c with
+  | none   := fail "could not open child"
+  | some c := let vs : visualiser := ⟨ c ⟩ in do vs.publish "D\n", return vs
+  end
+
+meta def graph_tracer_publish_vertex (vs : visualiser) (v : vertex) : tactic unit := do
   let sn := match v.s with
     | none   := "?"
     | some s := s.to_string
   end,
-  h.publish (to_string (format!"V|{v.id.to_string}|{sn}|{v.pp}\n"))
+  vs.publish (to_string (format!"V|{v.id.to_string}|{sn}|{v.pp}\n"))
 
-meta def graph_tracer_publish_edge (h : debug.handle) (e : edge) : tactic unit :=
-  h.publish (to_string (format!"E|{e.f.to_string}|{e.t.to_string}\n"))
+meta def graph_tracer_publish_edge (vs : visualiser) (e : edge) : tactic unit :=
+  vs.publish (to_string (format!"E|{e.f.to_string}|{e.t.to_string}\n"))
 
-meta def graph_tracer_publish_pair (h : debug.handle) (l r : vertex_ref) : tactic unit :=
-  h.publish (to_string (format!"P|{l.to_string}|{r.to_string}\n"))
+meta def graph_tracer_publish_pair (vs : visualiser) (l r : vertex_ref) : tactic unit :=
+  vs.publish (to_string (format!"P|{l.to_string}|{r.to_string}\n"))
 
-meta def graph_tracer_publish_finished (h : debug.handle) : tactic unit :=
-  h.publish "D\n"
+meta def graph_tracer_publish_finished (vs : visualiser) : tactic unit :=
+  tactic.skip
 
-meta def graph_tracer_dump (h : debug.handle) (str : string) : tactic unit :=
-  h.publish (str ++ "\n")
+meta def graph_tracer_dump (vs : visualiser) (str : string) : tactic unit :=
+  vs.publish (str ++ "\n")
 
-meta def graph_tracer_pause (h : debug.handle) : tactic unit :=
-  h.pause
+meta def graph_tracer_pause (vs : visualiser) : tactic unit :=
+  vs.pause
 
-meta def graph_tracer : tracer debug.handle :=
+meta def graph_tracer : tracer visualiser :=
   ⟨ graph_tracer_init, graph_tracer_publish_vertex, graph_tracer_publish_edge,
     graph_tracer_publish_pair, graph_tracer_publish_finished, graph_tracer_dump,
     graph_tracer_pause ⟩
