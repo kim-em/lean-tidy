@@ -1,3 +1,5 @@
+import tidy.lib
+
 open tactic
 
 meta def pretty_print (e : expr) (implicits : bool := ff): tactic string :=
@@ -6,6 +8,10 @@ do options ← get_options,
    t ← pp e,
    set_options options,
    pure t.to_string
+
+meta def tokenise_expr (e : expr) : tactic (string × list string) := do
+  pp ← pretty_print e,
+  pure (pp, pp.split_on ' ')
 
 /-
 
