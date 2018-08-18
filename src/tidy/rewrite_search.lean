@@ -5,11 +5,20 @@ import .rewrite_search.strategy.edit_distance
 open tidy.rewrite_search tidy.rewrite_search.strategy
 open interactive interactive.types expr tactic
 
-meta def handle_search_result (r : search_result) : tactic string := do
-  match r with
-    | search_result.success str    := return str
-    | search_result.failure reason := fail reason
-  end
+meta def handle_search_result (cfg : config) (rules : list (expr × bool)) (result : search_result) : tactic string := do
+match result with
+| search_result.failure reason := fail reason
+| search_result.success proof steps    := do
+    if cfg.trace then trace "rewrite_search found proof:\n" ++ proof else skip,
+    rules_strings ← pp_rules rules,
+    explanation ← (do 
+      needs_refl ← check_if_simple_rewrite_succeeds rules steps,
+      return (explain_proof_concisely rules_strings steps needs_refl)) <|> return (explain_proof rules_strings steps),
+    if cfg.trace_result then trace explanation          
+    else skip,
+    exact proof,
+    return explanation,
+end
 
 meta def do_rewrite_search (rs : list (expr × bool)) (cfg : config := {}) : tactic string := do
   t ← target,
@@ -19,23 +28,6 @@ meta def do_rewrite_search (rs : list (expr × bool)) (cfg : config := {}) : tac
     --   do rs_strings ← pp_rules rs,
     --     trace ("rewrite_search using:\n---\n" ++ (string.intercalate "\n" rs_strings) ++ "\n---")
     -- else skip,
-    -- (steps, r1, r2) ← rewrite_search rs cfg lhs rhs,
-    -- if cfg.trace then trace "rewrite_search found proof:" else skip,
-    -- prf2 ← mk_eq_symm r2.proof,
-    -- prf ← mk_eq_trans r1.proof prf2,
-    -- -- if cfg.trace then trace prf else skip,
-    -- rs_strings ← pp_rules rs,
-    -- explanation ← (do 
-    --   needs_refl ← check_if_simple_rewrite_succeeds rs (r1, r2),
-    --   return (explain_proof_concisely rs_strings (r1, r2) needs_refl)) <|> return (explain_proof rs_strings (r1, r2)),
-    -- if cfg.trace_result then trace explanation          
-    -- else skip,
-    -- if cfg.trace_summary then 
-    --   do name ← decl_name,
-    --     trace format!"during elaboration of {name}, rewrite_search considered {steps} expressions, and found a chain of {r1.rewrites.length + r2.rewrites.length} rewrites"
-    -- else skip,
-    -- exact prf,
-    -- return explanation,
 
     let strat := edit_distance_strategy,
 

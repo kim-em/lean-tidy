@@ -19,16 +19,13 @@ def side.to_string : side → string
 | side.L := "L"
 | side.R := "R"
 
-inductive search_result
-| success : string → search_result
-| failure : string → search_result
+inductive how
+| rewrite : Π (rule_index : ℕ), Π (symm : bool), Π (location : ℕ), how
+| defeq
 
--- universe variables u v
--- Workaround for the crazy fact that you are only allowed a single universe
--- in a "do" block. (NOOOOOooooooooo......... (it's getting quieter because
--- I'm moving on with life.))
--- meta def pl {α : Type u} (a : α) : tactic (ulift α) := pure (ulift.up a)
--- meta def ul {α : Type u} {β : Type v} (a : tactic α) : tactic (ulift α) := ulift.up a
+meta inductive search_result
+| success : Π proof : expr,  Π steps : list how, search_result
+| failure : Π message : string, search_result
 
 -- meta def bound_numeric := ℕ
 inductive bound_progress (β : Type)
@@ -58,10 +55,6 @@ def vertex_ref.to_string (r : vertex_ref) : string := to_string r.to_nat
 def vertex_ref.next (r : vertex_ref) : vertex_ref := vertex_ref_from_nat (r + 1)
 def mk_vertex_ref_null : vertex_ref := vertex_ref_from_nat 0x8FFFFFFF
 def mk_vertex_ref_first : vertex_ref := vertex_ref_from_nat 0
-
-inductive how
-| rewrite : Π (rule_index : ℕ), Π (location : ℕ), how
-| defeq
 
 meta structure edge :=
 (f t   : vertex_ref)
@@ -281,6 +274,7 @@ meta structure strategy (α β : Type) :=
 structure config := 
 (trace         : bool := ff)
 (trace_summary : bool := ff)
+(trace_result  : bool := ff)
 (visualise     : bool := ff)
 
 meta structure tracer (γ : Type) :=
@@ -472,7 +466,7 @@ do
             return (i, vertices)
   | ff := do
             all_rws ← all_rewrites_list i.rs ff v.exp,
-            let all_rws := all_rws.map (λ t, (t.1, t.2.1, how.rewrite t.2.2.1 t.2.2.2)),
+            let all_rws := all_rws.map (λ t, (t.1, t.2.1, how.rewrite t.2.2.1 ff t.2.2.2)),
             (i, adjacent_vertices, _) ← i.process_new_rewrites v all_rws,
             i ← pure (i.mutate (i.g.mark_vertex_visited v.id)),
             return (i, adjacent_vertices)
@@ -537,7 +531,7 @@ match cur.parent with
   return (proof, (e :: es))
 end
 
-meta def solve_goal (e : edge) : tactic (string × list edge) := 
+meta def solve_goal (e : edge) : tactic (expr × list edge) := 
 do
   let (vf, vt) := i.g.get_endpoints e,
 
@@ -571,9 +565,7 @@ do
   else 
     skip,
 
-  tactic.exact proof,
-
-  return ("[rewrite_search]", es)
+  return (proof, es)
 
 meta def search_until_abort_aux : inst α β γ → ℕ → tactic search_result
 | i itr := do
@@ -582,9 +574,10 @@ meta def search_until_abort_aux : inst α β γ → ℕ → tactic search_result
   | status.going k := search_until_abort_aux i (itr + 1)
   | status.abort r  := return (search_result.failure ("aborted: " ++ r))
   | status.done e  := do
-    (str, es) ← i.solve_goal e,
-    i.tracer_search_finished es,
-    return (search_result.success str)
+    (proof, edges) ← i.solve_goal e,
+    i.tracer_search_finished edges,
+
+    return (search_result.success proof (edges.map edge.how))
   end
 
 meta def search_until_abort : tactic search_result := 
