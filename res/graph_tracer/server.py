@@ -128,6 +128,7 @@ if __name__ == "__main__":
 
     v = vis.Visualiser(graphs.DynamicGraph(), size = (1200, 1000),
         event_handler = event_handler, title = "leangraphvis")
+    v.hide_names = True
 
     atexit.register(delete_fifo)
     os.mkfifo(FIFO_PATH)

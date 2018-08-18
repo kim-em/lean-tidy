@@ -123,7 +123,7 @@ constants f g : ℕ → ℕ → ℕ → ℕ
 
 lemma test : f 0 0 0 = g 0 0 0 := 
 -- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
-by rewrite_search_using [`search] {trace_result:=tt, trace_summary := tt, visualise:=tt}
+by rewrite_search_using [`search] {trace_result:=tt, trace_summary := tt}
 
 constant h : ℕ → ℕ
 @[search,simp] axiom a1 : h 0 = h 1
