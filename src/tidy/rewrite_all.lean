@@ -13,6 +13,16 @@ open expr
 open lean
 open lean.parser
 
+inductive side
+| L
+| R
+def side.other : side → side
+| side.L := side.R
+| side.R := side.L
+def side.to_string : side → string
+| side.L := "L"
+| side.R := "R"
+
 meta def rewrite_without_new_mvars (r : expr) (e : expr) (cfg : rewrite_cfg := {}) : tactic (expr × expr) :=
 lock_tactic_state $ -- This makes sure that we forget everything in between rewrites; otherwise we don't correctly find everything!
 do n_before ← num_goals,
@@ -197,23 +207,16 @@ do `(%%lhs = %%rhs) ← target,
    prf' ← to_expr ``(congr_arg (λ R, %%lhs = R) %%prf) tt ff,
    replace_target new_target prf'
 
-meta def perform_nth_rewrite_lhs (q : parse rw_rules) (n : ℕ) : tactic unit := 
+meta def nth_rewrite_lhs (n : parse small_nat) (q : parse rw_rules) : tactic unit := 
 do `(%%lhs = %%rhs) ← target,
    (new_t, prf) ← perform_nth_rewrite' q n lhs,
    replace_target_lhs new_t prf,
    tactic.try tactic.reflexivity
 
-meta def perform_nth_rewrite_rhs (q : parse rw_rules) (n : ℕ) : tactic unit := 
+meta def nth_rewrite_rhs (n : parse small_nat) (q : parse rw_rules) : tactic unit := 
 do `(%%lhs = %%rhs) ← target,
    (new_t, prf) ← perform_nth_rewrite' q n rhs,
    replace_target_rhs new_t prf,
    tactic.try tactic.reflexivity
-
-
-meta def perform_nth_rewrite_using (a : name) (n : ℕ) : tactic unit := 
-do e ← target,
-   rewrites ← all_rewrites_using a e,
-   (new_t, prf) ← rewrites.nth n,
-   replace_target new_t prf
 
 end tactic.interactive

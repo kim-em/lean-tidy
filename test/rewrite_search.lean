@@ -19,43 +19,51 @@ end
 
 private example (a : unit) : [[0],[0]] = [[4],[4]] :=
 begin
-  -- perform_nth_rewrite_lhs [foo] 0,
-  -- perform_nth_rewrite_lhs [bar1] 0,
-  -- perform_nth_rewrite_lhs [←bar2] 0,
-  -- perform_nth_rewrite_lhs [foo] 0,
-  -- perform_nth_rewrite_lhs [bar1] 0,
-  -- perform_nth_rewrite_lhs [←bar2] 0,
-  -- perform_nth_rewrite_rhs [←bar3] 0,
-  -- perform_nth_rewrite_rhs [←bar3] 0,
+-- nth_rewrite_lhs 0 foo,
+-- nth_rewrite_lhs 0 bar1,
+-- nth_rewrite_lhs 0 ←bar2,
+-- nth_rewrite_lhs 0 foo,
+-- nth_rewrite_lhs 0 bar1,
+-- nth_rewrite_rhs 1 ←bar3,
+-- nth_rewrite_rhs 0 ←bar3,
+-- nth_rewrite_rhs 1 bar2,
   rewrite_search [foo, bar1, ← bar2, bar2, ← bar3],
 end
 
 private example : [[0],[0]] = [[4],[4]] :=
 begin
-  rewrite_search_using [`search] {trace := tt},
+-- nth_rewrite_lhs 0 foo,
+-- nth_rewrite_lhs 0 bar1,
+-- nth_rewrite_lhs 0 ←bar2,
+-- nth_rewrite_lhs 0 bar3,
+-- nth_rewrite_lhs 0 foo,
+-- nth_rewrite_lhs 0 bar1,
+-- nth_rewrite_rhs 1 ←bar3,
+-- nth_rewrite_rhs 0 bar2,
+  rewrite_search_using [`search],
 end
 
 @[search] private axiom qux' : [[1], [2]] = [[6], [7]]
 @[search] private axiom qux'' : [6] = [7]
 private example : [[1], [1]] = [[7], [7]] :=
 begin
-  -- perform_nth_rewrite_lhs [bar1] 0,
-  -- perform_nth_rewrite_lhs [qux'] 0,
-  -- perform_nth_rewrite_lhs [qux''] 0,
+-- nth_rewrite_lhs 0 bar1,
+-- nth_rewrite_lhs 0 qux',
+-- nth_rewrite_rhs 1 ←qux'',
   rewrite_search_using [`search],
 end
 
 private example : [[0],[0]] = [[4],[4]] :=
 begin
-  -- perform_nth_rewrite_lhs [foo] 0,
-  -- perform_nth_rewrite_lhs [bar1] 0,
-  -- perform_nth_rewrite_lhs [←bar2] 0,
-  -- perform_nth_rewrite_lhs [bar3] 0,
-  -- perform_nth_rewrite_lhs [foo] 0,
-  -- perform_nth_rewrite_lhs [bar1] 0,
-  -- perform_nth_rewrite_lhs [←bar2] 0,
-  -- perform_nth_rewrite_lhs [bar3] 0,
-  rewrite_search_using [`search] {trace := tt},
+-- nth_rewrite_lhs 0 foo,
+-- nth_rewrite_lhs 0 bar1,
+-- nth_rewrite_lhs 0 ←bar2,
+-- nth_rewrite_lhs 0 bar3,
+-- nth_rewrite_lhs 0 foo,
+-- nth_rewrite_lhs 0 bar1,
+-- nth_rewrite_rhs 1 ←bar3,
+-- nth_rewrite_rhs 0 bar2,
+  rewrite_search_using [`search],
 end
 
 private structure cat :=
@@ -113,7 +121,9 @@ constants f g : ℕ → ℕ → ℕ → ℕ
 @[search] axiom g_2_2 : ∀ a b c : ℕ, g a b c = g a b 2
 @[search] axiom f_g : f 0 1 2 = g 2 0 1
 
-lemma test : f 0 0 0 = g 0 0 0 := by rewrite_search_using [`search] {trace := tt, trace_summary := tt, visualise := tt}
+lemma test : f 0 0 0 = g 0 0 0 := 
+-- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
+by rewrite_search_using [`search] {trace_result:=tt, trace_summary := tt, visualise:=tt}
 
 constant h : ℕ → ℕ
 @[search,simp] axiom a1 : h 0 = h 1
@@ -121,6 +131,8 @@ constant h : ℕ → ℕ
 @[search,simp] axiom a3 : h 2 = h 3
 @[search,simp] axiom a4 : h 3 = h 4
 
-lemma test2 : h 0 = h 4 := by rewrite_search_using [`search] {}
+lemma test2 : h 0 = h 4 := 
+-- by erw [a1, a2, ←a4, ←a3]
+by rewrite_search_using [`search] {}
 
 end tidy.rewrite_search.examples

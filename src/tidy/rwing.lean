@@ -1,9 +1,9 @@
--- Copyright (c) 2018 Scott Morrison. All rights reserved.
+-- Copyright (c) 2018 Keeley Hoek. All rights reserved.
 -- Released under Apache 2.0 license as described in the file LICENSE.
 -- Authors: Keeley Hoek
 
 import tactic.ring
-import tactic.interactive
+-- import tactic.interactive
 
 open lean
 open lean.parser

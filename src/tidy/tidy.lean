@@ -12,7 +12,7 @@ import .intro_at_least_one
 import .chain
 import .rewrite_search
 import .injections
-import tactic.interactive
+-- import tactic.interactive
 
 universe variables u v
 

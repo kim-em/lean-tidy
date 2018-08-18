@@ -9,18 +9,8 @@ open tactic
 
 namespace tidy.rewrite_search
 
-inductive side
-| L
-| R
-def side.other : side → side
-| side.L := side.R
-| side.R := side.L
-def side.to_string : side → string
-| side.L := "L"
-| side.R := "R"
-
 inductive how
-| rewrite : Π (rule_index : ℕ), Π (symm : bool), Π (location : ℕ), how
+| rewrite : Π (rule_index : ℕ), Π (side : side), Π (location : ℕ), how
 | defeq
 
 meta inductive search_result
@@ -68,24 +58,20 @@ meta structure vertex :=
 (tokens  : list string)
 (root    : bool)
 (visited : bool)
-(s       : option side) -- Scott: why is this an option?
+(s       : side)
 (parent  : option edge)
 (adj     : list edge)
 
 --FIXME do this better with decidability
 meta def vertex.same_side (a b : vertex) : bool :=
 match (a.s, b.s) with
-| (some side.L, some side.L) := tt
-| (some side.R, some side.R) := tt
+| (side.L, side.L) := tt
+| (side.R, side.R) := tt
 | _ := ff
 end
 
 meta def vertex.to_string (v : vertex) : string :=
-let pfx : string := match v.s with
-| (some s) := s.to_string
-| none := "?"
-end in
-pfx ++ v.pp
+v.s.to_string ++ v.pp
 
 meta def null_expr : expr := default expr
 meta def mk_null_vertex : vertex :=
@@ -147,7 +133,7 @@ meta def get_estimate_verts (de : dist_estimate β) : vertex × vertex :=
   
 -- Forcibly add a new vertex to the vertex table. Probably should never be 
 -- called by a strategy and add_vertex to should used instead.
-meta def do_alloc_vertex (e : expr) (root : bool) (s : option side)
+meta def do_alloc_vertex (e : expr) (root : bool) (s : side)
   : tactic (global_state α β × vertex) := 
 do (pp, tokens) ← tokenise_expr e,
    let v : vertex := ⟨ g.next_id, e, pp, tokens, root, ff, s, none, [] ⟩,
@@ -387,7 +373,7 @@ meta def dump_estimates : list (dist_estimate β) → tactic unit
 
 -- Look up the given vertex associated to (e : expr), or create it if it is
 -- not already present.
-meta def add_vertex_aux (e : expr) (root : bool) (s : option side) : tactic (inst α β γ × vertex) := 
+meta def add_vertex_aux (e : expr) (root : bool) (s : side) : tactic (inst α β γ × vertex) := 
 do maybe_v ← i.g.find_vertex e,
    match maybe_v with
    | none := do
@@ -397,7 +383,7 @@ do maybe_v ← i.g.find_vertex e,
    | (some v) := return (i, v)
    end
 
-meta def add_vertex (e : expr) (s : option side) :=
+meta def add_vertex (e : expr) (s : side) :=
 i.add_vertex_aux e ff s
 
 meta def add_root_vertex (e : expr) (s : side) :=
@@ -466,7 +452,7 @@ do
             return (i, vertices)
   | ff := do
             all_rws ← all_rewrites_list i.rs ff v.exp,
-            let all_rws := all_rws.map (λ t, (t.1, t.2.1, how.rewrite t.2.2.1 ff t.2.2.2)),
+            let all_rws := all_rws.map (λ t, (t.1, t.2.1, how.rewrite t.2.2.1 v.s t.2.2.2)),
             (i, adjacent_vertices, _) ← i.process_new_rewrites v all_rws,
             i ← pure (i.mutate (i.g.mark_vertex_visited v.id)),
             return (i, adjacent_vertices)
@@ -510,62 +496,56 @@ match i.g.solving_edge with
   end
 end
 
-meta def backtrack_to_root_with : vertex → expr → ℕ → tactic (expr × list edge) :=
-λ (cur : vertex) (prf_so_far : expr) (depth), do
-match cur.parent with
-| none := return (prf_so_far, [])
-| some e := do
-  let parent : vertex := i.g.get_vertex e.f,
-  new_expr ← tactic.mk_eq_trans e.proof prf_so_far,
-  (exp, es) ← backtrack_to_root_with parent new_expr (depth + 1),
-  return (exp, (e :: es))
-end
+meta def backtrack : vertex → option edge → tactic (option expr × list edge)
+| v e := match e with
+       | none := return (none, [])
+       | (some e) := do 
+                      let w : vertex := i.g.get_vertex e.f,
+                      (prf_o, edges) ← backtrack w w.parent,
+                      match prf_o with
+                      | none := return (some e.proof, [e])
+                      | (some prf) := do new_prf ← tactic.mk_eq_trans prf e.proof,
+                                          return (some new_prf, e :: edges)
+                      end
+       end
 
---FIXME code duplication with above
-meta def backtrack_to_root (cur : vertex) : tactic (option (expr × list edge)) := do
-match cur.parent with
-| none := return none
-| some e := do
-  let parent : vertex := i.g.get_vertex e.f,
-  (proof, es) ← i.backtrack_to_root_with parent e.proof 0,
-  return (proof, (e :: es))
-end
+meta def combine_proofs : option expr → option expr → tactic expr 
+| none     none     := sorry
+| (some a) none     := return a
+| none     (some b) := mk_eq_symm b
+| (some a) (some b) := do b' ← mk_eq_symm b, mk_eq_trans a b'
 
 meta def solve_goal (e : edge) : tactic (expr × list edge) := 
 do
-  let (vf, vt) := i.g.get_endpoints e,
+  let (from_vertex, to_vertex) := i.g.get_endpoints e,
 
-  (rhs_half, rhs_es) ← i.backtrack_to_root_with vf e.proof 0,
-  rhs_half ← tactic.mk_eq_symm rhs_half,
-  lhs_half ← i.backtrack_to_root vt,
+  (from_prf, from_edges) ← i.backtrack to_vertex e,
+  (to_prf, to_edges) ← i.backtrack to_vertex to_vertex.parent,
 
-  -- vt might be the root node, in which case we ignore it
-  (proof, es) ← match lhs_half with
-  | some (lhs_half, lhs_es) := do prf ← tactic.mk_eq_trans lhs_half rhs_half, return (prf, rhs_es ++ lhs_es)
-  | none                    := pure (rhs_half, rhs_es)
-  end,
-  let es := es ++ [e],
+  proof ← match from_vertex.s with
+           | side.L := combine_proofs from_prf to_prf
+           | side.R := combine_proofs to_prf from_prf
+           end,
 
-  -- Flip the proof if neccessary in order to match the goal
-  proof ← match vf.s with
-  | some side.L := tactic.mk_eq_symm proof
-  | _           := pure proof
-  end,
+  let edges := match from_vertex.s with
+               | side.L := (to_edges ++ from_edges).reverse
+               | side.R := (from_edges ++ to_edges).reverse
+               end,
 
   pp ← pretty_print proof,
   i.trace pp,
-  i.trace vf.to_string,
-  i.trace vt.to_string,
+  i.trace from_vertex.to_string,
+  i.trace to_vertex.to_string,
 
   if i.conf.trace_summary then do
     let saw := i.g.vertices.length,
     let visited := (i.g.vertices.filter (λ v : vertex, v.visited)).length,
     name ← decl_name,
-    tactic.trace format!"rewrite_search (saw/visited/used) {saw}/{visited}/{es.length} expressions during proof of {name}"
+    tactic.trace format!"rewrite_search (saw/visited/used) {saw}/{visited}/{edges.length} expressions during proof of {name}"
   else 
     skip,
 
-  return (proof, es)
+  return (proof, edges)
 
 meta def search_until_abort_aux : inst α β γ → ℕ → tactic search_result
 | i itr := do
