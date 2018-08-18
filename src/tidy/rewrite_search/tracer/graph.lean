@@ -95,23 +95,27 @@ meta def diagnose_launch_failure : io string := do
 meta def graph_tracer_init : tactic visualiser := do
   c ← tactic.unsafe_run_io (try_launch_with_paths SEARCH_PATHS),
   match c with
-  | spawn_result.success c    := let vs : visualiser := ⟨ c ⟩ in do vs.publish "D\n", return vs
+  | spawn_result.success c    := let vs : visualiser := ⟨ c ⟩ in do vs.publish "S\n", return vs
   | spawn_result.abort reason := fail format!"Error! {reason}"
   | spawn_result.failure      := do reason ← tactic.unsafe_run_io diagnose_launch_failure, fail format!"Error! {reason}"
   | spawn_result.missing      := fail format!"Error! bug: could not determine client location"
   end
 
 meta def graph_tracer_publish_vertex (vs : visualiser) (v : vertex) : tactic unit := do
-  vs.publish (to_string (format!"V|{v.id.to_string}|{v.s.to_string}|{v.pp}\n"))
+  vs.publish (to_string (format!"V|{v.id.to_string}|{v.s.to_string}|{v.pp}"))
 
 meta def graph_tracer_publish_edge (vs : visualiser) (e : edge) : tactic unit :=
-  vs.publish (to_string (format!"E|{e.f.to_string}|{e.t.to_string}\n"))
+  vs.publish (to_string (format!"E|{e.f.to_string}|{e.t.to_string}"))
 
 meta def graph_tracer_publish_pair (vs : visualiser) (l r : vertex_ref) : tactic unit :=
-  vs.publish (to_string (format!"P|{l.to_string}|{r.to_string}\n"))
+  vs.publish (to_string (format!"P|{l.to_string}|{r.to_string}"))
 
-meta def graph_tracer_publish_finished (vs : visualiser) (es : list edge) : tactic unit :=
-  es.mmap' (λ e : edge, vs.publish (to_string (format!"F|{e.f.to_string}|{e.t.to_string}\n")))
+meta def graph_tracer_publish_visited (vs : visualiser) (v : vertex) : tactic unit :=
+  vs.publish (to_string (format!"B|{v.id.to_string}"))
+
+meta def graph_tracer_publish_finished (vs : visualiser) (es : list edge) : tactic unit := do
+  es.mmap' (λ e : edge, vs.publish (to_string (format!"F|{e.f.to_string}|{e.t.to_string}"))),
+  vs.publish (to_string (format!"D"))
 
 meta def graph_tracer_dump (vs : visualiser) (str : string) : tactic unit :=
   vs.publish (str ++ "\n")
@@ -121,7 +125,7 @@ meta def graph_tracer_pause (vs : visualiser) : tactic unit :=
 
 meta def graph_tracer : tracer visualiser :=
   ⟨ graph_tracer_init, graph_tracer_publish_vertex, graph_tracer_publish_edge,
-    graph_tracer_publish_pair, graph_tracer_publish_finished, graph_tracer_dump,
+    graph_tracer_publish_pair, graph_tracer_publish_visited, graph_tracer_publish_finished, graph_tracer_dump,
     graph_tracer_pause ⟩
 
 end tidy.rewrite_search

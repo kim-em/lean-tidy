@@ -240,16 +240,18 @@ structure config :=
 (trace         : bool := ff)
 (trace_summary : bool := ff)
 (trace_result  : bool := ff)
+(exhaustive    : bool := ff)
 (visualise     : bool := ff)
 
 meta structure tracer (γ : Type) :=
-(init            : tactic γ)
-(publish_vertex  : γ → vertex → tactic unit)
-(publish_edge    : γ → edge → tactic unit)
-(publish_pair    : γ → vertex_ref → vertex_ref → tactic unit)
-(publish_finished: γ → list edge → tactic unit)
-(dump            : γ → string → tactic unit)
-(pause           : γ → tactic unit)
+(init             : tactic γ)
+(publish_vertex   : γ → vertex → tactic unit)
+(publish_edge     : γ → edge → tactic unit)
+(publish_pair     : γ → vertex_ref → vertex_ref → tactic unit)
+(publish_visited  : γ → vertex → tactic unit)
+(publish_finished : γ → list edge → tactic unit)
+(dump             : γ → string → tactic unit)
+(pause            : γ → tactic unit)
 
 meta structure tracer_state (γ : Type) :=
 (tr       : tracer γ)
@@ -259,12 +261,13 @@ meta def unit_tracer_init : tactic unit := return ()
 meta def unit_tracer_publish_vertex (_ : unit) (_ : vertex) : tactic unit := tactic.skip
 meta def unit_tracer_publish_edge (_ : unit) (_ : edge) : tactic unit := tactic.skip
 meta def unit_tracer_publish_pair (_ : unit) (_ _ : vertex_ref) : tactic unit := tactic.skip
+meta def unit_tracer_publish_visited (_ : unit) (_ : vertex) : tactic unit := tactic.skip
 meta def unit_tracer_publish_finished (_ : unit) (_ : list edge) : tactic unit := tactic.skip
 meta def unit_tracer_dump (_ : unit) (_ : string) : tactic unit := tactic.skip
 meta def unit_tracer_pause (_ : unit) : tactic unit := tactic.skip
 meta def unit_tracer : tracer unit :=
   ⟨ unit_tracer_init, unit_tracer_publish_vertex, unit_tracer_publish_edge, unit_tracer_publish_pair,
-    unit_tracer_publish_finished, unit_tracer_dump, unit_tracer_pause ⟩
+    unit_tracer_publish_visited, unit_tracer_publish_finished, unit_tracer_dump, unit_tracer_pause ⟩
 
 -- FIXME doesn't `unify` do exactly this??
 meta def attempt_refl (lhs rhs : expr) : tactic expr :=
@@ -317,6 +320,9 @@ do --FIXME guard all of these with an if (to prevent pointless string building)
    str ← pure (to_string fmt),
    i.trace str,
    i.tr_state.tr.dump i.tr_state.internal str
+
+meta def tracer_visited (v : vertex) : tactic unit :=
+i.tr_state.tr.publish_visited i.tr_state.internal v
 
 meta def tracer_search_finished (es : list edge) : tactic unit :=
 do --FIXME guard all of these with an if (to prevent pointless string building)
@@ -420,7 +426,7 @@ do
   (i, _) ← i.add_edge lhs rhs prf how.defeq,
   return i
 
-meta def neighbours (v : vertex) : tactic ((inst α β γ) × (list vertex)) :=
+meta def find_neighbours (v : vertex) : tactic ((inst α β γ) × (list vertex)) :=
 do
   match v.visited with
   | tt := do
@@ -431,14 +437,15 @@ do
             let all_rws := all_rws.map (λ t, (t.1, t.2.1, how.rewrite t.2.2.1 v.s t.2.2.2)),
             (i, adjacent_vertices, _) ← i.process_new_rewrites v all_rws,
             i ← pure (i.mutate (i.g.mark_vertex_visited v.id)),
+            i.tracer_visited v,
             return (i, adjacent_vertices)
   end
 
--- My job is to examine the specified side and to blow up the vertex once
+-- My job is to examine the specified vertex and blow it up
 meta def examine_one (de : dist_estimate β) (s : side) : tactic (inst α β γ) :=
 do
   let v := i.g.get_vertex (de.side s),
-  (i, nbhd) ← i.neighbours v,
+  (i, nbhd) ← i.find_neighbours v,
   i ← i.add_new_interestings (i.g.get_vertex (de.side s.other)) nbhd,
   return i
 
@@ -458,8 +465,7 @@ match i.g.solving_edge with
   let i := i.mutate g in
   match action with 
   | examine de := do
-    lhs ← pure (g.get_vertex (de.side side.L)),
-    rhs ← pure (g.get_vertex (de.side side.R)),
+    (lhs, rhs) ← pure (g.get_estimate_verts de),
     i.trace format!"examine({lhs.id.to_nat}, {rhs.id.to_nat}) distance {de.bnd.to_string}: ({lhs.pp}) = ({rhs.pp})",
     i ← (i.unify de) <|> (i.examine_both de),
     return (i, status.going (itr + 1))
@@ -471,6 +477,21 @@ match i.g.solving_edge with
     return (i, status.abort reason)
   end
 end
+
+-- Find a vertex we haven't visited, and visit it. The bool is true if there might
+-- be any more unvisited vertices.
+meta def exhaust_one : list vertex → tactic (inst α β γ × bool)
+| []          := return (i, ff)
+| (v :: rest) :=
+  if v.visited then
+    exhaust_one rest
+  else do
+    (i, _) ← i.find_neighbours v,
+    return (i, tt)
+
+meta def exhaust_all : inst α β γ → tactic (inst α β γ) := λ i, do
+  (i, more_left) ← i.exhaust_one i.g.vertices,
+  if more_left then i.exhaust_all else return i
 
 meta def backtrack : vertex → option edge → tactic (option expr × list edge)
 | v e := match e with
@@ -508,8 +529,9 @@ do
                | side.R := (from_edges ++ to_edges).reverse
                end,
 
-  pp ← pretty_print proof,
-  i.trace pp,
+  -- This must be called before i.exhaust_all
+  i.tracer_search_finished edges,
+
   i.trace from_vertex.to_string,
   i.trace to_vertex.to_string,
 
@@ -521,6 +543,8 @@ do
   else 
     skip,
 
+  i ← if i.conf.exhaustive then i.exhaust_all else pure i,
+
   return (proof, edges)
 
 meta def search_until_abort_aux : inst α β γ → ℕ → tactic search_result
@@ -528,11 +552,9 @@ meta def search_until_abort_aux : inst α β γ → ℕ → tactic search_result
   (i, s) ← i.step_once itr,
   match s with
   | status.going k := search_until_abort_aux i (itr + 1)
-  | status.abort r  := return (search_result.failure ("aborted: " ++ r))
+  | status.abort r := return (search_result.failure ("aborted: " ++ r))
   | status.done e  := do
     (proof, edges) ← i.solve_goal e,
-    i.tracer_search_finished edges,
-
     return (search_result.success proof (edges.map edge.how))
   end
 

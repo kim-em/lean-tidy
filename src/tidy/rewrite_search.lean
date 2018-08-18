@@ -40,7 +40,10 @@ meta def handle_search_result (cfg : config) (rules : list (expr × bool)) (resu
 match result with
 | search_result.failure reason := fail reason
 | search_result.success proof steps    := do
-    if cfg.trace then trace format!"rewrite_search found proof:\n{proof}" else skip,
+    if cfg.trace then do
+      pp ← pretty_print proof,
+      trace format!"rewrite_search found proof:\n{pp}"
+    else skip,
     rules_strings ← pp_rules rules,
     explanation ← (do 
       let rewrites := steps.map $ λ s, match s with
@@ -51,7 +54,6 @@ match result with
       return (explain_proof_concisely rules_strings steps needs_refl)) <|> return (explain_proof rules_strings steps),
     if cfg.trace_result then trace explanation          
     else skip,
-    trace proof,
     exact proof,
     return explanation
 end
