@@ -30,6 +30,13 @@ begin
   rewrite_search [foo, bar1, ← bar2, bar2, ← bar3],
 end
 
+open tidy.rewrite_search.strategy
+
+private example (a : unit) : [[0],[0]] = [[4],[4]] :=
+begin
+  rewrite_search [foo, bar1, ← bar2, bar2, ← bar3] { strategy := edit_distance_L1_strategy },
+end
+
 private example : [[0],[0]] = [[4],[4]] :=
 begin
 -- nth_rewrite_lhs 0 foo,
@@ -121,9 +128,15 @@ constants f g : ℕ → ℕ → ℕ → ℕ
 @[search] axiom g_2_2 : ∀ a b c : ℕ, g a b c = g a b 2
 @[search] axiom f_g : f 0 1 2 = g 2 0 1
 
-lemma test : f 0 0 0 = g 0 0 0 := 
+lemma test : f 0 0 0 = g 0 0 0 :=
 -- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
-by rewrite_search_using [`search] {trace_result := tt, trace_summary := tt, /-visualise := tt, exhaustive := tt-/}
+by rewrite_search_using [`search] {trace_result := tt, trace_summary := tt, exhaustive := ff, /-view := visualiser-/}
+
+open tidy.rewrite_search.strategy
+
+lemma test2 : f 0 0 0 = g 0 0 0 :=
+-- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
+by rewrite_search_using [`search] {trace_result := tt, trace_summary := tt, exhaustive := ff, strategy := edit_distance_L1_strategy, /-view := visualiser-/}
 
 constant h : ℕ → ℕ
 @[search,simp] axiom a1 : h 0 = h 1
@@ -131,8 +144,8 @@ constant h : ℕ → ℕ
 @[search,simp] axiom a3 : h 2 = h 3
 @[search,simp] axiom a4 : h 3 = h 4
 
-lemma test2 : h 0 = h 4 := 
+lemma test3 : h 0 = h 4 :=
 -- by erw [a1, a2, ←a4, ←a3]
-by rewrite_search_using [`search] {}
+by rewrite_search_using [`search]
 
 end tidy.rewrite_search.examples

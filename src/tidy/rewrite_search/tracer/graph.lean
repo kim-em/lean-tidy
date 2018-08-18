@@ -3,7 +3,9 @@ import tidy.lib
 
 import system.io
 
-namespace tidy.rewrite_search
+open tidy.rewrite_search
+
+namespace tidy.rewrite_search.tracer.graph
 
 open tactic
 open io.process.stdio
@@ -123,9 +125,15 @@ meta def graph_tracer_dump (vs : visualiser) (str : string) : tactic unit :=
 meta def graph_tracer_pause (vs : visualiser) : tactic unit :=
   vs.pause
 
+end tidy.rewrite_search.tracer.graph
+
+namespace tidy.rewrite_search.tracer
+
+open tidy.rewrite_search.tracer.graph
+
 meta def graph_tracer : tracer visualiser :=
   ⟨ graph_tracer_init, graph_tracer_publish_vertex, graph_tracer_publish_edge,
     graph_tracer_publish_pair, graph_tracer_publish_visited, graph_tracer_publish_finished, graph_tracer_dump,
     graph_tracer_pause ⟩
 
-end tidy.rewrite_search
+end tidy.rewrite_search.tracer

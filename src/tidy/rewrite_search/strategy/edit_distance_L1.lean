@@ -3,7 +3,7 @@ import tidy.rewrite_search.engine
 open tidy.rewrite_search
 open tidy.rewrite_search.bound_progress
 
-namespace tidy.rewrite_search.strategy.edit_distance
+namespace tidy.rewrite_search.strategy.edit_distance_L1
 
 variables {α : Type} [decidable_eq α]
 
@@ -29,7 +29,7 @@ meta def ed_step (g : global_state ed_searchstate ed_partial) (itr : ℕ)
       let v := g.get_vertex (best_p.side goal_side) in
       let goal_side : side := if ¬v.visited then goal_side else goal_side.other in
       let g := g.mutate_strategy ⟨ goal_side.other ⟩ in
-      (g, strategy_action.examine best_p goal_side)
+      (g, strategy_action.examine best_p)
     end
   else
     (g, strategy_action.abort "max iterations reached")
@@ -52,13 +52,13 @@ meta def ed_improve_bound_over (l r : list string) (m : ℕ) : bound_progress ed
 meta def ed_improve_estimate_over (m : ℕ) (l r : vertex) (bnd : bound_progress ed_partial) : bound_progress ed_partial :=
   ed_improve_bound_over l.tokens r.tokens m bnd
 
-end tidy.rewrite_search.strategy.edit_distance
+end tidy.rewrite_search.strategy.edit_distance_L1
 
 namespace tidy.rewrite_search.strategy
 
-open tidy.rewrite_search.strategy.edit_distance
+open tidy.rewrite_search.strategy.edit_distance_L1
 
-meta def edit_distance_strategy : strategy ed_searchstate ed_partial :=
+meta def edit_distance_L1_strategy : strategy ed_searchstate ed_partial :=
   ⟨ ed_searchstate_init, ed_step, ed_init_bound, ed_improve_estimate_over ⟩
 
 end tidy.rewrite_search.strategy

@@ -236,13 +236,6 @@ meta structure strategy (α β : Type) :=
 (init_bound : init_bound_fn β)
 (improve_estimate_over : improve_estimate_fn β)
 
-structure config :=
-(trace         : bool := ff)
-(trace_summary : bool := ff)
-(trace_result  : bool := ff)
-(exhaustive    : bool := ff)
-(visualise     : bool := ff)
-
 meta structure tracer (γ : Type) :=
 (init             : tactic γ)
 (publish_vertex   : γ → vertex → tactic unit)
@@ -257,18 +250,6 @@ meta structure tracer_state (γ : Type) :=
 (tr       : tracer γ)
 (internal : γ)
 
-meta def unit_tracer_init : tactic unit := return ()
-meta def unit_tracer_publish_vertex (_ : unit) (_ : vertex) : tactic unit := tactic.skip
-meta def unit_tracer_publish_edge (_ : unit) (_ : edge) : tactic unit := tactic.skip
-meta def unit_tracer_publish_pair (_ : unit) (_ _ : vertex_ref) : tactic unit := tactic.skip
-meta def unit_tracer_publish_visited (_ : unit) (_ : vertex) : tactic unit := tactic.skip
-meta def unit_tracer_publish_finished (_ : unit) (_ : list edge) : tactic unit := tactic.skip
-meta def unit_tracer_dump (_ : unit) (_ : string) : tactic unit := tactic.skip
-meta def unit_tracer_pause (_ : unit) : tactic unit := tactic.skip
-meta def unit_tracer : tracer unit :=
-  ⟨ unit_tracer_init, unit_tracer_publish_vertex, unit_tracer_publish_edge, unit_tracer_publish_pair,
-    unit_tracer_publish_visited, unit_tracer_publish_finished, unit_tracer_dump, unit_tracer_pause ⟩
-
 -- FIXME doesn't `unify` do exactly this??
 meta def attempt_refl (lhs rhs : expr) : tactic expr :=
 lock_tactic_state $
@@ -280,12 +261,22 @@ do
   tactic.apply_core refl {new_goals := new_goals.non_dep_only},
   instantiate_mvars m
 
+meta def pick_default_tracer   : tactic unit := `[exact tidy.rewrite_search.tracer.unit_tracer]
+meta def pick_default_strategy : tactic unit := `[exact tidy.rewrite_search.strategy.edit_distance_strategy]
+
+meta structure config (α β γ : Type) :=
+(strategy      : strategy α β . pick_default_strategy)
+(view          : tracer γ     . pick_default_tracer)
+(trace         : bool := ff)
+(trace_summary : bool := ff)
+(trace_result  : bool := ff)
+(exhaustive    : bool := ff)
+
 meta structure inst (α β γ : Type) :=
-(conf   : config)
-(rs     : list (expr × bool))
-(strat  : strategy α β)
-(g      : global_state α β)
-(tr_state : tracer_state γ)
+(conf     : config α β γ)
+(rs       : list (expr × bool))
+(g        : global_state α β)
+(tr_state : γ)
 
 namespace inst
 variables {α β γ : Type} (i : inst α β γ)
@@ -302,32 +293,32 @@ else
 meta def tracer_vertex_added (v : vertex) : tactic unit :=
 do --FIXME guard all of these with an if (to prevent pointless string building)
    i.trace format!"addV({v.id.to_string}): {v.pp}",
-   i.tr_state.tr.publish_vertex i.tr_state.internal v
+   i.conf.view.publish_vertex i.tr_state v
 
 meta def tracer_edge_added (e : edge) : tactic unit :=
 do --FIXME guard all of these with an if (to prevent pointless string building)
    i.trace format!"addE: {e.f.to_string}→{e.t.to_string}",
-   i.tr_state.tr.publish_edge i.tr_state.internal e
+   i.conf.view.publish_edge i.tr_state e
 
 meta def tracer_pair_added (l r : vertex_ref) : tactic unit :=
 do --FIXME guard all of these with an if (to prevent pointless string building)
    i.trace format!"addP: {l.to_string}→{r.to_string}",
-   i.tr_state.tr.publish_pair i.tr_state.internal l r
+   i.conf.view.publish_pair i.tr_state l r
 
 meta def tracer_dump {δ : Type} [has_to_tactic_format δ] (s : δ) : tactic unit :=
 do --FIXME guard all of these with an if (to prevent pointless string building)
    fmt ← has_to_tactic_format.to_tactic_format s,
    str ← pure (to_string fmt),
    i.trace str,
-   i.tr_state.tr.dump i.tr_state.internal str
+   i.conf.view.dump i.tr_state str
 
 meta def tracer_visited (v : vertex) : tactic unit :=
-i.tr_state.tr.publish_visited i.tr_state.internal v
+i.conf.view.publish_visited i.tr_state v
 
 meta def tracer_search_finished (es : list edge) : tactic unit :=
 do --FIXME guard all of these with an if (to prevent pointless string building)
    i.trace format!"DONE!",
-   i.tr_state.tr.publish_finished i.tr_state.internal es
+   i.conf.view.publish_finished i.tr_state es
 
 meta def dump_rws : list (expr × expr × ℕ × ℕ) → tactic unit
 | [] := tactic.skip
@@ -391,14 +382,14 @@ meta def add_pair (l r : vertex) : tactic (inst α β γ) :=
 do tracer_pair_added i l.id r.id,
    match i.g.find_pair l.id r.id with
    | some de := return i
-   | none    := return (i.mutate (i.g.do_alloc_pair ⟨ l.id, r.id, i.strat.init_bound l r ⟩))
+   | none    := return (i.mutate (i.g.do_alloc_pair ⟨ l.id, r.id, i.conf.strategy.init_bound l r ⟩))
    end
 
 meta def remove_interesting_pair (de : dist_estimate β) : inst α β γ :=
 i.mutate (i.g.remove_interesting_pair de)
 
 meta def find_most_interesting : inst α β γ :=
-i.mutate (i.g.find_most_interesting i.strat.improve_estimate_over)
+i.mutate (i.g.find_most_interesting i.conf.strategy.improve_estimate_over)
 
 meta def process_new_rewrites (f : vertex) : inst α β γ → list (expr × expr × how) → tactic (inst α β γ × list vertex × list edge)
 | i [] := return (i, [], [])
@@ -461,7 +452,7 @@ meta def step_once (itr : ℕ) : tactic (inst α β γ × status) :=
 match i.g.solving_edge with
 | some e := return (i, status.done e)
 | none :=
-  let (g, action) := i.strat.step i.g itr in
+  let (g, action) := i.conf.strategy.step i.g itr in
   let i := i.mutate g in
   match action with 
   | examine de := do
@@ -568,15 +559,10 @@ end inst
 meta def mk_initial_global_state {α β : Type} (strat : strategy α β) : global_state α β :=
 ⟨ mk_vertex_ref_first, [], [], [], none, strat.init ⟩
 
-meta def mk_initial_tracer_state {γ : Type} (tr : tracer γ) : tactic (tracer_state γ) :=
+meta def mk_search_instance {α β γ : Type} (conf : config α β γ) (rs : list (expr × bool)) (lhs rhs : expr) : tactic (inst α β γ) :=
 do
-  internal ← tr.init,
-  return ⟨ tr, internal ⟩
-
-meta def mk_search_instance {α β γ : Type} (conf : config) (rs : list (expr × bool)) (strat : strategy α β) (lhs rhs : expr) (tr : tracer γ) : tactic (inst α β γ) :=
-do
-  tracer_state ← mk_initial_tracer_state tr,
-  let i := inst.mk conf rs strat (mk_initial_global_state strat) tracer_state,
+  tracer_state ← conf.view.init,
+  let i := inst.mk conf rs (mk_initial_global_state conf.strategy) tracer_state,
   (i, vl) ← i.add_root_vertex lhs side.L,
   (i, vr) ← i.add_root_vertex rhs side.R,
   i ← i.add_pair vl vr,
