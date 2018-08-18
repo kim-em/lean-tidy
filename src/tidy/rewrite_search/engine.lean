@@ -287,7 +287,6 @@ meta def unit_tracer : tracer unit :=
   ⟨ unit_tracer_init, unit_tracer_publish_vertex, unit_tracer_publish_edge, unit_tracer_publish_pair,
     unit_tracer_publish_finished, unit_tracer_dump, unit_tracer_pause ⟩
 
--- FIXME doesn't `unify` do exactly this??
 meta def attempt_refl (lhs rhs : expr) : tactic expr :=
 lock_tactic_state $
 do
@@ -297,6 +296,15 @@ do
   refl ← mk_const `eq.refl,
   tactic.apply_core refl {new_goals := new_goals.non_dep_only},
   instantiate_mvars m
+  -- return m
+
+  -- gs ← get_goals,
+  -- m ← to_expr ``(%%lhs = %%rhs) >>= mk_meta_var,
+  -- set_goals [m],
+  -- refl ← mk_const `eq.refl,
+  -- result ← try_core (tactic.apply_core refl {new_goals := new_goals.non_dep_only}),
+  -- set_goals gs,
+  -- guard result.is_some
 
 meta structure inst (α β γ : Type) :=
 (conf   : config)
@@ -438,9 +446,7 @@ do
   let (lhs, rhs) := i.g.get_estimate_verts de,
   prf ← attempt_refl lhs.exp rhs.exp,
   -- success! we're done
-
-  -- It does not matter if the prf is "backwards", because we will traverse
-  -- the refl edge the right way in the "backtrack" step.
+  tactic.trace "attempt_refl",
   (i, _) ← i.add_edge lhs rhs prf how.defeq,
   return i
 
@@ -510,7 +516,7 @@ meta def backtrack : vertex → option edge → tactic (option expr × list edge
        end
 
 meta def combine_proofs : option expr → option expr → tactic expr 
-| none     none     := sorry
+| none     none     := failed -- impossible
 | (some a) none     := return a
 | none     (some b) := mk_eq_symm b
 | (some a) (some b) := do b' ← mk_eq_symm b, mk_eq_trans a b'

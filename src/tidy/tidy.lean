@@ -12,7 +12,7 @@ import .intro_at_least_one
 import .chain
 import .rewrite_search
 import .injections
--- import tactic.interactive
+import .unfold_aux
 
 universe variables u v
 
@@ -47,6 +47,7 @@ meta def default_tidy_tactics : list (tactic string) :=
   fsplit                                      >> pure "fsplit", 
   injections_and_clear                        >> pure "injections_and_clear",
   terminal_goal >> (`[solve_by_elim])         >> pure "solve_by_elim",
+  unfold_aux                                  >> pure "unfold_aux",
   -- recover'                                    >> pure "recover'",
   run_tidy_tactics ]
 

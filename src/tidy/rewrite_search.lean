@@ -7,22 +7,24 @@ import .rewrite_search.engine
 import .rewrite_search.tracer.graph
 import .rewrite_search.strategy.edit_distance
 
-open tidy.rewrite_search tidy.rewrite_search.strategy
+open tidy.rewrite_search.strategy
 open interactive interactive.types expr tactic
 
-def how.to_tactic (rule_strings : list string) : how → string 
-| (how.defeq) := "sorry"
-| (how.rewrite index s location) := "nth_rewrite" ++ (match s with | side.L := "_lhs" | side.R := "_rhs" end) ++ " " ++ to_string location ++ " " ++ (rule_strings.nth index).iget
+namespace tidy.rewrite_search
+
+def how.to_tactic (rule_strings : list string) : how → option string 
+| (how.defeq) := none
+| (how.rewrite index s location) := some ("nth_rewrite" ++ (match s with | side.L := "_lhs" | side.R := "_rhs" end) ++ " " ++ to_string location ++ " " ++ (rule_strings.nth index).iget)
 
 meta def explain_proof (rule_strings : list string) (steps : list how) : string :=
-string.intercalate ",\n" (steps.map (how.to_tactic rule_strings))
+string.intercalate ",\n" (steps.map $ λ s : how, (s.to_tactic rule_strings).to_list).join
 
-def how.concisely (rule_strings : list string) : how → string
-| (how.defeq) := sorry
-| (how.rewrite index side location) := (rule_strings.nth index).iget
+def how.concisely (rule_strings : list string) : how → option string
+| (how.defeq) := none
+| (how.rewrite index side location) := some (rule_strings.nth index).iget
 
 meta def explain_proof_concisely (rule_strings : list string) (steps : list how) (needs_refl : bool) : string :=
-"erw [" ++ (string.intercalate ", " (steps.map (how.concisely rule_strings))) ++ "]" ++ (if needs_refl then ", refl" else "")
+"erw [" ++ (string.intercalate ", " (steps.map $ λ s : how, (s.concisely rule_strings).to_list).join) ++ "]" ++ (if needs_refl then ", refl" else "")
 
 -- fails if we can't just use rewrite
 -- otherwise, returns 'tt' if we need a `refl` at the end
@@ -38,20 +40,19 @@ meta def pp_rules (rs : list (expr × bool)) : tactic (list string) := rs.mmap (
 
 meta def handle_search_result (cfg : config) (rules : list (expr × bool)) (result : search_result) : tactic string := do
 match result with
-| search_result.failure reason := fail reason
-| search_result.success proof steps    := do
+| search_result.failure reason      := fail reason
+| search_result.success proof steps := do
     if cfg.trace then trace format!"rewrite_search found proof:\n{proof}" else skip,
     rules_strings ← pp_rules rules,
     explanation ← (do 
-      let rewrites := steps.map $ λ s, match s with
-                                   | how.defeq := sorry
-                                   | how.rewrite index _ _ := (rules.nth index).iget
-                                   end,
+      let rewrites := (steps.map $ λ s, match s with
+                                   | how.defeq := []
+                                   | how.rewrite index _ _ := [(rules.nth index).iget]
+                                   end).join,
       needs_refl ← check_if_simple_rewrite_succeeds rewrites,
       return (explain_proof_concisely rules_strings steps needs_refl)) <|> return (explain_proof rules_strings steps),
     if cfg.trace_result then trace explanation          
     else skip,
-    trace proof,
     exact proof,
     return explanation
 end
@@ -81,6 +82,10 @@ meta def do_rewrite_search (rs : list (expr × bool)) (cfg : config := {}) : tac
     handle_search_result cfg rs result
   | _ := fail "target is not an equation"
   end
+
+end tidy.rewrite_search
+
+open tidy.rewrite_search
 
 namespace tactic.interactive
 
