@@ -25,6 +25,13 @@ def create_new_node(parent_pos, name, random_off = True):
     v.graph.nodes.add(n)
     return n
 
+def set_static(node, static):
+    node.private.manually_static = static
+    node.static = static
+
+def toggle_static(node):
+    set_static(node, not node.private.manually_static)
+
 def event_handler(e):
     if e.type == InputType.QUIT:
         v.stop()
@@ -35,9 +42,10 @@ def event_handler(e):
     if node == None:
         return
 
-    if e.type == InputType.MB_MIDDLE and e.state == MouseState.UP:
-        node.private.manually_static = not node.private.manually_static
-        node.static = node.private.manually_static
+    if e.type == InputType.MB_RIGHT and e.state == MouseState.UP:
+        toggle_static(node)
+    elif e.type == InputType.MB_MIDDLE and e.state == MouseState.UP:
+        toggle_static(node)
 
 verts = {}
 
@@ -69,7 +77,7 @@ def process_line(line):
                 vert.side = side
                 vert.style.value.radius = 12
                 vert.style.value.colour = (140, 101, 211) if side == "L" else (0, 197, 144)
-                vert.static = True
+                set_static(vert, True)
             else:
                 vert = create_new_node(get_root(side).pos, name, False)
                 vert.side = side
