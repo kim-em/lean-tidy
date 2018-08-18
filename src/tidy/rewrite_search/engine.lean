@@ -486,7 +486,7 @@ meta def backtrack : vertex → option edge → tactic (option expr × list edge
        end
 
 meta def combine_proofs : option expr → option expr → tactic expr 
-| none     none     := sorry
+| none     none     := fail "unreachable code!"
 | (some a) none     := return a
 | none     (some b) := mk_eq_symm b
 | (some a) (some b) := do b' ← mk_eq_symm b, mk_eq_trans a b'
