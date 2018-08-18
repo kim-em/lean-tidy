@@ -79,10 +79,8 @@ meta def try_launch_with_paths : list string → io spawn_result
 | (p :: rest) := do
   sr ← try_launch_with_path p,
   match sr with
-  | spawn_result.success c    := return sr
-  | spawn_result.abort reason := return sr
-  | spawn_result.failure      := return sr
-  | spawn_result.missing      := try_launch_with_paths rest
+  | spawn_result.missing := try_launch_with_paths rest
+  | _                    := return sr
   end
 
 meta def diagnose_launch_failure : io string := do
