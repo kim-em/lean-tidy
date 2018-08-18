@@ -14,14 +14,14 @@ open interactive interactive.types expr tactic
 namespace tidy.rewrite_search
 
 def how.to_tactic (rule_strings : list string) : how → string 
-| (how.defeq) := "sorry"
+| (how.defeq) := "[defeq]"
 | (how.rewrite index s location) := "nth_rewrite" ++ (match s with | side.L := "_lhs" | side.R := "_rhs" end) ++ " " ++ to_string location ++ " " ++ (rule_strings.nth index).iget
 
 meta def explain_proof (rule_strings : list string) (steps : list how) : string :=
 string.intercalate ",\n" (steps.map (how.to_tactic rule_strings))
 
 def how.concisely (rule_strings : list string) : how → string
-| (how.defeq) := sorry
+| (how.defeq) := "[defeq]"
 | (how.rewrite index side location) := (rule_strings.nth index).iget
 
 meta def explain_proof_concisely (rule_strings : list string) (steps : list how) (needs_refl : bool) : string :=
@@ -41,17 +41,17 @@ meta def pp_rules (rs : list (expr × bool)) : tactic (list string) := rs.mmap (
 
 meta def handle_search_result {α β γ : Type} (cfg : config α β γ) (rules : list (expr × bool)) (result : search_result) : tactic string := do
 match result with
-| search_result.failure reason := fail reason
-| search_result.success proof steps    := do
+| search_result.failure reason      := fail reason
+| search_result.success proof steps := do
     if cfg.trace then do
       pp ← pretty_print proof,
       trace format!"rewrite_search found proof:\n{pp}"
     else skip,
     rules_strings ← pp_rules rules,
     explanation ← (do 
-      let rewrites := steps.map $ λ s, match s with
-                                   | how.defeq := sorry
-                                   | how.rewrite index _ _ := (rules.nth index).iget
+      rewrites ← steps.mmap $ λ s, match s with
+                                   | how.defeq := fail "cannot explain defeq!"
+                                   | how.rewrite index _ _ := return (rules.nth index).iget
                                    end,
       needs_refl ← check_if_simple_rewrite_succeeds rewrites,
       return (explain_proof_concisely rules_strings steps needs_refl)) <|> return (explain_proof rules_strings steps),
