@@ -105,10 +105,10 @@ open tactic
 
 meta def isotopy := `[rewrite_search_using [`search] { discharger := `[norm_num], trace_result := tt }]
 
--- lemma commute_1 : t[pos 0, neg 2, pos 4] = t[pos 4, neg 2, pos 0] := by isotopy
--- lemma commute_2 : t[cup 0, pos 2] = t[pos 0, cup 0] := by isotopy
--- lemma commute_3 : t[cup 2, cap 0] = t[cup 0, cap 2] := by isotopy
--- lemma bulge : t[cup 1, cap 0, cup 0, cap 1] = t[] := by isotopy
+lemma commute_1 : t[pos 0, neg 2, pos 4] = t[pos 4, neg 2, pos 0] := by isotopy
+lemma commute_2 : t[cup 0, pos 2] = t[pos 0, cup 0] := by isotopy
+lemma commute_3 : t[cup 2, cap 0] = t[cup 0, cap 2] := by isotopy
+lemma bulge : t[cup 1, cap 0, cup 0, cap 1] = t[] := by isotopy
 
 -- lemma R2_south' : [cup 1, pos 0, neg 2, cap 1] = [cup 0, neg 1, neg 2, cap 1] := by isotopy
 
