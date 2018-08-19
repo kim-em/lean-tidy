@@ -11,6 +11,7 @@ import .tidy_attributes
 import .intro_at_least_one
 import .chain
 import .rewrite_search
+import .rewrite_search.tracer
 import .injections
 import .unfold_aux
 
@@ -67,7 +68,7 @@ meta def obviously_tactics : list (tactic string) :=
 [ tactic.interactive.rewrite_search_using [`ematch] ] -- TODO should switch this back to search eventually
 
 meta def obviously'  : tactic unit := tidy { tactics := default_tidy_tactics ++ obviously_tactics, trace_result := tt, trace_steps := ff }
-meta def obviously_vis  : tactic unit := tidy { tactics := default_tidy_tactics ++ [ tactic.interactive.rewrite_search_using [`ematch] { trace_summary := tt, visualise := tt } ], trace_result := tt, trace_steps := ff }
+meta def obviously_vis  : tactic unit := tidy { tactics := default_tidy_tactics ++ [ tactic.interactive.rewrite_search_using [`ematch] { trace_summary := tt, view := visualiser } ], trace_result := tt, trace_steps := ff }
 
 instance subsingleton_pempty : subsingleton pempty := by tidy
 instance subsingleton_punit  : subsingleton punit  := by tidy

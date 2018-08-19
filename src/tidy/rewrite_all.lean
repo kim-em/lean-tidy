@@ -13,6 +13,7 @@ open expr
 open lean
 open lean.parser
 
+@[derive decidable_eq]
 inductive side
 | L
 | R

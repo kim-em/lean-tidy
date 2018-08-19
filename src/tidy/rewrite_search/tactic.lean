@@ -2,12 +2,13 @@
 -- Released under Apache 2.0 license as described in the file LICENSE.
 -- Authors: Keeley Hoek, Scott Morrison
 
-import .rewrite_all
-import .rewrite_search.engine
-import .rewrite_search.tracer.graph
-import .rewrite_search.strategy.edit_distance
+import tidy.rewrite_all
+import .engine
 
-open tidy.rewrite_search.strategy
+-- Default strategy and tracer used as a fallback by the engine (so mush be present)
+import .strategy.edit_distance
+import .tracer.unit
+
 open interactive interactive.types expr tactic
 
 namespace tidy.rewrite_search
@@ -38,11 +39,14 @@ do
 
 meta def pp_rules (rs : list (expr × bool)) : tactic (list string) := rs.mmap (λ p, (do pp ← pretty_print p.1, return (if p.2 then ("←" ++ pp) else pp)))
 
-meta def handle_search_result (cfg : config) (rules : list (expr × bool)) (result : search_result) : tactic string := do
+meta def handle_search_result {α β γ : Type} (cfg : config α β γ) (rules : list (expr × bool)) (result : search_result) : tactic string := do
 match result with
 | search_result.failure reason      := fail reason
 | search_result.success proof steps := do
-    if cfg.trace then trace format!"rewrite_search found proof:\n{proof}" else skip,
+    if cfg.trace then do
+      pp ← pretty_print proof,
+      trace format!"rewrite_search found proof:\n{pp}"
+    else skip,
     rules_strings ← pp_rules rules,
     explanation ← (do 
       let rewrites := (steps.map $ λ s, match s with
@@ -57,7 +61,7 @@ match result with
     return explanation
 end
 
-meta def do_rewrite_search (rs : list (expr × bool)) (cfg : config := {}) : tactic string := do
+meta def do_rewrite_search {α β γ : Type} (rs : list (expr × bool)) (cfg : config α β γ) : tactic string := do
   t ← target,
   match t with
   | `(%%lhs = %%rhs) := do
@@ -66,30 +70,26 @@ meta def do_rewrite_search (rs : list (expr × bool)) (cfg : config := {}) : tac
     --     trace ("rewrite_search using:\n---\n" ++ (string.intercalate "\n" rs_strings) ++ "\n---")
     -- else skip,
 
-    let strat := edit_distance_strategy,
-
-    -- FIXME how to dynamically select these via a nicely-named argument? Typeclasses
-    -- are getting in the way. Perhaps the best way is to fix universe issues which forced this
-    result ← (
-      if cfg.visualise then do
-        i ← mk_search_instance cfg rs strat lhs rhs graph_tracer,
-        i.search_until_abort
-      else do
-        i ← mk_search_instance cfg rs strat lhs rhs unit_tracer,
-        i.search_until_abort
-    ),
-
+    i ← mk_search_instance cfg rs lhs rhs,
+    result ← i.search_until_abort,
     handle_search_result cfg rs result
   | _ := fail "target is not an equation"
   end
 
-end tidy.rewrite_search
+open tidy.rewrite_search.strategy.edit_distance
 
-open tidy.rewrite_search
+meta def default_config : config unit ed_partial unit := {}
+meta def pick_default_config : tactic unit := `[exact tidy.rewrite_search.default_config]
+
+-- TODO coerce {} = ∅ into default_config
+
+end tidy.rewrite_search
 
 namespace tactic.interactive
 
-meta def rewrite_search (rs: parse rw_rules) (cfg : config := {}) : tactic string := do
+open tidy.rewrite_search
+
+meta def rewrite_search {α β γ : Type} (rs : parse rw_rules) (cfg : config α β γ . pick_default_config) : tactic string := do
   rs ← rs.rules.mmap (λ r, do e ← to_expr' r.rule, pure (e, r.symm)),
   do_rewrite_search rs cfg
 
@@ -106,7 +106,7 @@ meta def load_exprs : list name → tactic (list expr)
   l ← load_exprs rest,
   return (u ++ l)
 
-meta def rewrite_search_using (as : list name) (cfg : config := {}) : tactic string := do
+meta def rewrite_search_using {α β γ : Type} (as : list name) (cfg : config α β γ . pick_default_config) : tactic string := do
   tgt ← target,
   if tgt.has_meta_var then
     fail "rewrite_search is not suitable for goals containing metavariables"
