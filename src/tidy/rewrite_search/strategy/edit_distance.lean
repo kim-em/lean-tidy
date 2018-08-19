@@ -19,7 +19,7 @@ def empty_partial_edit_distance_data (l₁ l₂: list string) : ed_partial :=
 meta def ed_searchstate_init : unit := ()
 
 meta def ed_step (g : global_state unit ed_partial) (itr : ℕ) : global_state unit ed_partial × (@strategy_action unit ed_partial) :=
-  if itr <= 500 then
+  if itr <= 200 then
     match g.interesting_pairs with
     | [] := (g, strategy_action.abort "all interesting pairs exhausted!")
     | (best_p :: rest) :=

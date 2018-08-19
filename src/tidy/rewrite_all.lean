@@ -23,13 +23,18 @@ def side.to_string : side → string
 | side.L := "L"
 | side.R := "R"
 
-meta def rewrite_without_new_mvars (r : expr) (e : expr) (cfg : rewrite_cfg := {}) : tactic (expr × expr) :=
+meta structure rewrite_all_cfg extends rewrite_cfg :=
+(discharger : tactic unit := skip)
+(simplifier : expr → tactic (expr × expr) := λ e, failed)
+
+meta def rewrite_without_new_mvars (r : expr) (e : expr) (cfg : rewrite_all_cfg := {}) : tactic (expr × expr) :=
 lock_tactic_state $ -- This makes sure that we forget everything in between rewrites; otherwise we don't correctly find everything!
-do n_before ← num_goals,
-   (new_t, prf, metas) ← rewrite_core r e cfg,
+do 
+   (new_t, prf, metas) ← rewrite_core r e cfg.to_rewrite_cfg,
    try_apply_opt_auto_param cfg.to_apply_cfg metas,
-   n_after ← num_goals,
-   guard (n_before = n_after),
+   set_goals metas,
+   all_goals (try cfg.discharger),
+   done,
    prf ← instantiate_mvars prf, -- This is necessary because of the locked tactic state.
    return (new_t, prf)
 
@@ -111,12 +116,12 @@ meta def rewrite_is_of_entire : expr → bool
                                      end
 | _ := ff
 
-meta def rewrite_F (r : expr × bool) (l : expr_lens) (e : expr) (state : list (expr × expr)) : tactic (list (expr × expr)) := 
+meta def rewrite_F (cfg : rewrite_all_cfg) (r : expr × bool) (l : expr_lens) (e : expr) (state : list (expr × expr)) : tactic (list (expr × expr)) := 
 do 
   -- pp_e ← pretty_print e,
   -- pp_r ← pretty_print r.1,
   -- tactic.trace ("attempting rewrite on " ++ pp_e ++ " using " ++ (if r.2 then "←" else "") ++ pp_r),
-  (v, pr) ← rewrite_without_new_mvars r.1 e {symm := r.2, md := semireducible},
+  (v, pr) ← rewrite_without_new_mvars r.1 e {cfg with symm := r.2},
   -- pp_v ← pretty_print v,
   -- tactic.trace pp_v,
   -- pp_pr ← pretty_print pr tt,
@@ -125,12 +130,15 @@ do
   if rewrite_is_of_entire pr then
   do
     -- tactic.trace ("rewrite succeeded, complete!"),
-    let w' := l.replace v,
-    qr' ←  try_core (l.congr pr),
-    match qr' with
-    | none       := tactic.trace "Uh oh, expr_lens.congr failed!" >> failed
-    | (some qr') := pure ((w', qr') :: state)
-    end
+    let w := l.replace v,
+    qr ← (l.congr pr),
+    s ← try_core (cfg.simplifier w),
+    (w, qr) ← match s with
+               | none := return (w, qr)
+               | (some (w', qr')) := do qr ← mk_eq_trans qr qr',
+                                        return (w, qr)
+               end,
+    pure ((w, qr) :: state)
   else 
   do 
     -- tactic.trace ("rewrite succeeded, tunneling!"),
@@ -150,9 +158,9 @@ meta def remove_duplicates {α β} (f : α → β) [decidable_eq β] : list α �
 | [] := []
 
 
-meta def all_rewrites (r : expr × bool) (flip : bool) (e : expr) : tactic (list (expr × expr)) :=
+meta def all_rewrites (r : expr × bool) (flip : bool) (e : expr) (cfg : rewrite_all_cfg := {md := semireducible}): tactic (list (expr × expr)) :=
 do 
-   results ← rewrite_fold (rewrite_F (r.1, if flip then ¬r.2 else r.2)) e [],
+   results ← rewrite_fold (rewrite_F cfg (r.1, if flip then ¬r.2 else r.2)) e [],
   --  tactic.trace results,
    return (remove_adjacent_duplicates (λ p, p.1) results)
 
@@ -161,9 +169,9 @@ do
 --   prf : e = e', 
 --   n is the index of the rule r used from rs, and 
 --   k is the index of (e', prf) in all_rewrites r e.
-meta def all_rewrites_list (rs : list (expr × bool)) (flip : bool) (e : expr) : tactic (list (expr × expr × ℕ × ℕ)) :=
+meta def all_rewrites_list (rs : list (expr × bool)) (flip : bool) (e : expr) (cfg : rewrite_all_cfg := {md := semireducible}) : tactic (list (expr × expr × ℕ × ℕ)) :=
 do
-  results ← rs.mmap $ λ r, all_rewrites r flip e,
+  results ← rs.mmap $ λ r, all_rewrites r flip e cfg,
   let results' := results.enum.map (λ p, p.2.enum.map (λ q, (q.2.1, q.2.2, p.1, q.1))),
 return (remove_duplicates (λ t, t.1) results'.join)
 

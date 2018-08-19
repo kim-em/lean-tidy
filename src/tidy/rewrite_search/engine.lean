@@ -257,7 +257,7 @@ meta structure strategy (α β : Type) :=
 (init_bound : init_bound_fn β)
 (improve_estimate_over : improve_estimate_fn β)
 
-structure config := 
+meta structure config extends rewrite_all_cfg := 
 (trace         : bool := ff)
 (trace_summary : bool := ff)
 (trace_result  : bool := ff)
@@ -457,7 +457,7 @@ do
             let vertices := v.adj.map (λ e, i.g.get_vertex e.t),
             return (i, vertices)
   | ff := do
-            all_rws ← all_rewrites_list i.rs ff v.exp,
+            all_rws ← all_rewrites_list i.rs ff v.exp i.conf.to_rewrite_all_cfg,
             let all_rws := all_rws.map (λ t, (t.1, t.2.1, how.rewrite t.2.2.1 v.s t.2.2.2)),
             (i, adjacent_vertices, _) ← i.process_new_rewrites v all_rws,
             i ← pure (i.mutate (i.g.mark_vertex_visited v.id)),
