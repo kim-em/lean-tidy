@@ -34,7 +34,7 @@ open tidy.rewrite_search.strategy
 
 private example (a : unit) : [[0],[0]] = [[4],[4]] :=
 begin
-  rewrite_search [foo, bar1, ← bar2, bar2, ← bar3] { strategy := edit_distance_L1_strategy },
+  rewrite_search [foo, bar1, ← bar2, bar2, ← bar3],
 end
 
 private example : [[0],[0]] = [[4],[4]] :=
