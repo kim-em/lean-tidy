@@ -411,7 +411,6 @@ do
   let (lhs, rhs) := i.g.get_estimate_verts de,
   prf ← attempt_refl lhs.exp rhs.exp,
   -- success! we're done
-  tactic.trace "attempt_refl",
   (i, _) ← i.add_edge lhs rhs prf how.defeq,
   return i
 
