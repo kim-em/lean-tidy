@@ -31,7 +31,7 @@ meta structure rewrite_all_cfg extends rewrite_cfg :=
 meta def rewrite_without_new_mvars (r : expr) (e : expr) (cfg : rewrite_all_cfg := {}) : tactic (expr × expr) :=
 lock_tactic_state $ -- This makes sure that we forget everything in between rewrites; otherwise we don't correctly find everything!
 do 
-   (new_t, prf, metas) ← rewrite_core r e cfg.to_rewrite_cfg,
+   (new_t, prf, metas) ← rewrite_core r e { cfg.to_rewrite_cfg with md := semireducible },
    try_apply_opt_auto_param cfg.to_apply_cfg metas,
    set_goals metas,
    all_goals (try cfg.discharger),
@@ -159,7 +159,7 @@ meta def remove_duplicates {α β} (f : α → β) [decidable_eq β] : list α �
 | [] := []
 
 
-meta def all_rewrites (r : expr × bool) (flip : bool) (e : expr) (cfg : rewrite_all_cfg := {md := semireducible}): tactic (list (expr × expr)) :=
+meta def all_rewrites (r : expr × bool) (flip : bool) (e : expr) (cfg : rewrite_all_cfg := {}): tactic (list (expr × expr)) :=
 do 
    results ← rewrite_fold (rewrite_F cfg (r.1, if flip then ¬r.2 else r.2)) e [],
   --  tactic.trace results,
