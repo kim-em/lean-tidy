@@ -33,7 +33,7 @@ meta def attempt_forwards_reasoning (only_props : bool) (s : simp_lemmas) : list
     if t.is_pi then
       do hyps ← local_context,
          apps ← mk_apps e.1 hyps,
-         apps ← apps.mmap (λ p, do h_pp ← pretty_print p.2, return (p.1, h_pp :: e.2)),
+         apps ← apps.mmap (λ p, do h_pp ← pretty_print p.2, return (p.1, list.cons h_pp e.2)),
          attempt_forwards_reasoning (apps ++ es)
     else (do if only_props then guard_prop t else skip,
              guard_no_duplicate_hypothesis t,

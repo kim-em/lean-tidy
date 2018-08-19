@@ -83,7 +83,7 @@ The tactic `chain_multiple_goals` repeatedly applies `chain_single_goal` to the 
 -/
 meta def chain_multiple_goals : tactic (list α) :=
 do (p, q) ← repeat_at_least_once (some_goal single_goal_tactic) <|> fail "chain did not find any goal where progress could be made",
-   return ((p :: q).reverse.map $ λ x, has_focus.work_on_goal x.1 x.2.reverse)
+   return ((list.cons p q).reverse.map $ λ x, has_focus.work_on_goal x.1 x.2.reverse)
 
 meta def chain_single_goal_aux (tactics : list (tactic α)) : tactic (list α) :=
 do ng ← num_goals,
