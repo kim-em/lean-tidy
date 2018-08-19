@@ -260,15 +260,6 @@ do
   refl ← mk_const `eq.refl,
   tactic.apply_core refl {new_goals := new_goals.non_dep_only},
   instantiate_mvars m
-  -- return m
-
-  -- gs ← get_goals,
-  -- m ← to_expr ``(%%lhs = %%rhs) >>= mk_meta_var,
-  -- set_goals [m],
-  -- refl ← mk_const `eq.refl,
-  -- result ← try_core (tactic.apply_core refl {new_goals := new_goals.non_dep_only}),
-  -- set_goals gs,
-  -- guard result.is_some
 
 meta def pick_default_tracer   : tactic unit := `[exact tidy.rewrite_search.tracer.unit_tracer]
 meta def pick_default_strategy : tactic unit := `[exact tidy.rewrite_search.strategy.edit_distance_strategy]
