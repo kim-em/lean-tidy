@@ -31,12 +31,12 @@ meta def ed_step (g : global_state unit ed_partial) (itr : ℕ) : global_state u
 meta def ed_init_bound (l r : vertex) : bound_progress ed_partial :=
   at_least 0 (empty_partial_edit_distance_data l.tokens r.tokens)
 
-def triples {α : Type} (p : ed_partial) (l₂ : list α): list (ℕ × ℕ × α) := p.distances.zip ((p.prefix_length :: p.distances).zip l₂)
+def triples {α : Type} (p : ed_partial) (l₂ : list α): list (ℕ × ℕ × α) := p.distances.zip ((list.cons p.prefix_length p.distances).zip l₂)
 
 --FIXME rewrite me
 meta def fold_fn (h : string) (n : ℕ × list ℕ) (t : ℕ × ℕ × string) := 
   let m := (if h = t.2.2 then t.2.1 else 1 + min (min (t.2.1) (t.1)) n.2.head) in 
-  (min m n.1, m :: n.2)
+  (min m n.1, list.cons m n.2)
 
 --FIXME rewrite me
 meta def ed_improve_bound_once (l r : list string) (cur : ℕ) (p : ed_partial) : bound_progress ed_partial :=
