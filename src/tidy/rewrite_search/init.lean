@@ -1,3 +1,4 @@
+-- Never import tidy.rewrite_search.engine directly. Go through me.
 import .engine
 
 -- Default strategy and tracer used as a fallback by the engine (so mush be present)
