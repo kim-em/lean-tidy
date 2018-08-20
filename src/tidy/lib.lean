@@ -32,9 +32,13 @@ def list.split_on {α : Type u} [decidable_eq α] (a : α) : list α → list (l
 
 def string.split_on (c : char) (s : string) := (s.to_list.split_on c).map(λ l, l.as_string)
 
+def list.erase_first_such_that {α : Type u} (f : α → Prop) [decidable_pred f] : list α → list α
+| [] := []
+| (h :: t) := if f h then t else (h :: t.erase_first_such_that)
+
 def list.erase_such_that {α : Type u} (f : α → Prop) [decidable_pred f] : list α → list α
 | [] := []
-| (h :: t) := if f h then t else h :: t.erase_such_that
+| (h :: t) := if f h then t.erase_such_that else (h :: t.erase_such_that)
 
 def list.strip {α : Type u} [decidable_eq α] (l : list α) (v : α) : list α :=
   l.erase_such_that (λ c, c = v)

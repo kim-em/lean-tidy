@@ -132,7 +132,7 @@ meta def do_alloc_pair (de : dist_estimate β) : global_state α β :=
 {g with estimates := g.estimates.append [de], interesting_pairs := g.interesting_pairs.append [de]}
 
 meta def remove_interesting_pair (de : dist_estimate β) : global_state α β :=
-let new := g.interesting_pairs.erase_such_that (λ de', de'.l = de.l ∧ de'.r = de.r) in
+let new := g.interesting_pairs.erase_first_such_that (λ de', de'.l = de.l ∧ de'.r = de.r) in
 {g with interesting_pairs := new}
 
 private meta def find_vertex_aux (pp : string) : list vertex → option vertex
