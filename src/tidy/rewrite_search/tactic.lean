@@ -71,7 +71,7 @@ meta def do_rewrite_search {α β γ : Type} (rs : list (expr × bool)) (cfg : c
     i ← try_mk_search_instance cfg rs lhs rhs,
     match i with
     | some i := do
-      result ← i.search_until_abort,
+      result ← i.search_until_solved,
       handle_search_result cfg rs result
     | none := do
       tactic.trace "\nError initialising rewrite_search instance, falling back to emergency config!\n",
@@ -79,7 +79,7 @@ meta def do_rewrite_search {α β γ : Type} (rs : list (expr × bool)) (cfg : c
       i ← try_mk_search_instance new_cfg rs lhs rhs,
       match i with
       | some i := do
-        result ← i.search_until_abort,
+        result ← i.search_until_solved,
         handle_search_result cfg rs result
       | none := do
         tactic.fail "Could not initialise emergency rewrite_search instance!"

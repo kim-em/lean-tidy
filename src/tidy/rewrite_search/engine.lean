@@ -539,21 +539,18 @@ do
 
   return (proof, edges)
 
-meta def search_until_abort_aux : inst α β γ → ℕ → tactic search_result
+meta def search_until_solved_aux : inst α β γ → ℕ → tactic search_result
 | i itr := do
   (i, s) ← i.step_once itr,
   match s with
-  | status.going k := search_until_abort_aux i (itr + 1)
+  | status.going k := search_until_solved_aux i (itr + 1)
   | status.abort r := return (search_result.failure ("aborted: " ++ r))
   | status.done e  := do
     (proof, edges) ← i.solve_goal e,
     return (search_result.success proof (edges.map edge.how))
   end
 
-meta def search_until_abort : tactic search_result :=
-do
-  res ← i.search_until_abort_aux 0,
-  return res
+meta def search_until_solved : tactic search_result := i.search_until_solved_aux 0
 
 end inst
 
