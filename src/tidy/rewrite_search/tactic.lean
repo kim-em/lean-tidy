@@ -3,11 +3,7 @@
 -- Authors: Keeley Hoek, Scott Morrison
 
 import tidy.rewrite_all
-import .engine
-
--- Default strategy and tracer used as a fallback by the engine (so mush be present)
-import .strategy.edit_distance
-import .tracer.unit
+import .init
 
 open interactive interactive.types expr tactic
 
@@ -70,9 +66,25 @@ meta def do_rewrite_search {α β γ : Type} (rs : list (expr × bool)) (cfg : c
     --     trace ("rewrite_search using:\n---\n" ++ (string.intercalate "\n" rs_strings) ++ "\n---")
     -- else skip,
 
-    i ← mk_search_instance cfg rs lhs rhs,
-    result ← i.search_until_abort,
-    handle_search_result cfg rs result
+    -- FIXME there is a bit of code duplication because we change the type of
+    -- "cfg" when we try a fallback config...
+    i ← try_mk_search_instance cfg rs lhs rhs,
+    match i with
+    | some i := do
+      result ← i.search_until_abort,
+      handle_search_result cfg rs result
+    | none := do
+      tactic.trace "\nError initialising rewrite_search instance, falling back to emergency config!\n",
+      new_cfg ← pure (mk_fallback_config cfg),
+      i ← try_mk_search_instance new_cfg rs lhs rhs,
+      match i with
+      | some i := do
+        result ← i.search_until_abort,
+        handle_search_result cfg rs result
+      | none := do
+        tactic.fail "Could not initialise emergency rewrite_search instance!"
+      end
+    end
   | _ := fail "target is not an equation"
   end
 

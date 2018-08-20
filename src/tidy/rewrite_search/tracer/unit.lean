@@ -6,7 +6,7 @@ namespace tidy.rewrite_search.tracer.unit
 
 open tactic
 
-meta def unit_tracer_init : tactic unit := return ()
+meta def unit_tracer_init : tactic (init_result unit) := return (init_result.success ())
 meta def unit_tracer_publish_vertex (_ : unit) (_ : vertex) : tactic unit := skip
 meta def unit_tracer_publish_edge (_ : unit) (_ : edge) : tactic unit := skip
 meta def unit_tracer_publish_pair (_ : unit) (_ _ : vertex_ref) : tactic unit := skip

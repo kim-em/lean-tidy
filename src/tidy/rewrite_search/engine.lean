@@ -236,8 +236,12 @@ meta structure strategy (α β : Type) :=
 (init_bound : init_bound_fn β)
 (improve_estimate_over : improve_estimate_fn β)
 
+inductive init_result (α : Type)
+| success : α → init_result
+| failure : string → init_result
+
 meta structure tracer (γ : Type) :=
-(init             : tactic γ)
+(init             : tactic (init_result γ))
 (publish_vertex   : γ → vertex → tactic unit)
 (publish_edge     : γ → edge → tactic unit)
 (publish_pair     : γ → vertex_ref → vertex_ref → tactic unit)
@@ -552,17 +556,5 @@ do
   return res
 
 end inst
-
-meta def mk_initial_global_state {α β : Type} (strat : strategy α β) : global_state α β :=
-⟨ mk_vertex_ref_first, [], [], [], none, strat.init ⟩
-
-meta def mk_search_instance {α β γ : Type} (conf : config α β γ) (rs : list (expr × bool)) (lhs rhs : expr) : tactic (inst α β γ) :=
-do
-  tracer_state ← conf.view.init,
-  let i := inst.mk conf rs (mk_initial_global_state conf.strategy) tracer_state,
-  (i, vl) ← i.add_root_vertex lhs side.L,
-  (i, vr) ← i.add_root_vertex rhs side.R,
-  i ← i.add_pair vl vr,
-  return i
 
 end tidy.rewrite_search

@@ -1,7 +1,8 @@
--- Never import tidy.rewrite_search.engine directly. Go through me.
-import .engine
+-- Never import tidy.rewrite_search.init directly. Go through me.
+-- "init.lean" provides the fallback strategy and tracer for the engine.
+import .init
 
--- 'tactic.lean' provides the default strategy and tracer (and the tactics)
+-- 'tactic.lean' provides the tactics
 import .tactic
 
 import .tracer
