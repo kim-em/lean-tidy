@@ -69,8 +69,8 @@ def process_line(line):
     if parts[0] == "V":
         id, side, name = parts[1:]
 
+        v.lock.acquire()
         if not search_completed:
-            v.lock.acquire()
             if id in ["0", "1"]:
                 pos = (-20, 0) if side == "L" else (20, 0)
                 vert = create_new_node(pos, name, False)
@@ -82,12 +82,12 @@ def process_line(line):
                 vert = create_new_node(get_root(side).pos, name, False)
                 vert.side = side
                 vert.style.value.colour = (202, 185, 241) if side == "L" else (181, 249, 211)
-            v.lock.release()
         else:
             vert = create_new_node(get_root(side).pos, name, False)
             vert.side = side
             vert.style.value.radius = 7
             vert.style.value.colour = (100, 100, 100)
+        v.lock.release()
 
         verts[id] = vert
 
