@@ -44,8 +44,8 @@ axiom zigzag_right (n : ℕ) : (cup (n+1)) ~~ (cap n) ~~ d = d
 
 axiom R2_east (n : ℕ) : (neg n) ~~ (pos n) ~~ d = d
 axiom R2_west (n : ℕ) : (pos n) ~~ (neg n) ~~ d = d
--- axiom R2_north (n : ℕ) : (cup (n+1)) ~~ (pos n) ~~ (neg (n+2)) ~~ cup(n+1) ~~ d = (cap n) ~~ (cup n) ~~ d
--- axiom R2_south (n : ℕ) : (cup (n+1)) ~~ (neg n) ~~ (pos (n+2)) ~~ cup(n+1) ~~ d = (cap n) ~~ (cup n) ~~ d
+axiom R2_north (n : ℕ) : (cup (n+1)) ~~ (pos n) ~~ (neg (n+2)) ~~ cap(n+1) ~~ d = (cap n) ~~ (cup n) ~~ d
+axiom R2_south (n : ℕ) : (cup (n+1)) ~~ (neg n) ~~ (pos (n+2)) ~~ cap(n+1) ~~ d = (cap n) ~~ (cup n) ~~ d
 
 axiom R1_pos_east (n : ℕ) : (cup (n+1)) ~~ (pos n) ~~ (cap (n+1)) ~~ d = d
 axiom R1_neg_east (n : ℕ) : (cup (n+1)) ~~ (neg n) ~~ (cap (n+1)) ~~ d = d
@@ -80,7 +80,7 @@ attribute [search] commute_cup_cup commute_cup_cap commute_cap_cup commute_cap_c
 attribute [search] zigzag_left zigzag_right
 attribute [search] cap_over cap_under cup_over cup_under
 attribute [search] R1_pos_east R1_neg_east R1_pos_west R1_neg_west R1_pos_north R1_neg_north R1_pos_south R1_neg_south
-attribute [search] R2_east R2_west -- R2_north R2_south
+attribute [search] R2_east R2_west R2_north R2_south
 attribute [search] R3_pos_pos_pos R3_pos_pos_neg R3_pos_neg_neg R3_neg_pos_pos R3_neg_neg_pos R3_neg_neg_neg 
 -- attribute [search] rotate_pos_clockwise rotate_neg_clockwise rotate_pos_widdershins rotate_neg_widdershins
 
@@ -103,38 +103,26 @@ end norm_num
 open isotopy
 open tactic
 
-meta def isotopy := `[rewrite_search_using [`search] { discharger := `[norm_num], trace_result := tt }]
+meta def isotopy := `[rewrite_search_using [`search] { discharger := `[norm_num], simplifier := norm_num.derive, trace_result := tt }]
+meta def isotopy' := `[rewrite_search_using [`search] { discharger := `[norm_num], simplifier := norm_num.derive, trace := tt, view := visualiser, trace_result := tt }]
 
 lemma commute_1 : t[pos 0, neg 2, pos 4] = t[pos 4, neg 2, pos 0] := by isotopy
 lemma commute_2 : t[cup 0, pos 2] = t[pos 0, cup 0] := by isotopy
 lemma commute_3 : t[cup 2, cap 0] = t[cup 0, cap 2] := by isotopy
+
 lemma bulge : t[cup 1, cap 0, cup 0, cap 1] = t[] := by isotopy
 
--- lemma R2_south' : [cup 1, pos 0, neg 2, cap 1] = [cup 0, neg 1, neg 2, cap 1] := by isotopy
+lemma R2_north : t[cup 1, pos 0, neg 2, cap 1] = t[cap 0, cup 0] := by isotopy
 
-lemma R2_south : t[cup 1, pos 0, neg 2, cap 1] = t[cap 0, cup 0] := 
-begin
-(do `(%%lhs = %%rhs) ← target, all_rewrites (`(cup_under),ff) ff lhs { discharger := `[norm_num1], simplifier := norm_num.derive } >>= trace),
-
--- rewrite_search_using [`search] { discharger := `[norm_num], simplifier := norm_num.derive, trace := tt },
--- rw cup_under, 
--- isotopy,
--- rw ← cap_over,
--- rw R2_east,
--- rw commute_cap_cup,
--- norm_num
-end
--- by isotopy
-
-lemma twists : [cup 0, cup 2, pos 0, pos 2, cap 1, cap 0] = [cup 0, cap 0] := by isotopy
+lemma twists : t[cup 0, cup 2, pos 0, pos 2, cap 1, cap 0] = t[cup 0, cap 0] := by isotopy
 -- begin
--- rw cup_pos_commute,
+-- rw commute_cup_pos,
 -- rw R1_pos_south,
 -- rw R1_pos_south,
 -- rw zigzag_right,
 -- norm_num
 -- end
 
-lemma rotate : [cup 0, pos 1, cap 2] = [neg 0] := by isotopy
+lemma rotate : t[cup 0, pos 1, cap 2] = t[neg 0] := by isotopy
 
--- lemma recognise_trefoil : [cup 0, cup 1, pos 0, pos 0, pos 0, cap 1, cap 0] = [cup 0, cup 2, neg 1, pos 0, pos 2, cap 1, cap 0] := by isotopy
+-- lemma recognise_trefoil : t[cup 0, cup 1, pos 0, pos 0, pos 0, cap 1, cap 0] = t[cup 0, cup 2, neg 1, pos 0, pos 2, cap 1, cap 0] := by isotopy

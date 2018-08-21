@@ -137,7 +137,7 @@ do
     (w, qr) ← match s with
                | none := return (w, qr)
                | (some (w', qr')) := do qr ← mk_eq_trans qr qr',
-                                        return (w, qr)
+                                        return (w', qr)
                end,
     pure ((w, qr) :: state)
   else 
