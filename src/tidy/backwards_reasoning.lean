@@ -24,15 +24,23 @@ meta def back'_attribute : user_attribute := {
 }
 
 run_cmd attribute.register `back'_attribute
+meta def seq (tac1 : tactic unit) (tac2 : tactic unit) : tactic unit :=
+do g::gs ← get_goals,
+   set_goals [g],
+   tac1, all_goals tac2,
+   gs' ← get_goals,
+   set_goals (gs' ++ gs)
 
-/- Try to apply one of the given lemmas, fulfilling all new goals using existing hypotheses. It succeeds if one of them succeeds. -/
+/-- Try to apply one of the given lemmas, fulfilling all new goals using existing hypotheses. It succeeds if one of them succeeds. -/
 meta def any_apply_no_new_goals : list name → tactic name
 | []      := failed
-| (c::cs) := (do n ← num_goals,
+| (c::cs) := (do g::gs ← get_goals,
+                 set_goals [g],
                  t ← mk_const c,
-                 r ← seq (apply t >> skip) solve_by_elim,
-                 n' ← num_goals,
-                 guard (n = n' + 1),
+                 r ← apply t,
+                 all_goals solve_by_elim,
+                 a ← r.mmap (λ p, is_assigned p.2),
+                 guard (a.all id),
                  pure c) <|> any_apply_no_new_goals cs
 
 /-- Try to apply any lemma marked with the attributes `@[back]` or `@[back']`. -/
