@@ -3,6 +3,7 @@
 -- Authors: Scott Morrison
 
 import .pempty
+import .recover
 
 open tactic
 
@@ -39,8 +40,10 @@ meta def any_apply_no_new_goals : list name → tactic name
                  t ← mk_const c,
                  r ← apply t,
                  all_goals solve_by_elim,
-                 a ← r.mmap (λ p, is_assigned p.2),
-                 guard (a.all id),
+                 a ← r.mmap (λ p, do e ← instantiate_mvars p.2, return e.metavariables.length),
+                 guard (a.all (λ n, n = 0)),
+                 gs' ← get_goals,
+                 set_goals (gs' ++ gs),
                  pure c) <|> any_apply_no_new_goals cs
 
 /-- Try to apply any lemma marked with the attributes `@[back]` or `@[back']`. -/
@@ -51,26 +54,12 @@ do cs ← attribute.get_instances `back',
    | (some n) := return ("apply " ++ n.to_string ++ " ; solve_by_elim")
    | none     :=  do 
                     cs ← attribute.get_instances `back,
-                    n ← any_apply cs | fail "no @[back] or @[back'] lemmas could be applied",
+                    n ← any_apply cs <|> fail "no @[back] or @[back'] lemmas could be applied",
                     return ("apply " ++ n.to_string)
    end
 
--- attribute [back] subsingleton.elim
-
--- attribute [back] propext
-
 attribute [extensionality] subtype.eq
 
-universes u₁ u₂
-
--- @[back] def empty_exfalso (x : false) : empty := begin exfalso, trivial end
--- @[back] def pempty_exfalso (x : false) : pempty := begin exfalso, trivial end
-
--- TODO remove after https://github.com/leanprover/mathlib/pull/249 lands
-@[extensionality] lemma ulift_ext {α : Type u₁} (X Y : ulift.{u₂} α) (w : X.down = Y.down) : X = Y :=
-begin
-  induction X, induction Y, dsimp at w, rw w,
-end
 -- TODO get from subsingleton.elim?
 -- @[extensionality] lemma punit_ext (a b : punit.{u₁}) : a = b := begin induction a, induction b, refl end
 -- @[extensionality] lemma sigma_ext {α : Type u₁} (Z : α → Type u₂) (X Y : Σ a : α, Z a) (w₁ : X.1 = Y.1) (w₂ : @eq.rec_on _ X.1 _ _ w₁ X.2 = Y.2) : X = Y :=
