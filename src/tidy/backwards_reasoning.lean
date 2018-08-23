@@ -3,6 +3,7 @@
 -- Authors: Scott Morrison
 
 import .pempty
+import .recover
 
 open tactic
 
@@ -25,14 +26,18 @@ meta def back'_attribute : user_attribute := {
 
 run_cmd attribute.register `back'_attribute
 
-/- Try to apply one of the given lemmas, fulfilling all new goals using existing hypotheses. It succeeds if one of them succeeds. -/
+/-- Try to apply one of the given lemmas, fulfilling all new goals using existing hypotheses. It succeeds if one of them succeeds. -/
 meta def any_apply_no_new_goals : list name → tactic name
 | []      := failed
-| (c::cs) := (do n ← num_goals,
+| (c::cs) := (do g::gs ← get_goals,
+                 set_goals [g],
                  t ← mk_const c,
-                 r ← seq (apply t >> skip) solve_by_elim,
-                 n' ← num_goals,
-                 guard (n = n' + 1),
+                 r ← apply t,
+                 all_goals solve_by_elim,
+                 a ← r.mmap (λ p, do e ← instantiate_mvars p.2, return e.metavariables.length),
+                 guard (a.all (λ n, n = 0)),
+                 gs' ← get_goals,
+                 set_goals (gs' ++ gs),
                  pure c) <|> any_apply_no_new_goals cs
 
 /-- Try to apply any lemma marked with the attributes `@[back]` or `@[back']`. -/
@@ -43,7 +48,7 @@ do cs ← attribute.get_instances `back',
    | (some n) := return ("apply " ++ n.to_string ++ " ; solve_by_elim")
    | none     :=  do 
                     cs ← attribute.get_instances `back,
-                    n ← any_apply cs | fail "no @[back] or @[back'] lemmas could be applied",
+                    n ← any_apply cs <|> fail "no @[back] or @[back'] lemmas could be applied",
                     return ("apply " ++ n.to_string)
    end
 
