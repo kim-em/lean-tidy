@@ -74,15 +74,15 @@ meta def do_rewrite_search {α β γ : Type} (rs : list (expr × bool)) (cfg : c
       result ← i.search_until_solved,
       handle_search_result cfg rs result
     | none := do
-      tactic.trace "\nError initialising rewrite_search instance, falling back to emergency config!\n",
+      trace "\nError initialising rewrite_search instance, falling back to emergency config!\n",
       new_cfg ← pure (mk_fallback_config cfg),
       i ← try_mk_search_instance new_cfg rs lhs rhs,
       match i with
       | some i := do
         result ← i.search_until_solved,
-        handle_search_result cfg rs result
+        handle_search_result new_cfg rs result
       | none := do
-        tactic.fail "Could not initialise emergency rewrite_search instance!"
+        fail "Could not initialise emergency rewrite_search instance!"
       end
     end
   | _ := fail "target is not an equation"
