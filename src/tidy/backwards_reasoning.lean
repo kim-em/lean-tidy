@@ -14,10 +14,21 @@ meta def back_attribute : user_attribute := {
 
 run_cmd attribute.register `back_attribute
 
+meta def apply_using_solve_by_elim (c : name) : tactic unit :=
+do g::gs ← get_goals,
+    set_goals [g],
+    t ← mk_const c,
+    r ← apply t,
+    try (any_goals (terminal_goal >> solve_by_elim)),
+    gs' ← get_goals,
+    set_goals (gs' ++ gs)
+
 /-- Try to apply one of the given lemmas; it succeeds as soon as one of them succeeds. -/
 meta def any_apply : list name → tactic name
 | []      := failed
-| (c::cs) := (mk_const c >>= apply >> pure c) <|> any_apply cs
+| (c::cs) := (do
+                apply_using_solve_by_elim c,
+                pure c) <|> any_apply cs
 
 meta def back'_attribute : user_attribute := {
   name := `back',
