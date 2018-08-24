@@ -10,12 +10,12 @@ open tactic
 namespace tidy.rewrite_search
 
 inductive how
-| rewrite : Π (rule_index : ℕ), Π (side : side), Π (location : ℕ), how
+| rewrite (rule_index : ℕ) (side : side) (location : ℕ) : how
 | defeq
 
 meta inductive search_result
-| success : Π proof : expr,  Π steps : list how, search_result
-| failure : Π message : string, search_result
+| success (proof : expr) (steps : list how) : search_result
+| failure (message : string) : search_result
 
 -- meta def bound_numeric := ℕ
 inductive bound_progress (β : Type)
@@ -65,6 +65,8 @@ meta def null_expr : expr := default expr
 meta def mk_null_vertex : vertex :=
 ⟨ mk_vertex_ref_null, null_expr, "__NULLEXPR", [], ff, ff, side.L, none, [] ⟩
 
+meta instance : inhabited vertex := ⟨mk_null_vertex⟩
+
 structure dist_estimate (state_type : Type) :=
   (l r : vertex_ref)
   (bnd : bound_progress state_type)
@@ -108,7 +110,7 @@ meta def mutate_strategy (new_state : α) : global_state α β :=
 -- Retrieve the vertex with the given ref, or the null vertex if it is not
 -- present.
 meta def get_vertex (r : vertex_ref) : vertex :=
-list.at mk_null_vertex g.vertices r
+list.at g.vertices r
 
 meta def set_vertex (v : vertex) : (global_state α β) :=
 { g with vertices := list.set_at g.vertices v.id v }
@@ -124,12 +126,12 @@ meta def get_estimate_verts (de : dist_estimate β) : vertex × vertex :=
 meta def do_alloc_vertex (e : expr) (root : bool) (s : side) : tactic (global_state α β × vertex) :=
 do (pp, tokens) ← tokenise_expr e,
    let v : vertex := ⟨ g.next_id, e, pp, tokens, root, ff, s, none, [] ⟩,
-   return ({ g with next_id := g.next_id.next, vertices := g.vertices.append [v] }, v)
+   return ({ g with next_id := g.next_id.next, vertices := g.vertices.concat v }, v)
   
 -- Forcibly add a new pair to the interesting pair list. Probably should never be 
 -- called by a strategy and add_vertex to should used instead.
 meta def do_alloc_pair (de : dist_estimate β) : global_state α β :=
-{g with estimates := g.estimates.append [de], interesting_pairs := g.interesting_pairs.append [de]}
+{g with estimates := g.estimates.concat de, interesting_pairs := g.interesting_pairs.concat de}
 
 meta def remove_interesting_pair (de : dist_estimate β) : global_state α β :=
 let new := g.interesting_pairs.erase_first_such_that (λ de', de'.l = de.l ∧ de'.r = de.r) in
@@ -162,7 +164,7 @@ meta def register_solved (e : edge) : global_state α β :=
 { g with solving_edge := some e }
 
 meta def add_adj (v : vertex) (e : edge) : global_state α β × vertex :=
-let v : vertex := { v with adj := v.adj.append [e] } in (g.set_vertex v, v)
+let v : vertex := { v with adj := v.adj.concat e } in (g.set_vertex v, v)
 
 meta def publish_parent (f t : vertex) (e : edge) : global_state α β × vertex :=
 if t.root then
@@ -445,9 +447,8 @@ meta def examine_both (de : dist_estimate β) : tactic (inst α β γ ) :=
 do
   i ← i.examine_one de side.L,
   i ← i.examine_one de side.R,
-  i ← pure (i.remove_interesting_pair de), -- FIXME this feels a bit silly: isn't `de` always the head of the list?
-  i ← pure i.find_most_interesting,
-  return i
+  -- FIXME this feels a bit silly: isn't `de` always the head of the list?
+  pure (i.remove_interesting_pair de).find_most_interesting
 
 meta def step_once (itr : ℕ) : tactic (inst α β γ × status) :=
 match i.g.solving_edge with
