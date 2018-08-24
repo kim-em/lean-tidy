@@ -447,9 +447,8 @@ meta def examine_both (de : dist_estimate β) : tactic (inst α β γ ) :=
 do
   i ← i.examine_one de side.L,
   i ← i.examine_one de side.R,
-  i ← pure (i.remove_interesting_pair de), -- FIXME this feels a bit silly: isn't `de` always the head of the list?
-  i ← pure i.find_most_interesting,
-  return i
+  -- FIXME this feels a bit silly: isn't `de` always the head of the list?
+  pure (i.remove_interesting_pair de).find_most_interesting
 
 meta def step_once (itr : ℕ) : tactic (inst α β γ × status) :=
 match i.g.solving_edge with
