@@ -17,15 +17,12 @@ import .unfold_aux
 
 universe variables u v
 
-meta def dsimp' := `[dsimp {unfold_reducible := tt, md := semireducible}]
-meta def dsimp_all' := `[dsimp at * {unfold_reducible := tt, md := semireducible}]
-
 open tactic
 
 meta def exact_decidable := `[exact dec_trivial]             >> pure "exact dec_trivial"
 
 meta def default_tidy_tactics : list (tactic string) :=
-[ force (reflexivity)                         >> pure "refl", 
+[ reflexivity                                 >> pure "refl", 
   exact_decidable,
   propositional_goal >> assumption            >> pure "assumption",
   forwards_reasoning,
