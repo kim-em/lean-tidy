@@ -7,9 +7,8 @@ import tactic.norm_num
 universe u
 
 --FIXME the fact that we use this is really sad (ARRAYS DO IT)
-def list.at {α : Type u} (default : α) : list α → ℕ → α
-| [] _ := default -- FIXME catastrophic failure
-| (a :: rest) k := if k = 0 then a else list.at rest (k - 1)
+def list.at {α : Type u} [inhabited α] (l : list α) (n : ℕ) : α :=
+list.head $ option.to_list $ list.nth l n
 
 private def list_set_at_aux {α : Type u} (val : α) : list α → list α → ℕ → list α
 | _ [] _          := [] -- FIXME catastrophic failure
@@ -30,15 +29,14 @@ def list.split_on_aux {α : Type u} [decidable_eq α] (a : α) : list α → lis
 def list.split_on {α : Type u} [decidable_eq α] (a : α) : list α → list (list α) 
 | l := list.split_on_aux a l []
 
-def string.split_on (c : char) (s : string) := (s.to_list.split_on c).map(λ l, l.as_string)
+def string.split_on (c : char) (s : string) := (s.to_list.split_on c).map (λ l, l.as_string)
 
 def list.erase_first_such_that {α : Type u} (f : α → Prop) [decidable_pred f] : list α → list α
 | [] := []
 | (h :: t) := if f h then t else (h :: t.erase_first_such_that)
 
-def list.erase_such_that {α : Type u} (f : α → Prop) [decidable_pred f] : list α → list α
-| [] := []
-| (h :: t) := if f h then t.erase_such_that else (h :: t.erase_such_that)
+def list.erase_such_that {α : Type u} (f : α → Prop) [decidable_pred f] : list α → list α :=
+list.filter (λ x, ¬ f x)
 
 def list.strip {α : Type u} [decidable_eq α] (l : list α) (v : α) : list α :=
   l.erase_such_that (λ c, c = v)
@@ -52,7 +50,7 @@ lemma nat.succ_pred (n : ℕ) (h : n ≠ 0) : nat.succ (nat.pred n) = n :=
 begin
   cases n,
   contradiction,
-  simp,
+  simp
 end
 
 lemma fin.with_max (n m : ℕ) (h : m ≠ 0): fin m := 
@@ -69,7 +67,7 @@ begin
   cases n with n h,
   cases n,
   have := lt_irrefl _ h ; contradiction,
-  simp,
+  simp
 end
 
 lemma fin.with_max' (n : ℕ) (m : pnat) : fin m := 
