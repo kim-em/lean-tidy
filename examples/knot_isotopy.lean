@@ -86,19 +86,7 @@ attribute [search] R3_pos_pos_pos R3_pos_pos_neg R3_pos_neg_neg R3_neg_pos_pos R
 
 end isotopy
 
-namespace norm_num
-open tactic
 
-meta def derive' : expr → tactic (expr × expr) | e :=
-do (_, e', pr) ←
-    ext_simplify_core () {} simp_lemmas.mk (λ _, failed) (λ _ _ _ _ _, failed)
-      (λ _ _ _ _ e,
-        do (new_e, pr) ← derive1 derive' e,
-           guard (¬ new_e =ₐ e),
-           return ((), new_e, some pr, tt))
-      `eq e,
-    return (e', pr)
-end norm_num
 
 open isotopy
 open tactic

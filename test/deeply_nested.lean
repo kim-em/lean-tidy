@@ -91,8 +91,12 @@ structure N :=
 (b : M)
 (ab : a.b.b.b.b.b.b.b.b.b.b.a.z = b.b.b.b.b.b.b.b.b.b.b.a.z)
 
-def f : L := by tidy
+open tactic
 
-#print f
+def f : F := 
+begin
+tidy {trace_result:=tt},
+end.
+
 end deeply_nested
 

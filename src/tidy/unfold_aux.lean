@@ -12,4 +12,5 @@ do tgt ← target,
    name ← decl_name,
    let to_unfold := tgt.names_with_prefix name,
    guard (to_unfold ≠ []),
-   dunfold to_unfold tgt >>= change
+   dunfold to_unfold tgt >>= change,
+   try `[dsimp]

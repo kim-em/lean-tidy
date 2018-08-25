@@ -18,7 +18,6 @@ import .unfold_aux
 universe variables u v
 
 attribute [reducible] cast
--- attribute [reducible] lift_t coe_t coe_b has_coe_to_fun.coe
 attribute [reducible] eq.mpr
 attribute [ematch] subtype.property
 
@@ -26,9 +25,6 @@ meta def dsimp' := `[dsimp {unfold_reducible := tt, md := semireducible}]
 meta def dsimp_all' := `[dsimp at * {unfold_reducible := tt, md := semireducible}]
 
 open tactic
-
--- TODO split_ifs?
--- TODO refine_struct?
 
 meta def exact_decidable := `[exact dec_trivial]             >> pure "exact dec_trivial"
 
@@ -49,14 +45,13 @@ meta def default_tidy_tactics : list (tactic string) :=
   injections_and_clear                        >> pure "injections_and_clear",
   terminal_goal >> (`[solve_by_elim])         >> pure "solve_by_elim",
   unfold_aux                                  >> pure "unfold_aux",
-  -- recover'                                    >> pure "recover'",
   run_tidy_tactics ]
 
 meta structure tidy_cfg extends chain_cfg :=
-( trace_result : bool    := ff )
-( tactics : list (tactic string) := default_tidy_tactics )
+(trace_result : bool    := ff)
+(tactics : list (tactic string) := default_tidy_tactics)
 
-meta def tidy ( cfg : tidy_cfg := {} ) : tactic unit :=
+meta def tidy (cfg : tidy_cfg := {}) : tactic unit :=
 do
   results ← chain cfg.to_chain_cfg cfg.tactics,
   if cfg.trace_result then
