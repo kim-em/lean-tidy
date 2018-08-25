@@ -17,9 +17,9 @@ import .unfold_aux
 
 universe variables u v
 
-attribute [reducible] cast
-attribute [reducible] eq.mpr
-attribute [ematch] subtype.property
+-- attribute [reducible] cast
+-- attribute [reducible] eq.mpr
+-- attribute [ematch] subtype.property
 
 meta def dsimp' := `[dsimp {unfold_reducible := tt, md := semireducible}]
 meta def dsimp_all' := `[dsimp at * {unfold_reducible := tt, md := semireducible}]
