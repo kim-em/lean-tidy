@@ -19,25 +19,20 @@ do r ← result,
    pure r.metavariables
 
 meta def propositional_goal : tactic unit :=
-do goals ← get_goals,
-   let current_goal := goals.head,
-   current_goal_type ← infer_type current_goal,
-   p ← is_prop current_goal_type,
+do g :: _ ← get_goals,
+   ty ← infer_type g,
+   p ← is_prop ty,
    guard p
 
 meta def subsingleton_goal : tactic unit :=
-do goals ← get_goals,
-   let current_goal := goals.head,
-   current_goal_type ← infer_type current_goal >>= instantiate_mvars,
-   to_expr ``(subsingleton %%current_goal_type) >>= mk_instance >> skip
+do g :: _ ← get_goals,
+   ty ← infer_type g >>= instantiate_mvars,
+   to_expr ``(subsingleton %%ty) >>= mk_instance >> skip
 
 meta def terminal_goal : tactic unit :=
 propositional_goal <|> subsingleton_goal <|>
-do goals ← get_goals,
-   let current_goal := goals.head,
-   other_goals ← metavariables,
-   let other_goals := other_goals.erase current_goal,
-   other_goals.mmap' $ λ g, (do t ← infer_type g, t ← instantiate_mvars t, d ← kdepends_on t current_goal,
+do g :: gs ← get_goals,
+   gs.mmap' $ λ g, (do t ← infer_type g, t ← instantiate_mvars t, d ← kdepends_on t g,
                                 monad.whenb d $ pp t >>= λ s, fail ("This is not a terminal goal: " ++ s.to_string ++ " depends on it."))
 
 
