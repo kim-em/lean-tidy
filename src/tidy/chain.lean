@@ -2,7 +2,6 @@
 -- Released under Apache 2.0 license as described in the file LICENSE.
 -- Authors: Scott Morrison
 
-import .some_goal
 import .repeat_at_least_once
 import .recover
 import .pretty_print
@@ -56,7 +55,6 @@ end interactive
 
 structure chain_cfg := 
 (trace_steps        : bool := ff)
--- (make_declarations  : bool := tt)
 
 inductive tactic_script (α : Type) : Type
 | base : α → tactic_script

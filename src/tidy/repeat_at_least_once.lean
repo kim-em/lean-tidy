@@ -2,6 +2,8 @@
 -- Released under Apache 2.0 license as described in the file LICENSE.
 -- Authors: Scott Morrison
 
+/- This is just `repeat1`, but returning results. -/
+
 namespace tactic
 
 variable {α : Type}
@@ -22,6 +24,7 @@ do r ← t | fail "repeat_at_least_once failed: tactic did not succeed",
    L ← repeat_with_results t,
    return (r, L)
 
-run_cmd add_interactive [`repeat_at_least_once]
+meta def intro_at_least_once : tactic (list expr) :=
+repeat_at_least_once intro1 >>= λ p, return ((p.1 :: p.2))
 
 end tactic

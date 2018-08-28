@@ -8,7 +8,7 @@ import .forwards_reasoning
 import .fsplit 
 import .automatic_induction 
 import .tidy_attributes 
-import .intro_at_least_one
+import .repeat_at_least_once
 import .chain
 import .rewrite_search
 import .rewrite_search.tracer
@@ -36,8 +36,8 @@ meta def default_tidy_tactics : list (tactic string) :=
   forwards_library_reasoning,
   backwards_reasoning,
   `[ext1]                                     >> pure "ext1",
-  intro_at_least_one                          >>= λ ns, pure ("intros " ++ (" ".intercalate ns)),
-  automatic_induction,
+  intro_at_least_once                         >>= λ ns, pure ("intros " ++ (" ".intercalate ns.map (λ e, e.to_string))),
+  auto_cases,
   `[apply_auto_param]                         >> pure "apply_auto_param",
   `[dsimp at *]                               >> pure "dsimp at *",
   `[simp at *]                                >> pure "simp at *",
