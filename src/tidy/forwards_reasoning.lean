@@ -27,7 +27,7 @@ meta def attempt_forwards_reasoning (only_props : bool) (s : simp_lemmas) : list
 | [] := fail "forwards_reasoning failed"
 | (e :: es) := do
     t ← infer_type e.1,
-    t' ← try_core (s.dsimplify [] t),
+    t' ← try_core (s.dsimplify [] t), -- FIXME too expensive
     let changed := t'.is_some,
     let t := t'.get_or_else t,
     if t.is_pi then

@@ -95,8 +95,21 @@ open tactic
 
 def f : F := 
 begin
-tidy {trace_result:=tt},
+tidy --{trace_result:=tt}, 
+-- fsplit, fsplit, fsplit, fsplit, rotate_left 1,
+--  refl, tactic.result >>= tactic.trace,
+--   fsplit, fsplit, rotate_left 1,
+--   fsplit, fsplit, rotate_left 1, refl,
+--    refl, tactic.result >>= tactic.trace,
+--     refl, fsplit,
+--    fsplit, fsplit, rotate_left 1, fsplit, fsplit, rotate_left 1,
+--     refl, refl, fsplit, fsplit, fsplit, rotate_left 1,
+--      refl, fsplit, fsplit, rotate_left 1, fsplit,
+--       fsplit, rotate_left 1, refl, refl, refl, refl, refl
 end.
 
+#print prefix deeply_nested.f
+#print f
+#print f._proof_4
 end deeply_nested
 

@@ -22,7 +22,7 @@ meta def mk_app_aux : expr → expr → expr → tactic expr
 
 -- TODO check if just the first will suffice
 meta def mk_app' (f arg : expr) : tactic expr :=
-do r ← to_expr ``(%%f %%arg) <|> (do infer_type f >>= whnf >>= λ t, mk_app_aux f t arg),
+do r ← to_expr ``(%%f %%arg) /- FIXME too expensive -/ <|> (do infer_type f >>= whnf >>= λ t, mk_app_aux f t arg),
    instantiate_mvars r
 
 /--

@@ -14,26 +14,18 @@ import .rewrite_search
 import .rewrite_search.tracer
 import .injections
 import .unfold_aux
+import .luxembourg_chain
 
 universe variables u v
-
-attribute [reducible] cast
-attribute [reducible] eq.mpr
-attribute [ematch] subtype.property
-
-meta def dsimp' := `[dsimp {unfold_reducible := tt, md := semireducible}]
-meta def dsimp_all' := `[dsimp at * {unfold_reducible := tt, md := semireducible}]
 
 open tactic
 
 meta def exact_decidable := `[exact dec_trivial]             >> pure "exact dec_trivial"
 
 meta def default_tidy_tactics : list (tactic string) :=
-[ force (reflexivity)                         >> pure "refl", 
+[ reflexivity                                 >> pure "refl", 
   exact_decidable,
   propositional_goal >> assumption            >> pure "assumption",
-  forwards_reasoning,
-  forwards_library_reasoning,
   backwards_reasoning,
   `[ext1]                                     >> pure "ext1",
   intro_at_least_once                         >>= λ ns, pure ("intros " ++ (" ".intercalate ns.map (λ e, e.to_string))),
@@ -44,6 +36,8 @@ meta def default_tidy_tactics : list (tactic string) :=
   fsplit                                      >> pure "fsplit", 
   injections_and_clear                        >> pure "injections_and_clear",
   terminal_goal >> (`[solve_by_elim])         >> pure "solve_by_elim",
+  forwards_reasoning,
+  propositional_goal >> forwards_library_reasoning,
   unfold_aux                                  >> pure "unfold_aux",
   run_tidy_tactics ]
 
@@ -53,7 +47,7 @@ meta structure tidy_cfg extends chain_cfg :=
 
 meta def tidy (cfg : tidy_cfg := {}) : tactic unit :=
 do
-  results ← chain cfg.to_chain_cfg cfg.tactics,
+  results ← luxembourg_chain /-cfg.to_chain_cfg-/ cfg.tactics,
   if cfg.trace_result then
     trace ("/- obviously says: -/ " ++ (", ".intercalate results))
   else
@@ -65,5 +59,5 @@ meta def obviously_tactics : list (tactic string) :=
 meta def obviously'  : tactic unit := tidy { tactics := default_tidy_tactics ++ obviously_tactics, trace_result := ff, trace_steps := ff }
 meta def obviously_vis  : tactic unit := tidy { tactics := default_tidy_tactics ++ [ tactic.interactive.rewrite_search_using [`ematch] { trace_summary := tt, view := visualiser } ], trace_result := tt, trace_steps := ff }
 
-instance subsingleton_pempty : subsingleton pempty := by tidy
-instance subsingleton_punit  : subsingleton punit  := by tidy
+-- instance subsingleton_pempty : subsingleton pempty := by tidy
+-- instance subsingleton_punit  : subsingleton punit  := by tidy

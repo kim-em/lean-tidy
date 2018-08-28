@@ -1,6 +1,6 @@
 -- Copyright (c) 2018 Scott Morrison. All rights reserved.
 -- Released under Apache 2.0 license as described in the file LICENSE.
--- Authors: Scott Morrison
+-- Authors: Scott Morrison and Mario Carneiro
 
 import .repeat_at_least_once
 import .recover
@@ -26,9 +26,9 @@ This tactic is used by the `tidy` tactic.
 variable {α : Type}
 
 /-
-Because chain sometimes pauses work on the first goal and works on later goals, we need a method
-for combining a list of results generated while working on a later goal into a single result.
-This enables `tidy {trace_result := tt}` to output faithfully reproduces its operation, e.g.
+Because chain sometimes pauses work on the first goal and works on a later goal, we need a method
+for combining a list of tactic steps all working on a later goal into a single block.
+This enables `tidy {trace_result := tt}` to faithfully reproduce its operation, e.g.
 ````
 intros,
 simp,
@@ -158,6 +158,6 @@ else
 meta def chain (cfg : chain_cfg) (tactics : list (tactic α)) : tactic (list string) :=
 do sequence ← chain_handle_trace cfg tactics,
    guard (sequence.length > 0) <|> fail "chain tactic made no progress",
-   pure sequence.reverse
+   pure sequence
 
 end tactic
