@@ -1,5 +1,4 @@
-import .repeat_at_least_once
-import .recover
+import tactic.basic
 
 open tactic
 

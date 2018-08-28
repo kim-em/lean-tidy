@@ -108,8 +108,6 @@ tidy --{trace_result:=tt},
 --       fsplit, rotate_left 1, refl, refl, refl, refl, refl
 end.
 
-#print prefix deeply_nested.f
-#print f
-#print f._proof_4
+-- #print prefix deeply_nested.f
 end deeply_nested
 

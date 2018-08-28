@@ -2,7 +2,8 @@
 -- Released under Apache 2.0 license as described in the file LICENSE.
 -- Authors: Scott Morrison
 
-import .pempty
+import tactic.basic
+import tactic.ext
 import .recover
 
 open tactic
@@ -51,7 +52,7 @@ meta def any_apply_no_new_goals : list name → tactic name
                  t ← mk_const c,
                  r ← apply t,
                  all_goals solve_by_elim,
-                 a ← r.mmap (λ p, do e ← instantiate_mvars p.2, return e.metavariables.length),
+                 a ← r.mmap (λ p, do e ← instantiate_mvars p.2, return e.list_meta_vars.length),
                  guard (a.all (λ n, n = 0)),
                  gs' ← get_goals,
                  set_goals (gs' ++ gs),
@@ -70,13 +71,6 @@ do cs ← attribute.get_instances `back',
    end
 
 attribute [extensionality] subtype.eq
-
--- TODO get from subsingleton.elim?
--- @[extensionality] lemma punit_ext (a b : punit.{u₁}) : a = b := begin induction a, induction b, refl end
--- @[extensionality] lemma sigma_ext {α : Type u₁} (Z : α → Type u₂) (X Y : Σ a : α, Z a) (w₁ : X.1 = Y.1) (w₂ : @eq.rec_on _ X.1 _ _ w₁ X.2 = Y.2) : X = Y :=
--- begin
---   induction X, induction Y, dsimp at w₁, dsimp at w₂, induction w₁, induction w₂, refl,
--- end
 
 -- TODO should `apply_instance` be in tidy? If so, these shouldn't be needed.
 @[back] definition decidable_true  : decidable true  := is_true  dec_trivial

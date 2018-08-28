@@ -3,7 +3,6 @@
 -- Authors: Scott Morrison
 
 import tidy.recover
-import tidy.fsplit
 
 structure C :=
  ( w : Type )
