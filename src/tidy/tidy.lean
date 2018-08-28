@@ -28,7 +28,7 @@ meta def default_tidy_tactics : list (tactic string) :=
   propositional_goal >> assumption            >> pure "assumption",
   backwards_reasoning,
   `[ext1]                                     >> pure "ext1",
-  intro_at_least_once                         >>= λ ns, pure ("intros " ++ (" ".intercalate ns.map (λ e, e.to_string))),
+  intro_at_least_once                         >>= λ ns, pure ("intros " ++ (" ".intercalate (ns.map (λ e, e.to_string)))),
   auto_cases,
   `[apply_auto_param]                         >> pure "apply_auto_param",
   `[dsimp at *]                               >> pure "dsimp at *",
