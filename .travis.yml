@@ -37,8 +37,6 @@ jobs:
     - stage: Test
       script:
         - leanpkg test
-        - lean --recursive --export=lean-tidy.txt
-        - leanchecker lean-tidy.txt
 
 notifications:
   webhooks:
