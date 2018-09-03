@@ -15,7 +15,7 @@ meta def mk_fallback_config {α β γ : Type} (orig : config α β γ) : config 
   { orig with view := default_tracer }
 
 meta def mk_initial_global_state {α β : Type} (strat : strategy α β) : global_state α β :=
-⟨ mk_vertex_ref_first, [], [], [], none, strat.init ⟩
+⟨ table.create, table.create, [], [], none, strat.init ⟩
 
 meta def setup_instance {α β γ : Type} (conf : config α β γ) (tracer_state : γ) (rs : list (expr × bool)) (lhs rhs : expr) : tactic (inst α β γ) := do
   let i := inst.mk conf rs (mk_initial_global_state conf.strategy) tracer_state,

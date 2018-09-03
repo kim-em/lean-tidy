@@ -1,6 +1,8 @@
 import data.list
 import data.option
 
+import .table
+
 import tidy.lib
 import tidy.pretty_print
 import tidy.rewrite_all
@@ -19,12 +21,12 @@ meta inductive search_result
 
 -- meta def bound_numeric := ℕ
 inductive bound_progress (β : Type)
-| exactly : ℕ → β → bound_progress
-| at_least : ℕ → β → bound_progress
+| exactly : ℚ → β → bound_progress
+| at_least : ℚ → β → bound_progress
 
 open bound_progress
 
-def bound_progress.bound {β : Type} : bound_progress β → ℕ
+def bound_progress.bound {β : Type} : bound_progress β → ℚ
 | (exactly n _)  := n
 | (at_least n _) := n
 def bound_progress.sure {β : Type} : bound_progress β → bool
@@ -34,24 +36,43 @@ def bound_progress.to_string {β : Type} : bound_progress β → string
 | (exactly n _)  := "= " ++ to_string n
 | (at_least n _) := "≥ " ++ to_string n
 
-def vertex_ref : Type := ℕ
-def vertex_ref_from_nat (r : ℕ) : vertex_ref := r
-def vertex_ref.to_nat (r : vertex_ref) : ℕ := r
-def vertex_ref.to_string (r : vertex_ref) : string := to_string r.to_nat
-def vertex_ref.next (r : vertex_ref) : vertex_ref := vertex_ref_from_nat (r + 1)
-def mk_vertex_ref_null : vertex_ref := vertex_ref_from_nat 0x8FFFFFFF
-def mk_vertex_ref_first : vertex_ref := vertex_ref_from_nat 0
-
 meta structure edge :=
-(f t   : vertex_ref)
+(f t   : table_ref)
 (proof : expr)
 (how   : how)
 
+structure token :=
+(id                : table_ref)
+(str               : string)
+(lhs_freq rhs_freq : ℕ)
+def token.inc (t : token) : side → token
+| side.L := { t with lhs_freq := t.lhs_freq + 1}
+| side.R := { t with rhs_freq := t.rhs_freq + 1}
+def token.freq (t : token) : side → ℕ
+| side.L := t.lhs_freq
+| side.R := t.rhs_freq
+
+def null_token : token :=
+⟨ null_table_ref, "__NULLTOKEN", 0, 0 ⟩
+
+instance inhabited_token : inhabited token := ⟨null_token⟩
+instance indexed_token : indexed token := ⟨λ t, t.id⟩
+instance keyed_token : keyed token string := ⟨λ v, v.str⟩
+
+def find_or_create_token (tokens : table token) (s : side) (tstr : string) : table token × token :=
+match tokens.find tstr with
+| none := do
+  let t : token := ⟨tokens.next_id, tstr, 0, 0⟩,
+  let t := t.inc s in (tokens.alloc t, t)
+| (some t) := do
+  let t := t.inc s in (tokens.update t, t)
+end
+
 meta structure vertex :=
-(id      : vertex_ref)
+(id      : table_ref)
 (exp     : expr)
 (pp      : string)
-(tokens  : list string)
+(tokens  : list table_ref)
 (root    : bool)
 (visited : bool)
 (s       : side)
@@ -62,16 +83,18 @@ meta def vertex.same_side (a b : vertex) : bool := a.s = b.s
 meta def vertex.to_string (v : vertex) : string := v.s.to_string ++ v.pp
 
 meta def null_expr : expr := default expr
-meta def mk_null_vertex : vertex :=
-⟨ mk_vertex_ref_null, null_expr, "__NULLEXPR", [], ff, ff, side.L, none, [] ⟩
+meta def null_vertex : vertex :=
+⟨ null_table_ref, null_expr, "__NULLEXPR", [], ff, ff, side.L, none, [] ⟩
 
-meta instance : inhabited vertex := ⟨mk_null_vertex⟩
+meta instance inhabited_vertex : inhabited vertex := ⟨null_vertex⟩
+meta instance indexed_vertex : indexed vertex := ⟨λ v, v.id⟩
+meta instance keyed_vertex : keyed vertex string := ⟨λ v, v.pp⟩
 
 structure dist_estimate (state_type : Type) :=
-  (l r : vertex_ref)
+  (l r : table_ref)
   (bnd : bound_progress state_type)
 
-def dist_estimate.side {α : Type} (de : dist_estimate α) (s : side) : vertex_ref :=
+def dist_estimate.side {α : Type} (de : dist_estimate α) (s : side) : table_ref :=
 match s with
 | side.L := de.l
 | side.R := de.r
@@ -79,9 +102,6 @@ end
 
 def dist_estimate.to_string {α : Type} (de : dist_estimate α) : string :=
 (de.l.to_string) ++ "-" ++ (de.r.to_string) ++ "Δ" ++ de.bnd.to_string
-
-meta def init_bound_fn (β : Type) := vertex → vertex → bound_progress β
-meta def improve_estimate_fn (β : Type) := ℕ → vertex → vertex → bound_progress β → bound_progress β
 
 meta inductive status
 | going : ℕ → status
@@ -92,14 +112,17 @@ meta def status.next_itr : status → status
 | other := other
 
 meta structure global_state (α β : Type) :=
-(next_id  : vertex_ref)
-(vertices : list vertex) -- FIXME use array
+(tokens   : table token)
+(vertices : table vertex)
 
 (estimates : list (dist_estimate β))
 (interesting_pairs : list (dist_estimate β))
 
 (solving_edge : option edge)
 (internal_strat_state : α)
+
+meta def init_bound_fn (α β : Type) := global_state α β → vertex → vertex → bound_progress β
+meta def improve_estimate_fn (α β : Type) := global_state α β → ℚ → vertex → vertex → bound_progress β → bound_progress β
 
 namespace global_state
 variables {α β : Type} (g : global_state α β)
@@ -109,24 +132,43 @@ meta def mutate_strategy (new_state : α) : global_state α β :=
 
 -- Retrieve the vertex with the given ref, or the null vertex if it is not
 -- present.
-meta def get_vertex (r : vertex_ref) : vertex :=
-list.at g.vertices r
+meta def get_vertex (r : table_ref) : vertex :=
+g.vertices.at r
 
 meta def set_vertex (v : vertex) : (global_state α β) :=
-{ g with vertices := list.set_at g.vertices v.id v }
+{ g with vertices := g.vertices.set v.id v }
 
 meta def get_endpoints (e : edge) : vertex × vertex :=
 (g.get_vertex e.f, g.get_vertex e.t)
 
 meta def get_estimate_verts (de : dist_estimate β) : vertex × vertex :=
 (g.get_vertex de.l, g.get_vertex de.r)
-  
+
+meta def dist_estimate.reset (init : init_bound_fn α β) (de : dist_estimate β) : dist_estimate β :=
+⟨de.l, de.r, init g (g.get_vertex de.l) (g.get_vertex de.r)⟩
+
+meta def reset_all_estimates (init : init_bound_fn α β) : global_state α β :=
+  {g with estimates := g.estimates.map (dist_estimate.reset g init),
+    interesting_pairs := g.interesting_pairs.map (dist_estimate.reset g init) }
+
+private def register_tokens_aux (s : side) : table token → list string → table token × list table_ref
+| tokens [] := (tokens, [])
+| tokens (tstr :: rest) := do
+  let (tokens, t) := find_or_create_token tokens s tstr,
+  let (tokens, l) := register_tokens_aux tokens rest,
+  (tokens, t.id :: l)
+
+meta def register_tokens (s : side) (strs : list string) : global_state α β × list table_ref :=
+  let (new_tokens, refs) := register_tokens_aux s g.tokens strs in
+  ({g with tokens := new_tokens}, refs)
+
 -- Forcibly add a new vertex to the vertex table. Probably should never be 
 -- called by a strategy and add_vertex to should used instead.
 meta def do_alloc_vertex (e : expr) (root : bool) (s : side) : tactic (global_state α β × vertex) :=
 do (pp, tokens) ← tokenise_expr e,
-   let v : vertex := ⟨ g.next_id, e, pp, tokens, root, ff, s, none, [] ⟩,
-   return ({ g with next_id := g.next_id.next, vertices := g.vertices.concat v }, v)
+   let (g, token_refs) := g.register_tokens s tokens,
+   let v : vertex := ⟨ g.vertices.next_id, e, pp, token_refs, root, ff, s, none, [] ⟩,
+   return ({ g with vertices := g.vertices.alloc v }, v)
   
 -- Forcibly add a new pair to the interesting pair list. Probably should never be 
 -- called by a strategy and add_vertex to should used instead.
@@ -145,9 +187,9 @@ private meta def find_vertex_aux (pp : string) : list vertex → option vertex
 -- found.
 meta def find_vertex (e : expr) : tactic (option vertex) := do
   pp ← pretty_print e,
-  return (find_vertex_aux pp g.vertices)
+  return (g.vertices.find pp)
 
-private meta def find_pair_aux {β : Type} (l r : vertex_ref) : list (dist_estimate β) → option (dist_estimate β)
+private meta def find_pair_aux {β : Type} (l r : table_ref) : list (dist_estimate β) → option (dist_estimate β)
 | [] := none
 | (a :: rest) :=
   if (a.l = l ∧ a.r = r) ∨ (a.l = r ∧ a.r = l) then
@@ -157,7 +199,7 @@ private meta def find_pair_aux {β : Type} (l r : vertex_ref) : list (dist_estim
 
 -- Find the vertex with the given (e : expr), or return the null verterx if not
 -- found.
-meta def find_pair (l r : vertex_ref) : option (dist_estimate β) :=
+meta def find_pair (l r : table_ref) : option (dist_estimate β) :=
 find_pair_aux l r g.estimates
 
 meta def register_solved (e : edge) : global_state α β :=
@@ -175,23 +217,23 @@ else
   | none := let t : vertex := { t with parent := some e } in (g.set_vertex t, t)
   end
 
-meta def mark_vertex_visited (vr : vertex_ref) : global_state α β := g.set_vertex { g.get_vertex vr with visited := tt}
+meta def mark_vertex_visited (vr : table_ref) : global_state α β := g.set_vertex { g.get_vertex vr with visited := tt}
 
 -- updates rival's estimate trying to beat candidate's estimate, stopping if we do or we can't
 -- go any further. We return true if we were able to beat candidate.
-private meta def try_to_beat (fn : improve_estimate_fn β) (candidate rival : bound_progress β) (rival_l rival_r : vertex) : bound_progress β × bool :=
+private meta def try_to_beat (fn : improve_estimate_fn α β) (candidate rival : bound_progress β) (rival_l rival_r : vertex) : bound_progress β × bool :=
 let m := candidate.bound in
 match rival with
 | exactly n _ := (rival, n <= m)
 | at_least n p :=
-  let attempt := fn m rival_l rival_r rival in
+  let attempt := fn g m rival_l rival_r rival in
   (attempt, attempt.bound < m)
 end
 
 -- First is closer
-private meta def sort_most_interesting (fn : improve_estimate_fn β) : dist_estimate β → dist_estimate β → dist_estimate β × dist_estimate β
+private meta def sort_most_interesting (fn : improve_estimate_fn α β) : dist_estimate β → dist_estimate β → dist_estimate β × dist_estimate β
 | a b := do
-match try_to_beat fn a.bnd b.bnd (g.get_vertex b.l) (g.get_vertex b.r) with
+match try_to_beat g fn a.bnd b.bnd (g.get_vertex b.l) (g.get_vertex b.r) with
   -- b is guarenteed closer, so return it:
   | (new_b, tt) := ({ b with bnd := new_b }, a)
   -- otherwise:
@@ -203,13 +245,13 @@ match try_to_beat fn a.bnd b.bnd (g.get_vertex b.l) (g.get_vertex b.r) with
   end
 end
 
-private meta def find_most_interesting_aux (fn : improve_estimate_fn β) : dist_estimate β → list (dist_estimate β) → list (dist_estimate β) → dist_estimate β × list (dist_estimate β)
+private meta def find_most_interesting_aux (fn : improve_estimate_fn α β) : dist_estimate β → list (dist_estimate β) → list (dist_estimate β) → dist_estimate β × list (dist_estimate β)
 | current_best seen [] := (current_best, seen)
 | current_best seen (a :: rest) :=
   let (better, worse) := sort_most_interesting g fn current_best a in
   find_most_interesting_aux better (worse :: seen) rest
 
-meta def find_most_interesting (fn : improve_estimate_fn β) : global_state α β :=
+meta def find_most_interesting (fn : improve_estimate_fn α β) : global_state α β :=
 match g.interesting_pairs with
 | [] := g
 | (a :: rest) :=
@@ -235,8 +277,8 @@ meta structure strategy (α β : Type) :=
 (init : α)
 (step : step_fn α β)
 
-(init_bound : init_bound_fn β)
-(improve_estimate_over : improve_estimate_fn β)
+(init_bound : init_bound_fn α β)
+(improve_estimate_over : improve_estimate_fn α β)
 
 inductive init_result (α : Type)
 | success : α → init_result
@@ -246,7 +288,7 @@ meta structure tracer (γ : Type) :=
 (init             : tactic (init_result γ))
 (publish_vertex   : γ → vertex → tactic unit)
 (publish_edge     : γ → edge → tactic unit)
-(publish_pair     : γ → vertex_ref → vertex_ref → tactic unit)
+(publish_pair     : γ → table_ref → table_ref → tactic unit)
 (publish_visited  : γ → vertex → tactic unit)
 (publish_finished : γ → list edge → tactic unit)
 (dump             : γ → string → tactic unit)
@@ -268,7 +310,7 @@ do
   instantiate_mvars m
 
 meta def pick_default_tracer   : tactic unit := `[exact tidy.rewrite_search.tracer.unit_tracer]
-meta def pick_default_strategy : tactic unit := `[exact tidy.rewrite_search.strategy.edit_distance_strategy]
+meta def pick_default_strategy : tactic unit := `[exact tidy.rewrite_search.strategy.edit_distance]
 
 meta structure config (α β γ : Type) extends rewrite_all_cfg :=
 (strategy      : strategy α β . pick_default_strategy)
@@ -306,7 +348,7 @@ do --FIXME guard all of these with an if (to prevent pointless string building)
    i.trace format!"addE: {e.f.to_string}→{e.t.to_string}",
    i.conf.view.publish_edge i.tr_state e
 
-meta def tracer_pair_added (l r : vertex_ref) : tactic unit :=
+meta def tracer_pair_added (l r : table_ref) : tactic unit :=
 do --FIXME guard all of these with an if (to prevent pointless string building)
    i.trace format!"addP: {l.to_string}→{r.to_string}",
    i.conf.view.publish_pair i.tr_state l r
@@ -329,6 +371,12 @@ do --FIXME guard all of these with an if (to prevent pointless string building)
 meta def dump_rws : list (expr × expr × ℕ × ℕ) → tactic unit
 | [] := tactic.skip
 | (a :: rest) := do tactic.trace format!"→{a.1}\nPF:{a.2}", dump_rws rest
+
+meta def dump_tokens : list token → tactic unit
+| [] := tactic.skip
+| (a :: rest) := do
+    tactic.trace format!"V{a.id.to_string}:{a.str}|{a.lhs_freq}v{a.rhs_freq}",
+    dump_tokens rest
 
 meta def dump_vertices : list vertex → tactic unit
 | [] := tactic.skip
@@ -388,7 +436,7 @@ meta def add_pair (l r : vertex) : tactic (inst α β γ) :=
 do tracer_pair_added i l.id r.id,
    match i.g.find_pair l.id r.id with
    | some de := return i
-   | none    := return (i.mutate (i.g.do_alloc_pair ⟨ l.id, r.id, i.conf.strategy.init_bound l r ⟩))
+   | none    := return (i.mutate (i.g.do_alloc_pair ⟨ l.id, r.id, i.conf.strategy.init_bound i.g l r ⟩))
    end
 
 meta def remove_interesting_pair (de : dist_estimate β) : inst α β γ :=
@@ -483,7 +531,7 @@ meta def exhaust_one : list vertex → tactic (inst α β γ × bool)
     return (i, tt)
 
 meta def exhaust_all : inst α β γ → tactic (inst α β γ) := λ i, do
-  (i, more_left) ← i.exhaust_one i.g.vertices,
+  (i, more_left) ← i.exhaust_one i.g.vertices.to_list,
   if more_left then i.exhaust_all else return i
 
 meta def backtrack : vertex → option edge → tactic (option expr × list edge)
@@ -504,7 +552,7 @@ meta def combine_proofs : option expr → option expr → tactic expr
 | (some a) none     := return a
 | none     (some b) := mk_eq_symm b
 | (some a) (some b) := do b' ← mk_eq_symm b, mk_eq_trans a b'
-
+  
 meta def solve_goal (e : edge) : tactic (expr × list edge) :=
 do
   let (from_vertex, to_vertex) := i.g.get_endpoints e,
@@ -529,8 +577,9 @@ do
   i.trace to_vertex.to_string,
 
   if i.conf.trace_summary then do
-    let saw := i.g.vertices.length,
-    let visited := (i.g.vertices.filter (λ v : vertex, v.visited)).length,
+    let vl := i.g.vertices.to_list,
+    let saw := vl.length,
+    let visited := (vl.filter (λ v : vertex, v.visited)).length,
     name ← decl_name,
     tactic.trace format!"rewrite_search (saw/visited/used) {saw}/{visited}/{edges.length} expressions during proof of {name}"
   else 

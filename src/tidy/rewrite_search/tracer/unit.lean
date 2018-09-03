@@ -9,7 +9,7 @@ open tactic
 meta def unit_tracer_init : tactic (init_result unit) := return (init_result.success ())
 meta def unit_tracer_publish_vertex (_ : unit) (_ : vertex) : tactic unit := skip
 meta def unit_tracer_publish_edge (_ : unit) (_ : edge) : tactic unit := skip
-meta def unit_tracer_publish_pair (_ : unit) (_ _ : vertex_ref) : tactic unit := skip
+meta def unit_tracer_publish_pair (_ : unit) (_ _ : table_ref) : tactic unit := skip
 meta def unit_tracer_publish_visited (_ : unit) (_ : vertex) : tactic unit := skip
 meta def unit_tracer_publish_finished (_ : unit) (_ : list edge) : tactic unit := skip
 meta def unit_tracer_dump (_ : unit) (_ : string) : tactic unit := skip

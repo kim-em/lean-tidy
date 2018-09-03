@@ -113,7 +113,7 @@ meta def graph_tracer_publish_vertex (vs : visualiser) (v : vertex) : tactic uni
 meta def graph_tracer_publish_edge (vs : visualiser) (e : edge) : tactic unit :=
   vs.publish (to_string (format!"E|{e.f.to_string}|{e.t.to_string}"))
 
-meta def graph_tracer_publish_pair (vs : visualiser) (l r : vertex_ref) : tactic unit :=
+meta def graph_tracer_publish_pair (vs : visualiser) (l r : table_ref) : tactic unit :=
   vs.publish (to_string (format!"P|{l.to_string}|{r.to_string}"))
 
 meta def graph_tracer_publish_visited (vs : visualiser) (v : vertex) : tactic unit :=

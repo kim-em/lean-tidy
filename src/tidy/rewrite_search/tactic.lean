@@ -88,9 +88,10 @@ meta def do_rewrite_search {α β γ : Type} (rs : list (expr × bool)) (cfg : c
   | _ := fail "target is not an equation"
   end
 
+open tidy.rewrite_search.edit_distance
 open tidy.rewrite_search.strategy.edit_distance
 
-meta def default_config : config unit ed_partial unit := {}
+meta def default_config : config search_state ed_partial unit := {}
 meta def pick_default_config : tactic unit := `[exact tidy.rewrite_search.default_config]
 
 -- TODO coerce {} = ∅ into default_config

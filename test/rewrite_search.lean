@@ -128,9 +128,11 @@ constants f g : ℕ → ℕ → ℕ → ℕ
 @[search] axiom g_2_2 : ∀ a b c : ℕ, g a b c = g a b 2
 @[search] axiom f_g : f 0 1 2 = g 2 0 1
 
+open tidy.rewrite_search.strategy
+
 lemma test : f 0 0 0 = g 0 0 0 :=
 -- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
-by rewrite_search_using [`search] {trace_result := tt, trace_summary := tt, exhaustive := tt, view := visualiser}
+by rewrite_search_using [`search] {trace_result := tt, trace_summary := tt, exhaustive := tt, view := visualiser, strategy := edit_distance_strategy}
 
 open tidy.rewrite_search.strategy
 
