@@ -132,7 +132,7 @@ open tidy.rewrite_search.strategy
 
 lemma test : f 0 0 0 = g 0 0 0 :=
 -- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
-by rewrite_search_using [`search] {trace_result := tt, trace_summary := tt, exhaustive := tt, view := visualiser, strategy := edit_distance_cm_weighted 4}
+by rewrite_search_using [`search] {trace_result := tt, trace_summary := tt, exhaustive := tt, /-view := visualiser,-/ strategy := edit_distance_cm_weighted 4}
 
 open tidy.rewrite_search.strategy
 
@@ -142,8 +142,16 @@ constant h : ℕ → ℕ
 @[search,simp] axiom a3 : h 2 = h 3
 @[search,simp] axiom a4 : h 3 = h 4
 
-lemma test3 : h 0 = h 4 :=
+lemma test2 : h 0 = h 4 :=
 -- by erw [a1, a2, ←a4, ←a3]
 by rewrite_search_using [`search]
+
+constants a b c d : ℚ
+
+lemma test3 : (a * (b + c)) * d = a * (b * d) + a * (c * d) :=
+by rewrite_search [add_comm, add_assoc, mul_assoc, mul_comm, left_distrib, right_distrib] {trace_result := tt, trace_summary := tt, view := visualiser, strategy := edit_distance}
+
+lemma test4 : (a * (b + c + 1)) * d = a * (b * d) + a * (1 * d) + a * (c * d) :=
+by rewrite_search [add_comm, add_assoc, mul_one, mul_assoc, mul_comm, left_distrib, right_distrib] {trace_result := tt, trace_summary := tt, /-view := visualiser,-/ strategy := edit_distance_cm_weighted 3}
 
 end tidy.rewrite_search.examples
