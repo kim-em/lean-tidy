@@ -132,7 +132,7 @@ open tidy.rewrite_search.strategy
 
 lemma test : f 0 0 0 = g 0 0 0 :=
 -- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
-by rewrite_search_using [`search] {trace_result := tt, trace_summary := tt, exhaustive := tt, view := visualiser, strategy := edit_distance_strategy}
+by rewrite_search_using [`search] {trace_result := tt, trace_summary := tt, exhaustive := tt, view := visualiser, strategy := edit_distance_cm_weighted 4}
 
 open tidy.rewrite_search.strategy
 
