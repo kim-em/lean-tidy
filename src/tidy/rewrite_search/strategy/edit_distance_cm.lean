@@ -15,7 +15,7 @@ def calc_cm (l : list token) (s : side) : list ℚ :=
 def cm_diff : list ℚ → list ℚ → list ℚ
   | [] _ := []
   | _ [] := []
-  | (a :: l1) (b :: l2) := ((abs ((a - b) * 20)) + 1) :: (cm_diff l1 l2)
+  | (a :: l1) (b :: l2) := ((abs ((a - b) * 4)) + 1) :: (cm_diff l1 l2)
 
 def calc_cm_delta (tokens : table token) : list ℚ :=
   let tl := tokens.to_list in
