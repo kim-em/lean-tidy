@@ -9,7 +9,7 @@ open interactive interactive.types expr tactic
 
 namespace tidy.rewrite_search
 
-def how.to_tactic (rule_strings : list string) : how → option string 
+def how.to_tactic (rule_strings : list string) : how → option string
 | (how.defeq) := none
 | (how.rewrite index s location) := some ("nth_rewrite" ++ (match s with | side.L := "_lhs" | side.R := "_rhs" end) ++ " " ++ to_string location ++ " " ++ (rule_strings.nth index).iget)
 
@@ -44,14 +44,14 @@ match result with
       trace format!"rewrite_search found proof:\n{pp}"
     else skip,
     rules_strings ← pp_rules rules,
-    explanation ← (do 
+    explanation ← (do
       let rewrites := (steps.map $ λ s, match s with
                                    | how.defeq := []
                                    | how.rewrite index _ _ := [(rules.nth index).iget]
                                    end).join,
       needs_refl ← check_if_simple_rewrite_succeeds rewrites,
       return (explain_proof_concisely rules_strings steps needs_refl)) <|> return (explain_proof rules_strings steps),
-    if cfg.trace_result then trace explanation          
+    if cfg.trace_result then trace explanation
     else skip,
     exact proof,
     return explanation
@@ -154,7 +154,7 @@ run_cmd attribute.register `search_attribute
 
 -- attribute [search] cat.li cat.a
 
--- private example (C : cat) (X Y Z : C.O) (f : C.H X Y) (g : C.H Y X) (w : C.c g f = C.i Y) (h k : C.H Y Z) (p : C.c f h = C.c f k) : h = k := 
+-- private example (C : cat) (X Y Z : C.O) (f : C.H X Y) (g : C.H Y X) (w : C.c g f = C.i Y) (h k : C.H Y Z) (p : C.c f h = C.c f k) : h = k :=
 -- begin
 -- rewrite_search_using `search {trace := tt, trace_rules:=tt},
 -- end

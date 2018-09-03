@@ -5,7 +5,7 @@ universes u v
 @[derive decidable_eq]
 inductive pempty : Type u
 
-instance pempty_fintype : fintype pempty := 
+instance pempty_fintype : fintype pempty :=
 { elems := [].to_finset,
   complete := begin intros, cases x, end }
 

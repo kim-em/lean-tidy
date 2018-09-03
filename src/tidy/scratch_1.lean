@@ -22,7 +22,7 @@
 
 -- meta def synthetic_goal.update : synthetic_goal → tactic synthetic_goal
 -- | synthetic_goal.none := synthetic_goal.new
--- | (synthetic_goal.goals g g' t) := 
+-- | (synthetic_goal.goals g g' t) :=
 --     do try_core (do {
 --       val ← instantiate_mvars g',
 --       do {
@@ -41,13 +41,13 @@
 --                 return (s, (b, a) :: c)) <|>
 --             (do s ← s.update,
 --                 n ← num_goals,
---                 if b = (n-1) then return (s, []) else do  
+--                 if b = (n-1) then return (s, []) else do
 --                 rotate_left 1,
---                 luxembourg_chain_aux (b+1) s)    
+--                 luxembourg_chain_aux (b+1) s)
 
 -- /-- Returns a `list (ℕ × α)`, whose successive elements `(n, a)` represent
---     a successful result of `rotate_left n >> tac`. 
-    
+--     a successful result of `rotate_left n >> tac`.
+
 --     (When `n = 0`, the `rotate_left` may of course be omitted.) -/
 -- meta def luxembourg_chain_core (tac : tactic α) : tactic (list (ℕ × α)) :=
 -- do b ← num_goals,

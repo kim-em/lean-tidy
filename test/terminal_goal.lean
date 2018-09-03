@@ -21,7 +21,7 @@ def test_terminal_goal : C :=
     exact bool,
     terminal_goal,
     exact (0, tt)
- end     
+ end
 
  -- verifying that terminal_goal correctly considers all propositional goals as terminal?
 structure foo :=
@@ -29,7 +29,7 @@ structure foo :=
 (p : x = 0)
 
 open tactic
-lemma bar : ∃ F : foo, F = ⟨ 0, by refl ⟩ := 
+lemma bar : ∃ F : foo, F = ⟨ 0, by refl ⟩ :=
 begin
     split,
     swap,
@@ -45,7 +45,7 @@ end
 structure D :=
  ( w : ℕ → Type )
  ( x : list (w 0) )
- 
+
 def test_terminal_goal' : D :=
  begin
     split,
@@ -55,9 +55,9 @@ def test_terminal_goal' : D :=
     success_if_fail { terminal_goal },
     exact ℕ,
     exact []
- end     
+ end
 
-def f : unit → Type := λ _, ℕ 
+def f : unit → Type := λ _, ℕ
 
 def test_terminal_goal'' : Σ x : unit, f x :=
  begin
@@ -68,7 +68,7 @@ def test_terminal_goal'' : Σ x : unit, f x :=
     exact (),
     dsimp [f],
     exact 0
- end     
+ end
 
 def test_subsingleton_goal : 0 = 0 :=
 begin

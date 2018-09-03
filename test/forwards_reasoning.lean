@@ -8,7 +8,7 @@ section
 local attribute [forward] G
 
 example : 1 = 1 :=
-begin 
+begin
   success_if_fail { forwards_library_reasoning },
   refl
 end
@@ -16,7 +16,7 @@ end
 local attribute [forward] F
 
 example : 1 = 1 :=
-begin 
+begin
   forwards_library_reasoning,
   forwards_library_reasoning,
   success_if_fail { forwards_library_reasoning },
@@ -24,8 +24,8 @@ begin
 end
 
 example : 1 = 1 :=
-begin 
-  have p := [0],  
+begin
+  have p := [0],
   forwards_library_reasoning,
   success_if_fail { forwards_library_reasoning },
   refl
@@ -49,7 +49,7 @@ end
 
 example (P Q : Prop) (p : P) (h : P → Q): Q :=
 begin
-  forwards_reasoning, 
+  forwards_reasoning,
   success_if_fail { forwards_reasoning },
   exact h_p
 end

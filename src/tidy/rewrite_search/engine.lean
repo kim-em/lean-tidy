@@ -162,15 +162,15 @@ meta def register_tokens (s : side) (strs : list string) : global_state α β ×
   let (new_tokens, refs) := register_tokens_aux s g.tokens strs in
   ({g with tokens := new_tokens}, refs)
 
--- Forcibly add a new vertex to the vertex table. Probably should never be 
+-- Forcibly add a new vertex to the vertex table. Probably should never be
 -- called by a strategy and add_vertex to should used instead.
 meta def do_alloc_vertex (e : expr) (root : bool) (s : side) : tactic (global_state α β × vertex) :=
 do (pp, tokens) ← tokenise_expr e,
    let (g, token_refs) := g.register_tokens s tokens,
    let v : vertex := ⟨ g.vertices.next_id, e, pp, token_refs, root, ff, s, none, [] ⟩,
    return ({ g with vertices := g.vertices.alloc v }, v)
-  
--- Forcibly add a new pair to the interesting pair list. Probably should never be 
+
+-- Forcibly add a new pair to the interesting pair list. Probably should never be
 -- called by a strategy and add_vertex to should used instead.
 meta def do_alloc_pair (de : dist_estimate β) : global_state α β :=
 {g with estimates := g.estimates.concat de, interesting_pairs := g.interesting_pairs.concat de}
@@ -268,7 +268,7 @@ meta inductive strategy_action {α β : Type}
 | examine : dist_estimate β → strategy_action
 | refresh : refresh_fn α β → strategy_action
 | abort   : string → strategy_action
-  
+
 open strategy_action
 
 meta def step_fn (α β : Type) : Type := global_state α β → ℕ → global_state α β × (@strategy_action α β)
@@ -504,7 +504,7 @@ match i.g.solving_edge with
 | none :=
   let (g, action) := i.conf.strategy.step i.g itr in
   let i := i.mutate g in
-  match action with 
+  match action with
   | examine de := do
     (lhs, rhs) ← pure (g.get_estimate_verts de),
     i.trace format!"examine({lhs.id.to_nat}, {rhs.id.to_nat}) distance {de.bnd.to_string}: ({lhs.pp}) = ({rhs.pp})",
@@ -537,7 +537,7 @@ meta def exhaust_all : inst α β γ → tactic (inst α β γ) := λ i, do
 meta def backtrack : vertex → option edge → tactic (option expr × list edge)
 | v e := match e with
        | none := return (none, [])
-       | (some e) := do 
+       | (some e) := do
                       let w : vertex := i.g.get_vertex e.f,
                       (prf_o, edges) ← backtrack w w.parent,
                       match prf_o with
@@ -547,12 +547,12 @@ meta def backtrack : vertex → option edge → tactic (option expr × list edge
                       end
        end
 
-meta def combine_proofs : option expr → option expr → tactic expr 
+meta def combine_proofs : option expr → option expr → tactic expr
 | none     none     := fail "unreachable code!"
 | (some a) none     := return a
 | none     (some b) := mk_eq_symm b
 | (some a) (some b) := do b' ← mk_eq_symm b, mk_eq_trans a b'
-  
+
 meta def solve_goal (e : edge) : tactic (expr × list edge) :=
 do
   let (from_vertex, to_vertex) := i.g.get_endpoints e,
@@ -582,7 +582,7 @@ do
     let visited := (vl.filter (λ v : vertex, v.visited)).length,
     name ← decl_name,
     tactic.trace format!"rewrite_search (saw/visited/used) {saw}/{visited}/{edges.length} expressions during proof of {name}"
-  else 
+  else
     skip,
 
   i ← if i.conf.exhaustive then i.exhaust_all else pure i,

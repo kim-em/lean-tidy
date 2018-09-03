@@ -46,5 +46,5 @@ meta def tokenise_expr (e : expr) : tactic (string × list string) := do
   pp.use_holes (Bool) (pretty printer) use holes '{! !}' when pretty printing metavariables and `sorry` (default: false)
   pp.indent (Unsigned Int) (pretty printer) default indentation (default: 2)
   pp.binder_types (Bool) (pretty printer) display types of lambda and Pi parameters (default: true)
-  
+
 -/

@@ -4,7 +4,7 @@
 
 import tactic.basic
 import tactic.tidy
-import .backwards_reasoning 
+import .backwards_reasoning
 import .forwards_reasoning
 import .rewrite_search
 import .rewrite_search.tracer
@@ -14,7 +14,7 @@ import category_theory.category
 open tactic
 
 meta def extended_tidy_tactics : list (tactic string) :=
-[ reflexivity                                 >> pure "refl", 
+[ reflexivity                                 >> pure "refl",
   `[exact dec_trivial]                        >> pure "exact dec_trivial",
   propositional_goal >> assumption            >> pure "assumption",
   backwards_reasoning,
@@ -24,7 +24,7 @@ meta def extended_tidy_tactics : list (tactic string) :=
   `[apply_auto_param]                         >> pure "apply_auto_param",
   `[dsimp at *]                               >> pure "dsimp at *",
   `[simp at *]                                >> pure "simp at *",
-  fsplit                                      >> pure "fsplit", 
+  fsplit                                      >> pure "fsplit",
   injections_and_clear                        >> pure "injections_and_clear",
   terminal_goal >> (`[solve_by_elim])         >> pure "solve_by_elim",
   forwards_reasoning,

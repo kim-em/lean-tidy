@@ -40,7 +40,7 @@ local attribute [semiapplicable] quotient_group_aux quotient_group_aux' quotient
 local attribute [simp] mul_assoc
 
 instance quotient_group' [group α] (s : set α) [normal_subgroup s] : group (left_cosets s) :=
-by refine 
+by refine
 { one := ⟦1⟧,
   mul := λ a b, quotient.lift_on₂ a b (λ a b, ⟦a * b⟧) (by obviously),
   inv := λ a',  quotient.lift_on  a'  (λ a, ⟦a⁻¹⟧)     (by obviously),

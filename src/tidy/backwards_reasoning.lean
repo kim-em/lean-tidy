@@ -62,9 +62,9 @@ meta def any_apply_no_new_goals : list name → tactic name
 meta def backwards_reasoning : tactic string :=
 do cs ← attribute.get_instances `back',
    r ← try_core (any_apply_no_new_goals cs),
-   match r with 
+   match r with
    | (some n) := return ("apply " ++ n.to_string ++ " ; solve_by_elim")
-   | none     :=  do 
+   | none     :=  do
                     cs ← attribute.get_instances `back,
                     n ← any_apply cs <|> fail "no @[back] or @[back'] lemmas could be applied",
                     return ("apply " ++ n.to_string)

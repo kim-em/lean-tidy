@@ -10,13 +10,13 @@ meta def luxembourg_chain_aux (tac : tactic α) : ℕ → tactic (list (ℕ × �
                 c ← luxembourg_chain_aux 0,
                 return ((b, a) :: c)) <|>
             (do n ← num_goals,
-                if b = (n-1) then return [] else do  
+                if b = (n-1) then return [] else do
                 rotate_left 1,
                 luxembourg_chain_aux (b+1)).
 
 /-- Returns a `list (ℕ × α)`, whose successive elements `(n, a)` represent
-    a successful result of `rotate_left n >> tac`. 
-    
+    a successful result of `rotate_left n >> tac`.
+
     (When `n = 0`, the `rotate_left` may of course be omitted.) -/
 meta def luxembourg_chain_core (tac : tactic α) : tactic (list (ℕ × α)) :=
 do b ← num_goals,

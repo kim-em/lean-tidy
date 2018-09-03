@@ -19,14 +19,14 @@ private def list_set_at_aux {α : Type u} (val : α) : list α → list α → �
 def list.set_at {α : Type u} (l : list α) (idx : ℕ) (val : α) : list α :=
   list_set_at_aux val [] l idx
 
-def list.split_on_aux {α : Type u} [decidable_eq α] (a : α) : list α → list α → list (list α) 
+def list.split_on_aux {α : Type u} [decidable_eq α] (a : α) : list α → list α → list (list α)
 | [] l       := [l.reverse]
 | (h :: t) l := if h = a then
                   l.reverse :: (list.split_on_aux t [])
                 else
                   list.split_on_aux t (h :: l)
 
-def list.split_on {α : Type u} [decidable_eq α] (a : α) : list α → list (list α) 
+def list.split_on {α : Type u} [decidable_eq α] (a : α) : list α → list (list α)
 | l := list.split_on_aux a l []
 
 def string.split_on (c : char) (s : string) := (s.to_list.split_on c).map (λ l, l.as_string)
@@ -46,23 +46,23 @@ def list.stripl {α : Type u} [decidable_eq α] (l : list α) (vs : list α) : l
 
 def char_buffer.from_list (l : list char) : char_buffer := buffer.nil.append_list l
 
-lemma nat.succ_pred (n : ℕ) (h : n ≠ 0) : nat.succ (nat.pred n) = n := 
+lemma nat.succ_pred (n : ℕ) (h : n ≠ 0) : nat.succ (nat.pred n) = n :=
 begin
   cases n,
   contradiction,
   simp
 end
 
-lemma fin.with_max (n m : ℕ) (h : m ≠ 0): fin m := 
-⟨ min n (m-1), begin 
-                 have p := min_le_right n (nat.pred m), 
-                 have q := nat.lt_succ_of_le p, 
+lemma fin.with_max (n m : ℕ) (h : m ≠ 0): fin m :=
+⟨ min n (m-1), begin
+                 have p := min_le_right n (nat.pred m),
+                 have q := nat.lt_succ_of_le p,
                  rw nat.succ_pred at q,
                  exact q,
                  assumption
                end ⟩
 
-lemma pnat.succ_pred (n : pnat) : nat.succ (nat.pred n) = n := 
+lemma pnat.succ_pred (n : pnat) : nat.succ (nat.pred n) = n :=
 begin
   cases n with n h,
   cases n,
@@ -70,17 +70,17 @@ begin
   simp
 end
 
-lemma fin.with_max' (n : ℕ) (m : pnat) : fin m := 
-⟨ min n (m-1), begin 
-                 have p := min_le_right n (nat.pred m), 
-                 have q := nat.lt_succ_of_le p, 
+lemma fin.with_max' (n : ℕ) (m : pnat) : fin m :=
+⟨ min n (m-1), begin
+                 have p := min_le_right n (nat.pred m),
+                 have q := nat.lt_succ_of_le p,
                  rw nat.succ_pred at q,
                  exact q,
                  exact nat.pos_iff_ne_zero.mp m.property,
                end ⟩
 
 def nat.trunc_to_char (n : nat) : char :=
-if h : n > 255 then ⟨ 255, begin unfold is_valid_char, norm_num end ⟩ else ⟨ n, begin unfold is_valid_char, simp at h, left, transitivity 256, apply nat.lt_succ_of_le, assumption, norm_num end ⟩ 
+if h : n > 255 then ⟨ 255, begin unfold is_valid_char, norm_num end ⟩ else ⟨ n, begin unfold is_valid_char, simp at h, left, transitivity 256, apply nat.lt_succ_of_le, assumption, norm_num end ⟩
 
 def TAG_CONT    := 0b10000000
 def TAG_TWO_B   := 0b11000000

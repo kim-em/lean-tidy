@@ -27,7 +27,7 @@ namespace deeply_nested
 structure A :=
 (z : ℕ)
 
-structure B := 
+structure B :=
 (a : A)
 (aa : a.z = 0)
 
@@ -93,9 +93,9 @@ structure N :=
 
 open tactic
 
-def f : F := 
+def f : F :=
 begin
-tidy --{trace_result:=tt}, 
+tidy --{trace_result:=tt},
 -- fsplit, fsplit, fsplit, fsplit, rotate_left 1,
 --  refl, tactic.result >>= tactic.trace,
 --   fsplit, fsplit, rotate_left 1,

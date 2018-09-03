@@ -27,7 +27,7 @@ end
 
 @[simp] lemma symm_propext {a b : Prop} (p : a ↔ b) : eq.symm (propext p) = propext (p.symm) := by refl
 
-@[simp] lemma {u} symm_refl {α : Sort u} (a : α) : eq.symm (eq.refl a) = eq.refl a := by refl  
+@[simp] lemma {u} symm_refl {α : Sort u} (a : α) : eq.symm (eq.refl a) = eq.refl a := by refl
 
 @[simp] lemma {u v} symm_congr {α : Sort u} {β : Sort v} {f g : α → β} (h : f = g) {a b : α} (h' : a = b) : eq.symm (congr h h') = congr (eq.symm h) (eq.symm h') :=
 begin

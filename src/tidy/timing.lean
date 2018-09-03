@@ -35,7 +35,7 @@ do time_before ← time_in_micros,
 -- @@ -20,6 +20,10 @@ vm_obj vm_timeit(vm_obj const &, vm_obj const & s, vm_obj const & fn) {
 --      return invoke(fn, mk_vm_unit());
 --  }
- 
+
 -- +vm_obj vm_systemtime() {
 -- +    return mk_vm_nat(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
 -- +}
@@ -44,7 +44,7 @@ do time_before ← time_in_micros,
 --      tout() << to_string(s) << "\n";
 --      return invoke(fn, mk_vm_unit());
 -- @@ -58,6 +62,7 @@ vm_obj vm_try_for(vm_obj const &, vm_obj const & n, vm_obj const & thunk) {
- 
+
 --  void initialize_vm_aux() {
 --      DECLARE_VM_BUILTIN("timeit",           vm_timeit);
 -- +    DECLARE_VM_BUILTIN("systemtime",       vm_systemtime);

@@ -57,6 +57,6 @@ meta def forwards_reasoning : tactic string :=
 do hyps ← local_context,
    es ← hyps.mmap (λ e, (do s ← pretty_print e, return (e, [s]))),
    s ← mk_simp_set ff [] [],
-   attempt_forwards_reasoning tt s.1 es   
+   attempt_forwards_reasoning tt s.1 es
 
 attribute [forward] congr_fun

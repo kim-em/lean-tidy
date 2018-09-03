@@ -16,8 +16,8 @@ constant Rubik : C → C → C → C → C → C → C → C → C → C → C �
 -- @[ematch] constant Rubik_11 : Rubik X_1 X_2 X_3 X_4 X_5 X_6 X_7 X_8 X_9 X_10 X_11 X_12 X_13 X_14 X_15 X_16 X_17 X_18 X_19 X_20 X_21 X_22 X_23 X_24 X_25 X_26 X_27 X_28 X_29 X_30 X_31 X_32 X_33 X_34 X_35 X_36 X_37 X_38 X_39 X_40 X_41 X_42 X_43 X_44 X_45 X_46 X_47 X_48 = Rubik X_27 X_29 X_32 X_4 X_5 X_6 X_7 X_8 X_3 X_10 X_11 X_2 X_13 X_1 X_15 X_16 X_17 X_18 X_19 X_20 X_21 X_22 X_23 X_24 X_25 X_26 X_48 X_28 X_47 X_30 X_31 X_46 X_38 X_36 X_33 X_39 X_34 X_40 X_37 X_35 X_41 X_42 X_43 X_44 X_45 X_9 X_12 X_14
 -- @[ematch] constant Rubik_12 : Rubik X_1 X_2 X_3 X_4 X_5 X_6 X_7 X_8 X_9 X_10 X_11 X_12 X_13 X_14 X_15 X_16 X_17 X_18 X_19 X_20 X_21 X_22 X_23 X_24 X_25 X_26 X_27 X_28 X_29 X_30 X_31 X_32 X_33 X_34 X_35 X_36 X_37 X_38 X_39 X_40 X_41 X_42 X_43 X_44 X_45 X_46 X_47 X_48 = Rubik X_1 X_2 X_3 X_4 X_5 X_6 X_7 X_8 X_9 X_10 X_11 X_12 X_13 X_38 X_39 X_40 X_17 X_18 X_19 X_20 X_21 X_14 X_15 X_16 X_25 X_26 X_27 X_28 X_29 X_22 X_23 X_24 X_33 X_34 X_35 X_36 X_37 X_30 X_31 X_32 X_46 X_44 X_41 X_47 X_42 X_48 X_45 X_43
 
-lemma Rubik_test_1 : Rubik 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 5 5 5 5 5 5 5 5 = Rubik 0 0 0 0 0 0 0 0 4 4 4 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 4 4 4 4 4 5 5 5 5 5 5 5 5 := 
-begin 
+lemma Rubik_test_1 : Rubik 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 5 5 5 5 5 5 5 5 = Rubik 0 0 0 0 0 0 0 0 4 4 4 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 4 4 4 4 4 5 5 5 5 5 5 5 5 :=
+begin
 -- rewrite_search_using [`ematch],
 rw Rubik_2, rw ← Rubik_2, rw Rubik_3, rw ← Rubik_3, rw Rubik_2, rw ← Rubik_2, rw Rubik_3, rw ← Rubik_3, rw Rubik_2, rw ← Rubik_2, rw Rubik_3, rw ← Rubik_3,
 rw Rubik_2, rw ← Rubik_2, rw Rubik_3, rw ← Rubik_3, rw Rubik_2, rw ← Rubik_2, rw Rubik_3, rw ← Rubik_3, rw Rubik_2, rw ← Rubik_2, rw Rubik_3, rw ← Rubik_3,
@@ -42,7 +42,7 @@ rw Rubik_2, rw ← Rubik_2, rw Rubik_3, rw ← Rubik_3, rw Rubik_2, rw ← Rubik
 
 sorry
 end
--- lemma Rubik_test_2 : Rubik 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 5 5 5 5 5 5 5 5 = Rubik 1 0 0 1 0 1 0 0 4 4 4 5 1 5 1 1 5 1 1 2 2 2 2 2 2 2 2 3 0 3 3 0 3 3 0 4 4 4 4 4 5 5 5 5 5 3 3 3 := by rewrite_search_using [`ematch] {visualiser:=tt} 
+-- lemma Rubik_test_2 : Rubik 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 5 5 5 5 5 5 5 5 = Rubik 1 0 0 1 0 1 0 0 4 4 4 5 1 5 1 1 5 1 1 2 2 2 2 2 2 2 2 3 0 3 3 0 3 3 0 4 4 4 4 4 5 5 5 5 5 3 3 3 := by rewrite_search_using [`ematch] {visualiser:=tt}
 -- lemma Rubik_test_3 : Rubik 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 5 5 5 5 5 5 5 5 = Rubik 0 0 1 0 4 3 3 4 1 1 0 1 0 2 2 2 2 2 0 2 0 5 3 3 3 3 4 3 4 5 5 4 5 4 4 5 4 5 1 0 1 5 2 1 2 1 5 3 := by rewrite_search_using [`ematch]
 -- lemma Rubik_test_4 : Rubik 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 5 5 5 5 5 5 5 5 = Rubik 2 1 4 2 4 2 3 4 0 0 0 1 1 5 5 5 1 2 1 5 0 3 2 3 0 0 0 3 3 5 5 5 3 4 3 5 0 1 4 1 4 1 2 4 2 4 3 2 := by rewrite_search_using [`ematch]
 -- lemma Rubik_test_5 : Rubik 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 5 5 5 5 5 5 5 5 = Rubik 2 0 0 2 5 2 5 5 3 3 3 1 1 1 1 1 0 2 4 5 4 5 2 4 3 3 1 3 1 3 3 1 2 4 5 2 0 2 4 0 4 0 0 4 0 4 5 5 := by rewrite_search_using [`ematch]

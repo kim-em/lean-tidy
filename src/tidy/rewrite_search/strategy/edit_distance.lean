@@ -10,7 +10,7 @@ namespace tidy.rewrite_search.edit_distance
 variables {α : Type} [decidable_eq α]
 
 @[derive decidable_eq]
-structure ed_partial := 
+structure ed_partial :=
   (prefix_length : ℚ)
   (suffix    : list table_ref)
   (distances : list ℚ) -- distances from the prefix of l₁ to each non-empty prefix of l₂
@@ -19,7 +19,7 @@ def get_weight (weights : table ℚ) (r : table_ref) : ℚ := max (weights.at r)
 
 def compute_initial_distances_aux (weights : table ℚ) : ℚ → list table_ref → list ℚ
 | _ [] := []
-| so_far (a :: rest) := 
+| so_far (a :: rest) :=
   let so_far := so_far + (get_weight weights a) in
   list.cons so_far (compute_initial_distances_aux so_far rest)
 
@@ -46,7 +46,7 @@ meta def fold_fn (weights : table ℚ) (h : table_ref) (n : ℚ × list ℚ) : �
     a + (get_weight weights r), /-deletion-/
     b + (get_weight weights r) + (get_weight weights h) /-substitution-/,
     n.2.head + (get_weight weights h) /-insertion-/
-  ] in 
+  ] in
   (min m n.1, list.cons m n.2)
 
 --FIXME explain me
@@ -58,7 +58,7 @@ meta def improve_bound_once (weights : table ℚ) (l r : list table_ref) (cur : 
       let initial : ℚ × list ℚ := (new_prefix_length, [new_prefix_length]) in
       let new_distances : ℚ × list ℚ := (triples p r).foldl (fold_fn weights h) initial in
       at_least new_distances.1 ⟨ new_prefix_length, t, new_distances.2.reverse.drop 1 ⟩
-  end 
+  end
 
 meta def improve_bound_over (weights : table ℚ) (l r : list table_ref) (m : ℚ) : bound_progress ed_partial → bound_progress ed_partial
 | (exactly n p) := exactly n p

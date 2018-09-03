@@ -84,7 +84,7 @@ private structure cat :=
 
 attribute [search] cat.li cat.a
 
-private example (C : cat) (X Y Z : C.O) (f : C.H X Y) (g : C.H Y X) (w : C.c g f = C.i Y) (h k : C.H Y Z) (p : C.c f h = C.c f k) : h = k := 
+private example (C : cat) (X Y Z : C.O) (f : C.H X Y) (g : C.H Y X) (w : C.c g f = C.i Y) (h k : C.H Y Z) (p : C.c f h = C.c f k) : h = k :=
 begin
 -- rewrite_search_using `search {trace := tt, trace_rules:=tt}, -- not quite there, we haven't activated intense search
 perform_nth_rewrite [← @cat.li C Y Z h] 0,
@@ -107,22 +107,22 @@ end tidy.rewrite_search.testing
 
 namespace tidy.rewrite_search.examples
 
-constants f g : ℕ → ℕ → ℕ → ℕ 
+constants f g : ℕ → ℕ → ℕ → ℕ
 @[search] axiom f_0_0 : ∀ a b c : ℕ, f a b c = f 0 b c
 @[search] axiom f_0_1 : ∀ a b c : ℕ, f a b c = f 1 b c
-@[search] axiom f_0_2 : ∀ a b c : ℕ, f a b c = f 2 b c 
+@[search] axiom f_0_2 : ∀ a b c : ℕ, f a b c = f 2 b c
 @[search] axiom f_1_0 : ∀ a b c : ℕ, f a b c = f a 0 c
 @[search] axiom f_1_1 : ∀ a b c : ℕ, f a b c = f a 1 c
-@[search] axiom f_1_2 : ∀ a b c : ℕ, f a b c = f a 2 c 
+@[search] axiom f_1_2 : ∀ a b c : ℕ, f a b c = f a 2 c
 @[search] axiom f_2_0 : ∀ a b c : ℕ, f a b c = f a b 0
 @[search] axiom f_2_1 : ∀ a b c : ℕ, f a b c = f a b 1
 @[search] axiom f_2_2 : ∀ a b c : ℕ, f a b c = f a b 2
 @[search] axiom g_0_0 : ∀ a b c : ℕ, g a b c = g 0 b c
-@[search] axiom g_0_1 : ∀ a b c : ℕ, g a b c = g 1 b c 
-@[search] axiom g_0_2 : ∀ a b c : ℕ, g a b c = g 2 b c 
-@[search] axiom g_1_0 : ∀ a b c : ℕ, g a b c = g a 0 c 
-@[search] axiom g_1_1 : ∀ a b c : ℕ, g a b c = g a 1 c 
-@[search] axiom g_1_2 : ∀ a b c : ℕ, g a b c = g a 2 c 
+@[search] axiom g_0_1 : ∀ a b c : ℕ, g a b c = g 1 b c
+@[search] axiom g_0_2 : ∀ a b c : ℕ, g a b c = g 2 b c
+@[search] axiom g_1_0 : ∀ a b c : ℕ, g a b c = g a 0 c
+@[search] axiom g_1_1 : ∀ a b c : ℕ, g a b c = g a 1 c
+@[search] axiom g_1_2 : ∀ a b c : ℕ, g a b c = g a 2 c
 @[search] axiom g_2_0 : ∀ a b c : ℕ, g a b c = g a b 0
 @[search] axiom g_2_1 : ∀ a b c : ℕ, g a b c = g a b 1
 @[search] axiom g_2_2 : ∀ a b c : ℕ, g a b c = g a b 2

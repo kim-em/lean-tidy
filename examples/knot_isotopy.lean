@@ -1,9 +1,9 @@
 import tidy.tidy
 
-inductive slice 
-| pos : ℕ → slice 
-| neg : ℕ → slice 
-| cup : ℕ → slice 
+inductive slice
+| pos : ℕ → slice
+| neg : ℕ → slice
+| cup : ℕ → slice
 | cap : ℕ → slice
 
 open slice
@@ -24,22 +24,22 @@ axiom commute_pos_neg (n m) (h : n ≥ m + 2) : (pos n) ~~ (neg m) ~~ d = (neg m
 axiom commute_neg_pos (n m) (h : n ≥ m + 2) : (neg n) ~~ (pos m) ~~ d = (pos m) ~~ (neg n) ~~ d
 axiom commute_neg_neg (n m) (h : n ≥ m + 2) : (neg n) ~~ (neg m) ~~ d = (neg m) ~~ (neg n) ~~ d
 
-axiom commute_cup_pos (n m) (h : n ≥ m + 2) : (cup n) ~~ (pos m) ~~ d = (pos m) ~~ (cup n) ~~ d 
-axiom commute_cup_neg (n m) (h : n ≥ m + 2) : (cup n) ~~ (neg m) ~~ d = (neg m) ~~ (cup n) ~~ d 
-axiom commute_cap_pos (n m) (h : n ≥ m + 2) : (cap n) ~~ (pos m) ~~ d = (pos m) ~~ (cap n) ~~ d 
-axiom commute_cap_neg (n m) (h : n ≥ m + 2) : (cap n) ~~ (neg m) ~~ d = (neg m) ~~ (cap n) ~~ d 
+axiom commute_cup_pos (n m) (h : n ≥ m + 2) : (cup n) ~~ (pos m) ~~ d = (pos m) ~~ (cup n) ~~ d
+axiom commute_cup_neg (n m) (h : n ≥ m + 2) : (cup n) ~~ (neg m) ~~ d = (neg m) ~~ (cup n) ~~ d
+axiom commute_cap_pos (n m) (h : n ≥ m + 2) : (cap n) ~~ (pos m) ~~ d = (pos m) ~~ (cap n) ~~ d
+axiom commute_cap_neg (n m) (h : n ≥ m + 2) : (cap n) ~~ (neg m) ~~ d = (neg m) ~~ (cap n) ~~ d
 
-axiom commute_pos_cup (n m) (h : n ≥ m)     : (pos n) ~~ (cup m) ~~ d = (cup m) ~~ (pos (n+2)) ~~ d 
-axiom commute_pos_cap (n m) (h : n ≥ m + 2) : (pos n) ~~ (cap m) ~~ d = (cap m) ~~ (pos (n-2)) ~~ d 
-axiom commute_neg_cup (n m) (h : n ≥ m)     : (neg n) ~~ (cup m) ~~ d = (cup m) ~~ (neg (n+2)) ~~ d 
-axiom commute_neg_cap (n m) (h : n ≥ m + 2) : (neg n) ~~ (cap m) ~~ d = (cap m) ~~ (neg (n-2)) ~~ d 
+axiom commute_pos_cup (n m) (h : n ≥ m)     : (pos n) ~~ (cup m) ~~ d = (cup m) ~~ (pos (n+2)) ~~ d
+axiom commute_pos_cap (n m) (h : n ≥ m + 2) : (pos n) ~~ (cap m) ~~ d = (cap m) ~~ (pos (n-2)) ~~ d
+axiom commute_neg_cup (n m) (h : n ≥ m)     : (neg n) ~~ (cup m) ~~ d = (cup m) ~~ (neg (n+2)) ~~ d
+axiom commute_neg_cap (n m) (h : n ≥ m + 2) : (neg n) ~~ (cap m) ~~ d = (cap m) ~~ (neg (n-2)) ~~ d
 
-axiom commute_cup_cup (n m) (h : n ≥ m)     : (cup n) ~~ (cup m) ~~ d = (cup m) ~~ (cup (n+2)) ~~ d 
-axiom commute_cup_cap (n m) (h : n ≥ m + 2) : (cup n) ~~ (cap m) ~~ d = (cap m) ~~ (cup (n-2)) ~~ d 
-axiom commute_cap_cup (n m) (h : n ≥ m)     : (cap n) ~~ (cup m) ~~ d = (cup m) ~~ (cap (n+2)) ~~ d 
-axiom commute_cap_cap (n m) (h : n ≥ m + 2) : (cap n) ~~ (cap m) ~~ d = (cap m) ~~ (cap (n-2)) ~~ d 
+axiom commute_cup_cup (n m) (h : n ≥ m)     : (cup n) ~~ (cup m) ~~ d = (cup m) ~~ (cup (n+2)) ~~ d
+axiom commute_cup_cap (n m) (h : n ≥ m + 2) : (cup n) ~~ (cap m) ~~ d = (cap m) ~~ (cup (n-2)) ~~ d
+axiom commute_cap_cup (n m) (h : n ≥ m)     : (cap n) ~~ (cup m) ~~ d = (cup m) ~~ (cap (n+2)) ~~ d
+axiom commute_cap_cap (n m) (h : n ≥ m + 2) : (cap n) ~~ (cap m) ~~ d = (cap m) ~~ (cap (n-2)) ~~ d
 
-axiom zigzag_left (n : ℕ) : (cup n) ~~ (cap (n+1)) ~~ d = d  
+axiom zigzag_left (n : ℕ) : (cup n) ~~ (cap (n+1)) ~~ d = d
 axiom zigzag_right (n : ℕ) : (cup (n+1)) ~~ (cap n) ~~ d = d
 
 axiom R2_east (n : ℕ) : (neg n) ~~ (pos n) ~~ d = d
@@ -81,7 +81,7 @@ attribute [search] zigzag_left zigzag_right
 attribute [search] cap_over cap_under cup_over cup_under
 attribute [search] R1_pos_east R1_neg_east R1_pos_west R1_neg_west R1_pos_north R1_neg_north R1_pos_south R1_neg_south
 attribute [search] R2_east R2_west R2_north R2_south
-attribute [search] R3_pos_pos_pos R3_pos_pos_neg R3_pos_neg_neg R3_neg_pos_pos R3_neg_neg_pos R3_neg_neg_neg 
+attribute [search] R3_pos_pos_pos R3_pos_pos_neg R3_pos_neg_neg R3_neg_pos_pos R3_neg_neg_pos R3_neg_neg_neg
 -- attribute [search] rotate_pos_clockwise rotate_neg_clockwise rotate_pos_widdershins rotate_neg_widdershins
 
 end isotopy
