@@ -6,25 +6,23 @@ import data.rat
 open tidy.rewrite_search
 open tidy.rewrite_search.bound_progress
 
-def calc_cm (l : list token) (s : side) : list ℚ :=
+def cm_of_side (l : list token) (s : side) : list ℚ :=
   let (tot, vec) := l.foldl (
     λ n : ℕ × list ℕ, λ t : token, let v := t.freq s in (n.1 + v, n.2.concat v)
   ) (0, []) in
   vec.map (λ n : ℕ, n / tot)
 
-def cm_diff : list ℚ → list ℚ → list ℚ
+def cm_compare : list ℚ → list ℚ → list ℚ
   | [] _ := []
   | _ [] := []
-  | (a :: l1) (b :: l2) := ((abs ((a - b) * 4)) + 1) :: (cm_diff l1 l2)
+  | (a :: l1) (b :: l2) := ((abs ((a - b) * 4)) + 1) :: (cm_compare l1 l2)
 
-def calc_cm_delta (tokens : table token) : list ℚ :=
+def cm_calculate_weights (tokens : table token) : list ℚ :=
   let tl := tokens.to_list in
-  let cml := calc_cm tl side.L in
-  let cmr := calc_cm tl side.R in
-  cm_diff cml cmr
+  cm_compare (cm_of_side tl side.L) (cm_of_side tl side.R)
 
 meta def cm_calc_weights (tokens : table token) : tactic (table ℚ) :=
-  return $ table.from_list (calc_cm_delta tokens)
+  return $ table.from_list (cm_calculate_weights tokens)
 
 namespace tidy.rewrite_search.strategy
 
