@@ -38,3 +38,5 @@ def table_find_aux [decidable_eq β] [keyed α β] (key : β) : list α → opti
 | [] := none
 | (a :: rest) := if key = @keyed.key α β _ _ a then a else table_find_aux rest
 def table.find [decidable_eq β] [keyed α β] (key : β) : option α := table_find_aux key t.entries
+
+meta instance [has_to_format α] : has_to_format (table α) := ⟨λ t, has_to_format.to_format t.to_list⟩

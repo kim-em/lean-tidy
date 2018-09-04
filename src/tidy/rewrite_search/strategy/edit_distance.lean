@@ -85,29 +85,41 @@ open tidy.rewrite_search.edit_distance
 
 def MAX_ITERATIONS := 200
 
+structure ed_config :=
+(explain_thoughts : bool := ff)
+(trace_weights    : bool := ff)
+
+meta def calc_weights_fn := ed_config → table token → tactic (table ℚ)
+
 structure search_state :=
   (weights : table ℚ)
 def search_state.init : search_state := ⟨table.create⟩
 
 meta def ed_init : search_state := search_state.init
 
-meta def calc_weights_fn := table token → tactic (table ℚ)
-
 variable (g : global_state search_state ed_partial)
 
 meta def ed_init_bound (l r : vertex) : bound_progress ed_partial :=
   at_least 0 (empty_partial_edit_distance_data g.internal_strat_state.weights l.tokens r.tokens)
 
-meta def ed_reweight (fn : calc_weights_fn) (g : global_state search_state ed_partial) : tactic (global_state search_state ed_partial) := do
+meta def ed_reweight (conf : ed_config) (fn : table token → tactic (table ℚ)) (g : global_state search_state ed_partial) : tactic (global_state search_state ed_partial) := do
   let g := g.reset_all_estimates ed_init_bound,
   weights ← fn g.tokens,
+  if conf.trace_weights then
+    let weight_pairs := (g.tokens.to_list.zip weights.to_list).map (
+      λ p : token × ℚ, to_string format!"{p.1.str}:{p.2}"
+    ) in
+    tactic.trace format!"reweighted: {weight_pairs}"
+  else
+    tactic.skip,
   return $ g.mutate_strategy ⟨weights⟩
 
-meta def ed_step (refresh_freq : ℕ) (fn : calc_weights_fn) (g : global_state search_state ed_partial) (itr : ℕ) : tactic (global_state search_state ed_partial × (@strategy_action search_state ed_partial)) :=
+meta def ed_step (conf : ed_config) (refresh_freq : ℕ) (fn : table token → tactic (table ℚ)) (g : global_state search_state ed_partial) (itr : ℕ) : tactic (global_state search_state ed_partial × (@strategy_action search_state ed_partial)) :=
   if itr > MAX_ITERATIONS then
     return (g, strategy_action.abort "max iterations exceeded!")
-  else if refresh_freq > 0 ∧ ((itr + 1) % (refresh_freq + 1) = 0) then
-    return (g, strategy_action.refresh (ed_reweight fn))
+  else if refresh_freq > 0 ∧ (itr % (refresh_freq + 1) = 0) then do
+    if conf.explain_thoughts then tactic.trace "pause! refreshing weights..." else tactic.skip,
+    return (g, strategy_action.refresh (ed_reweight conf fn))
   else
     match g.interesting_pairs with
     | [] :=               return (g, strategy_action.abort "all interesting pairs exhausted!")
@@ -124,10 +136,10 @@ namespace tidy.rewrite_search.strategy
 open tidy.rewrite_search.edit_distance
 open tidy.rewrite_search.strategy.edit_distance
 
-meta def edit_distance_weighted (refresh_freq : ℕ) (fn : calc_weights_fn) : strategy search_state ed_partial :=
-  ⟨ ed_init, ed_step refresh_freq fn, ed_init_bound, ed_improve_estimate_over ⟩
+meta def edit_distance_weighted (refresh_freq : ℕ) (fn : calc_weights_fn) (conf : ed_config := {}) : strategy search_state ed_partial :=
+  ⟨ ed_init, ed_step conf refresh_freq (fn conf), ed_init_bound, ed_improve_estimate_over ⟩
 
-meta def edit_distance : strategy search_state ed_partial :=
-  ⟨ ed_init, ed_step 0 (λ ts, return table.create), ed_init_bound, ed_improve_estimate_over ⟩
+meta def edit_distance (conf : ed_config := {}) : strategy search_state ed_partial :=
+  edit_distance_weighted 0 (λ conf ts, return table.create) conf
 
 end tidy.rewrite_search.strategy
