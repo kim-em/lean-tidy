@@ -43,9 +43,9 @@ def minl {α : Type u} [inhabited α] [decidable_linear_order α] : list α → 
 meta def fold_fn (weights : table ℚ) (h : table_ref) (n : ℚ × list ℚ) : ℚ × ℚ × table_ref → ℚ × list ℚ
 | (a, b, r) :=
   let m := if h = r then b else minl [
-    a + (get_weight weights r), /-deletion-/
-    b + (get_weight weights r) + (get_weight weights h) /-substitution-/,
-    n.2.head + (get_weight weights h) /-insertion-/
+    /- deletion     -/ a + (get_weight weights r),
+    /- substitution -/ b + max (get_weight weights r) (get_weight weights h),
+    /- insertion    -/ n.2.head + (get_weight weights h)
   ] in
   (min m n.1, list.cons m n.2)
 
@@ -89,26 +89,29 @@ structure search_state :=
   (weights : table ℚ)
 def search_state.init : search_state := ⟨table.create⟩
 
-def calc_weights_fn := table token → table ℚ
+meta def ed_init : search_state := search_state.init
+
+meta def calc_weights_fn := table token → tactic (table ℚ)
 
 variable (g : global_state search_state ed_partial)
 
 meta def ed_init_bound (l r : vertex) : bound_progress ed_partial :=
   at_least 0 (empty_partial_edit_distance_data g.internal_strat_state.weights l.tokens r.tokens)
 
-meta def reweight (fn : calc_weights_fn) (g : global_state search_state ed_partial) : global_state search_state ed_partial :=
-  let g := g.reset_all_estimates ed_init_bound in g.mutate_strategy ⟨fn g.tokens⟩
+meta def ed_reweight (fn : calc_weights_fn) (g : global_state search_state ed_partial) : tactic (global_state search_state ed_partial) := do
+  let g := g.reset_all_estimates ed_init_bound,
+  weights ← fn g.tokens,
+  return $ g.mutate_strategy ⟨weights⟩
 
-meta def ed_step (refresh_freq : ℕ) (fn : calc_weights_fn) (g : global_state search_state ed_partial) (itr : ℕ) : global_state search_state ed_partial × (@strategy_action search_state ed_partial) :=
+meta def ed_step (refresh_freq : ℕ) (fn : calc_weights_fn) (g : global_state search_state ed_partial) (itr : ℕ) : tactic (global_state search_state ed_partial × (@strategy_action search_state ed_partial)) :=
   if itr > MAX_ITERATIONS then
-    (g, strategy_action.abort "max iterations exceeded!")
+    return (g, strategy_action.abort "max iterations exceeded!")
   else if refresh_freq > 0 ∧ ((itr + 1) % (refresh_freq + 1) = 0) then
-    (g, strategy_action.refresh (reweight fn))
+    return (g, strategy_action.refresh (ed_reweight fn))
   else
     match g.interesting_pairs with
-    | [] := (g, strategy_action.abort "all interesting pairs exhausted!")
-    | (best_p :: rest) :=
-      (g, strategy_action.examine best_p)
+    | [] :=               return (g, strategy_action.abort "all interesting pairs exhausted!")
+    | (best_p :: rest) := return (g, strategy_action.examine best_p)
     end
 
 meta def ed_improve_estimate_over (m : ℚ) (l r : vertex) (bnd : bound_progress ed_partial) : bound_progress ed_partial :=
@@ -122,9 +125,9 @@ open tidy.rewrite_search.edit_distance
 open tidy.rewrite_search.strategy.edit_distance
 
 meta def edit_distance_weighted (refresh_freq : ℕ) (fn : calc_weights_fn) : strategy search_state ed_partial :=
-  ⟨ search_state.init, ed_step refresh_freq fn, ed_init_bound, ed_improve_estimate_over ⟩
+  ⟨ ed_init, ed_step refresh_freq fn, ed_init_bound, ed_improve_estimate_over ⟩
 
 meta def edit_distance : strategy search_state ed_partial :=
-  ⟨ search_state.init, ed_step 0 (λ ts, table.create), ed_init_bound, ed_improve_estimate_over ⟩
+  ⟨ ed_init, ed_step 0 (λ ts, return table.create), ed_init_bound, ed_improve_estimate_over ⟩
 
 end tidy.rewrite_search.strategy

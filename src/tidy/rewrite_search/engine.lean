@@ -261,8 +261,7 @@ end
 
 end global_state
 
-meta def refresh_fn (α β : Type) : Type :=
-global_state α β → global_state α β
+meta def refresh_fn (α β : Type) : Type := global_state α β → tactic(global_state α β)
 
 meta inductive strategy_action {α β : Type}
 | examine : dist_estimate β → strategy_action
@@ -271,12 +270,12 @@ meta inductive strategy_action {α β : Type}
 
 open strategy_action
 
-meta def step_fn (α β : Type) : Type := global_state α β → ℕ → global_state α β × (@strategy_action α β)
+meta def init_fn (α : Type) : Type := α
+meta def step_fn (α β : Type) : Type := global_state α β → ℕ → tactic (global_state α β × (@strategy_action α β))
 
 meta structure strategy (α β : Type) :=
-(init : α)
+(init : init_fn α)
 (step : step_fn α β)
-
 (init_bound : init_bound_fn α β)
 (improve_estimate_over : improve_estimate_fn α β)
 
@@ -313,12 +312,12 @@ meta def pick_default_tracer   : tactic unit := `[exact tidy.rewrite_search.trac
 meta def pick_default_strategy : tactic unit := `[exact tidy.rewrite_search.strategy.edit_distance]
 
 meta structure config (α β γ : Type) extends rewrite_all_cfg :=
-(strategy      : strategy α β . pick_default_strategy)
-(view          : tracer γ     . pick_default_tracer)
-(trace         : bool := ff)
-(trace_summary : bool := ff)
-(trace_result  : bool := ff)
-(exhaustive    : bool := ff)
+(strategy       : strategy α β . pick_default_strategy)
+(view           : tracer γ     . pick_default_tracer)
+(trace          : bool := ff)
+(trace_summary  : bool := ff)
+(trace_result   : bool := ff)
+(exhaustive     : bool := ff)
 
 meta structure inst (α β γ : Type) :=
 (conf     : config α β γ)
@@ -501,8 +500,8 @@ do
 meta def step_once (itr : ℕ) : tactic (inst α β γ × status) :=
 match i.g.solving_edge with
 | some e := return (i, status.done e)
-| none :=
-  let (g, action) := i.conf.strategy.step i.g itr in
+| none := do
+  (g, action) ← i.conf.strategy.step i.g itr,
   let i := i.mutate g in
   match action with
   | examine de := do
@@ -512,7 +511,8 @@ match i.g.solving_edge with
     return (i, status.going (itr + 1))
   | refresh ref_fn := do
     i.trace format!"refresh",
-    return (i.mutate (ref_fn i.g), status.going (itr + 1))
+    new_g ← ref_fn i.g,
+    return (i.mutate new_g, status.going (itr + 1))
   | abort reason := do
     i.trace format!"abort: {reason}",
     return (i, status.abort reason)

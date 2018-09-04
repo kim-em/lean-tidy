@@ -23,7 +23,8 @@ def calc_cm_delta (tokens : table token) : list ℚ :=
   let cmr := calc_cm tl side.R in
   cm_diff cml cmr
 
-def cm_calc_weights (tokens : table token) : table ℚ := table.from_list (calc_cm_delta tokens)
+meta def cm_calc_weights (tokens : table token) : tactic (table ℚ) :=
+  return $ table.from_list (calc_cm_delta tokens)
 
 namespace tidy.rewrite_search.strategy
 
@@ -31,6 +32,6 @@ open tidy.rewrite_search.edit_distance
 open tidy.rewrite_search.strategy.edit_distance
 
 meta def edit_distance_cm_weighted (refresh_freq : ℕ) : strategy search_state ed_partial :=
-  ⟨ search_state.init, ed_step refresh_freq cm_calc_weights, ed_init_bound, ed_improve_estimate_over ⟩
+  ⟨ ed_init, ed_step refresh_freq cm_calc_weights, ed_init_bound, ed_improve_estimate_over ⟩
 
 end tidy.rewrite_search.strategy
