@@ -21,8 +21,11 @@ namespace tidy.rewrite_search.tracer
 
 open tidy.rewrite_search.tracer.unit
 
-meta def unit_tracer : tracer unit :=
-  ⟨ unit_tracer_init, unit_tracer_publish_vertex, unit_tracer_publish_edge, unit_tracer_publish_pair,
-    unit_tracer_publish_visited, unit_tracer_publish_finished, unit_tracer_dump, unit_tracer_pause ⟩
+-- meta def unit_tracer : tracer α β γ unit :=
+  -- ⟨ unit_tracer_init, unit_tracer_publish_vertex, unit_tracer_publish_edge, unit_tracer_publish_pair,
+    -- unit_tracer_publish_visited, unit_tracer_publish_finished, unit_tracer_dump, unit_tracer_pause ⟩
+
+meta def unit_tracer : tracer_constructor unit := λ α β γ,
+  tracer.mk α β γ unit_tracer_init unit_tracer_publish_vertex unit_tracer_publish_edge unit_tracer_publish_pair unit_tracer_publish_visited unit_tracer_publish_finished unit_tracer_dump unit_tracer_pause
 
 end tidy.rewrite_search.tracer

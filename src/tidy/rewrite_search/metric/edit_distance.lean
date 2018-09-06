@@ -15,7 +15,7 @@ structure ed_partial :=
   (suffix    : list table_ref)
   (distances : list ℚ) -- distances from the prefix of l₁ to each non-empty prefix of l₂
 
-def get_weight (weights : table ℚ) (r : table_ref) : ℚ := max (weights.at r) 1
+def get_weight (weights : table ℚ) (r : table_ref) : ℚ := max (weights.iget r) 1
 
 def compute_initial_distances_aux (weights : table ℚ) : ℚ → list table_ref → list ℚ
 | _ [] := []
@@ -79,7 +79,7 @@ meta def improve_bound_over (weights : table ℚ) (l r : list table_ref) (m : �
 
 end tidy.rewrite_search.edit_distance
 
-namespace tidy.rewrite_search.strategy.edit_distance
+namespace tidy.rewrite_search.metric.edit_distance
 
 open tidy.rewrite_search.edit_distance
 
@@ -91,19 +91,19 @@ structure ed_config :=
 
 meta def calc_weights_fn := ed_config → table token → tactic (table ℚ)
 
-structure search_state :=
+structure ed_state :=
   (weights : table ℚ)
-def search_state.init : search_state := ⟨table.create⟩
+def ed_state.init : ed_state := ⟨table.create⟩
 
-meta def ed_init : search_state := search_state.init
+meta def ed_init : ed_state := ed_state.init
 
-variable (g : global_state search_state ed_partial)
+variables {α δ : Type} (g : search_state α ed_state ed_partial δ)
 
 meta def ed_init_bound (l r : vertex) : bound_progress ed_partial :=
-  at_least 0 (empty_partial_edit_distance_data g.internal_strat_state.weights l.tokens r.tokens)
+  at_least 0 (empty_partial_edit_distance_data g.metric_state.weights l.tokens r.tokens)
 
-meta def ed_reweight (conf : ed_config) (fn : table token → tactic (table ℚ)) (g : global_state search_state ed_partial) : tactic (global_state search_state ed_partial) := do
-  let g := g.reset_all_estimates ed_init_bound,
+meta def ed_reweight (conf : ed_config) (fn : table token → tactic (table ℚ)) (g : search_state α ed_state ed_partial δ) : tactic (search_state α ed_state ed_partial δ) := do
+  g ← g.reset_all_estimates ed_init_bound,
   weights ← fn g.tokens,
   if conf.trace_weights then
     let weight_pairs := (g.tokens.to_list.zip weights.to_list).map (
@@ -112,34 +112,29 @@ meta def ed_reweight (conf : ed_config) (fn : table token → tactic (table ℚ)
     tactic.trace format!"reweighted: {weight_pairs}"
   else
     tactic.skip,
-  return $ g.mutate_strategy ⟨weights⟩
+  return $ g.mutate_metric ⟨weights⟩
 
-meta def ed_step (conf : ed_config) (refresh_freq : ℕ) (fn : table token → tactic (table ℚ)) (g : global_state search_state ed_partial) (itr : ℕ) : tactic (global_state search_state ed_partial × (@strategy_action search_state ed_partial)) :=
-  if itr > MAX_ITERATIONS then
-    return (g, strategy_action.abort "max iterations exceeded!")
-  else if refresh_freq > 0 ∧ (itr % (refresh_freq + 1) = 0) then do
+meta def ed_pre_step (conf : ed_config) (refresh_freq : ℕ) (fn : table token → tactic (table ℚ)) (g : search_state α ed_state ed_partial δ) (itr : ℕ) : tactic (search_state α ed_state ed_partial δ) :=
+  if refresh_freq > 0 ∧ (itr % (refresh_freq + 1) = 0) then do
     if conf.explain_thoughts then tactic.trace "pause! refreshing weights..." else tactic.skip,
-    return (g, strategy_action.refresh (ed_reweight conf fn))
+    ed_reweight conf fn g
   else
-    match g.interesting_pairs with
-    | [] :=               return (g, strategy_action.abort "all interesting pairs exhausted!")
-    | (best_p :: rest) := return (g, strategy_action.examine best_p)
-    end
+    return g
 
 meta def ed_improve_estimate_over (m : ℚ) (l r : vertex) (bnd : bound_progress ed_partial) : bound_progress ed_partial :=
-  improve_bound_over g.internal_strat_state.weights l.tokens r.tokens m bnd
+  improve_bound_over g.metric_state.weights l.tokens r.tokens m bnd
 
-end tidy.rewrite_search.strategy.edit_distance
+end tidy.rewrite_search.metric.edit_distance
 
-namespace tidy.rewrite_search.strategy
+namespace tidy.rewrite_search.metric
 
 open tidy.rewrite_search.edit_distance
-open tidy.rewrite_search.strategy.edit_distance
+open tidy.rewrite_search.metric.edit_distance
 
-meta def edit_distance_weighted (refresh_freq : ℕ) (fn : calc_weights_fn) (conf : ed_config := {}) : strategy search_state ed_partial :=
-  ⟨ ed_init, ed_step conf refresh_freq (fn conf), ed_init_bound, ed_improve_estimate_over ⟩
+meta def edit_distance_weighted (refresh_freq : ℕ) (fn : calc_weights_fn) (conf : ed_config := {}) : metric_constructor ed_state ed_partial :=
+  λ α δ, ⟨ ed_init, ed_pre_step conf refresh_freq (fn conf), ed_init_bound, ed_improve_estimate_over ⟩
 
-meta def edit_distance (conf : ed_config := {}) : strategy search_state ed_partial :=
+meta def edit_distance (conf : ed_config := {}) : metric_constructor ed_state ed_partial :=
   edit_distance_weighted 0 (λ conf ts, return table.create) conf
 
-end tidy.rewrite_search.strategy
+end tidy.rewrite_search.metric

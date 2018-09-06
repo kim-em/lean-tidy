@@ -135,9 +135,8 @@ namespace tidy.rewrite_search.tracer
 
 open tidy.rewrite_search.tracer.graph
 
-meta def graph_tracer : tracer visualiser :=
-  ⟨ graph_tracer_init, graph_tracer_publish_vertex, graph_tracer_publish_edge,
-    graph_tracer_publish_pair, graph_tracer_publish_visited, graph_tracer_publish_finished, graph_tracer_dump,
-    graph_tracer_pause ⟩
+meta def graph_tracer : tracer_constructor visualiser := λ α β γ,
+  tracer.mk α β γ graph_tracer_init graph_tracer_publish_vertex graph_tracer_publish_edge
+    graph_tracer_publish_pair graph_tracer_publish_visited graph_tracer_publish_finished graph_tracer_dump graph_tracer_pause
 
 end tidy.rewrite_search.tracer

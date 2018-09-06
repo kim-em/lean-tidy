@@ -6,6 +6,11 @@ import tactic.norm_num
 
 universe u
 
+def list.multiplex {α : Type u} : list α → list α → list α
+| [] l := l
+| l [] := l
+| (a₁ :: l₁) (a₂ :: l₂) := [a₁, a₂].append $ l₁.multiplex l₂
+
 --FIXME the fact that we use this is really sad (ARRAYS DO IT)
 def list.at {α : Type u} [inhabited α] (l : list α) (n : ℕ) : α :=
 list.head $ option.to_list $ list.nth l n

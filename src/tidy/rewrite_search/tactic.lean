@@ -35,7 +35,7 @@ do
 
 meta def pp_rules (rs : list (expr × bool)) : tactic (list string) := rs.mmap (λ p, (do pp ← pretty_print p.1, return (if p.2 then ("←" ++ pp) else pp)))
 
-meta def handle_search_result {α β γ : Type} (cfg : config α β γ) (rules : list (expr × bool)) (result : search_result) : tactic string := do
+meta def handle_search_result {α β γ δ : Type} (cfg : rewrite_search_config α β γ δ) (rules : list (expr × bool)) (result : search_result) : tactic string := do
 match result with
 | search_result.failure reason      := fail reason
 | search_result.success proof steps := do
@@ -57,7 +57,7 @@ match result with
     return explanation
 end
 
-meta def do_rewrite_search {α β γ : Type} (rs : list (expr × bool)) (cfg : config α β γ) : tactic string := do
+meta def do_rewrite_search {α β γ δ : Type} (rs : list (expr × bool)) (cfg : rewrite_search_config α β γ δ) : tactic string := do
   t ← target,
   match t with
   | `(%%lhs = %%rhs) := do
@@ -75,12 +75,12 @@ meta def do_rewrite_search {α β γ : Type} (rs : list (expr × bool)) (cfg : c
       handle_search_result cfg rs result
     | none := do
       trace "\nError initialising rewrite_search instance, falling back to emergency config!\n",
-      new_cfg ← pure (mk_fallback_config cfg),
+      let new_cfg := mk_fallback_config cfg,
       i ← try_mk_search_instance new_cfg rs lhs rhs,
       match i with
       | some i := do
         result ← i.search_until_solved,
-        handle_search_result new_cfg rs result
+        handle_search_result cfg rs result
       | none := do
         fail "Could not initialise emergency rewrite_search instance!"
       end
@@ -88,21 +88,13 @@ meta def do_rewrite_search {α β γ : Type} (rs : list (expr × bool)) (cfg : c
   | _ := fail "target is not an equation"
   end
 
-open tidy.rewrite_search.edit_distance
-open tidy.rewrite_search.strategy.edit_distance
-
-meta def default_config : config search_state ed_partial unit := {}
-meta def pick_default_config : tactic unit := `[exact tidy.rewrite_search.default_config]
-
--- TODO coerce {} = ∅ into default_config
-
 end tidy.rewrite_search
 
 namespace tactic.interactive
 
 open tidy.rewrite_search
 
-meta def rewrite_search {α β γ : Type} (rs : parse rw_rules) (cfg : config α β γ . pick_default_config) : tactic string := do
+meta def rewrite_search {α β γ δ : Type} (rs : parse rw_rules) (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic string := do
   rs ← rs.rules.mmap (λ r, do e ← to_expr' r.rule, pure (e, r.symm)),
   do_rewrite_search rs cfg
 
@@ -119,7 +111,7 @@ meta def load_exprs : list name → tactic (list expr)
   l ← load_exprs rest,
   return (u ++ l)
 
-meta def rewrite_search_using {α β γ : Type} (as : list name) (cfg : config α β γ . pick_default_config) : tactic string := do
+meta def rewrite_search_using {α β γ δ : Type} (as : list name) (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic string := do
   tgt ← target,
   if tgt.has_meta_var then
     fail "rewrite_search is not suitable for goals containing metavariables"

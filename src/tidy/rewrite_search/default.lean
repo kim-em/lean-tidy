@@ -5,4 +5,5 @@ import .init
 import .tactic
 
 import .tracer
+import .metric
 import .strategy
