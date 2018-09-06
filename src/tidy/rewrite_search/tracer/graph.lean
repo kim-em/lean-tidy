@@ -35,7 +35,7 @@ structure visualiser :=
   (proc : io.proc.child)
 meta def visualiser.publish (v : visualiser) (s : string) : tactic unit :=
   let chrs : list char := (s.to_list.stripl ['\n', '\x0D']).append ['\n'] in
-  tactic.unsafe_run_io (io.fs.write v.proc.stdin (char_buffer.from_list (utf8decode chrs)))
+  tactic.unsafe_run_io (io.fs.write v.proc.stdin (char_buffer.from_list (utf8decode chrs)) >> io.fs.flush v.proc.stdin)
 meta def visualiser.pause (v : visualiser) : tactic unit :=
   tactic.unsafe_run_io (do io.fs.read v.proc.stdout 1, return ())
 
