@@ -21,7 +21,7 @@ constant v : ℕ
 
 example : 1 = 1 :=
 begin
-do t ← target,
+(do t ← target,
    let a := `(1),
    ty ← infer_type a,
    trace t,
@@ -31,6 +31,6 @@ do t ← target,
    let w := expr.local_const `w `w binder_info.default ty,
    trace (k.instantiate_var v),
    trace (k.instantiate_var w),
-   skip
---    trace v,
+   skip),
+refl
 end
