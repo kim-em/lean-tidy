@@ -14,15 +14,6 @@ meta def pick_default_tracer   : tactic unit := `[exact tidy.rewrite_search.trac
 meta def pick_default_metric   : tactic unit := `[exact tidy.rewrite_search.metric.edit_distance]
 meta def pick_default_strategy : tactic unit := `[exact tidy.rewrite_search.strategy.explore]
 
--- meta structure rewrite_search_config (α β γ δ : Type) extends rewrite_all_cfg :=
--- (trace         : bool := ff)
--- (trace_summary : bool := ff)
--- (trace_result  : bool := ff)
--- (exhaustive    : bool := ff)
--- (metric        : metric α β γ δ   . pick_default_metric)
--- (strategy      : strategy α β γ δ . pick_default_strategy)
--- (view          : tracer α β γ δ   . pick_default_tracer)
-
 meta structure rewrite_search_config (α β γ δ : Type) extends rewrite_all_cfg :=
 (trace         : bool := ff)
 (trace_summary : bool := ff)

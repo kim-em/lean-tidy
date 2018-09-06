@@ -13,7 +13,7 @@ example : [[7],[6]] = [[5],[5]] :=
 begin
  success_if_fail { rewrite_search [] },
 -- rw [←foo', bar']
- rewrite_search [←foo', bar'] { trace := tt, view := visualiser },
+ rewrite_search [←foo', bar'],
 end
 
 @[search] private axiom foo : [0] = [1]
@@ -31,9 +31,10 @@ begin
 -- nth_rewrite_rhs 1 ←bar3,
 -- nth_rewrite_rhs 0 ←bar3,
 -- nth_rewrite_rhs 1 bar2,
-  rewrite_search [foo, bar1, ← bar2, bar2, ← bar3] { view := visualiser },
+  rewrite_search [foo, bar1, ← bar2, bar2, ← bar3],
 end
 
+open tidy.rewrite_search.metric
 open tidy.rewrite_search.metric
 
 private example (a : unit) : [[0],[0]] = [[4],[4]] :=
@@ -74,7 +75,7 @@ begin
 -- nth_rewrite_lhs 0 bar1,
 -- nth_rewrite_rhs 1 ←bar3,
 -- nth_rewrite_rhs 0 bar2,
-  rewrite_search_using [`search] { tidy.rewrite_search.default_config with trace_result := ff },
+  rewrite_search_using [`search] { trace_result := ff },
 end
 
 private structure cat :=
@@ -138,7 +139,7 @@ open tidy.rewrite_search.tracer
 
 lemma test : f 0 0 0 = g 0 0 0 :=
 -- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
-by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := tt /-view := visualiser, -/, strategy := explore}
+by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := tt, view := visualiser, strategy := explore, metric := edit_distance_cm_weighted 10}
 
 open tidy.rewrite_search.metric
 
@@ -154,13 +155,10 @@ by rewrite_search_using [`search]
 
 constants a b c d : ℚ
 
--- lemma test3 : (a * (b + c) * d) = a * b * d + a * c * d :=
--- by rewrite_search [add_comm, add_assoc, mul_assoc, mul_comm, left_distrib, right_distrib] {trace_result := tt, trace_summary := tt, view := visualiser, metric := edit_distance}
+lemma test3 : (a * (b + c)) * d = a * (b * d) + a * (c * d) :=
+by rewrite_search [add_comm, add_assoc, mul_assoc, /-mul_comm,-/ left_distrib, right_distrib] {trace_result := tt, trace_summary := tt, /-view := visualiser,-/ metric := edit_distance}
 
--- lemma test3 : (a * (b + c)) * d = a * (b * d) + a * (c * d) :=
--- by rewrite_search [add_comm, add_assoc, mul_assoc, mul_comm, left_distrib, right_distrib] {trace_result := tt, trace_summary := tt, /-view := visualiser,-/ metric := edit_distance}
-
--- lemma test4 : (a * (b + c + 1)) * d = a * (b * d) + a * (1 * d) + a * (c * d) :=
--- by rewrite_search [add_comm, add_assoc, mul_one, mul_assoc, mul_comm, left_distrib, right_distrib] {trace_result := tt, trace_summary := tt, /-view := visualiser,-/ metric := edit_distance_cm_weighted 3}
+lemma test4 : (a * (b + c + 1)) * d = a * (b * d) + a * (1 * d) + a * (c * d) :=
+by rewrite_search [add_comm, add_assoc, mul_one, mul_assoc, /-mul_comm,-/ left_distrib, right_distrib] {trace_result := tt, trace_summary := tt, /-view := visualiser,-/ metric := edit_distance_cm_weighted 3, strategy := explore {max_iterations := 100}}
 
 end tidy.rewrite_search.examples

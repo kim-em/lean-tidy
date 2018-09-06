@@ -113,9 +113,6 @@ meta def graph_tracer_publish_vertex (vs : visualiser) (v : vertex) : tactic uni
 meta def graph_tracer_publish_edge (vs : visualiser) (e : edge) : tactic unit :=
   vs.publish (to_string (format!"E|{e.f.to_string}|{e.t.to_string}"))
 
-meta def graph_tracer_publish_pair (vs : visualiser) (l r : table_ref) : tactic unit :=
-  vs.publish (to_string (format!"P|{l.to_string}|{r.to_string}"))
-
 meta def graph_tracer_publish_visited (vs : visualiser) (v : vertex) : tactic unit :=
   vs.publish (to_string (format!"B|{v.id.to_string}"))
 
@@ -137,6 +134,6 @@ open tidy.rewrite_search.tracer.graph
 
 meta def graph_tracer : tracer_constructor visualiser := λ α β γ,
   tracer.mk α β γ graph_tracer_init graph_tracer_publish_vertex graph_tracer_publish_edge
-    graph_tracer_publish_pair graph_tracer_publish_visited graph_tracer_publish_finished graph_tracer_dump graph_tracer_pause
+    graph_tracer_publish_visited graph_tracer_publish_finished graph_tracer_dump graph_tracer_pause
 
 end tidy.rewrite_search.tracer

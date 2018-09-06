@@ -83,8 +83,6 @@ namespace tidy.rewrite_search.metric.edit_distance
 
 open tidy.rewrite_search.edit_distance
 
-def MAX_ITERATIONS := 200
-
 structure ed_config :=
 (explain_thoughts : bool := ff)
 (trace_weights    : bool := ff)
@@ -114,7 +112,7 @@ meta def ed_reweight (conf : ed_config) (fn : table token → tactic (table ℚ)
     tactic.skip,
   return $ g.mutate_metric ⟨weights⟩
 
-meta def ed_pre_step (conf : ed_config) (refresh_freq : ℕ) (fn : table token → tactic (table ℚ)) (g : search_state α ed_state ed_partial δ) (itr : ℕ) : tactic (search_state α ed_state ed_partial δ) :=
+meta def ed_update (conf : ed_config) (refresh_freq : ℕ) (fn : table token → tactic (table ℚ)) (g : search_state α ed_state ed_partial δ) (itr : ℕ) : tactic (search_state α ed_state ed_partial δ) :=
   if refresh_freq > 0 ∧ (itr % (refresh_freq + 1) = 0) then do
     if conf.explain_thoughts then tactic.trace "pause! refreshing weights..." else tactic.skip,
     ed_reweight conf fn g
@@ -132,7 +130,7 @@ open tidy.rewrite_search.edit_distance
 open tidy.rewrite_search.metric.edit_distance
 
 meta def edit_distance_weighted (refresh_freq : ℕ) (fn : calc_weights_fn) (conf : ed_config := {}) : metric_constructor ed_state ed_partial :=
-  λ α δ, ⟨ ed_init, ed_pre_step conf refresh_freq (fn conf), ed_init_bound, ed_improve_estimate_over ⟩
+  λ α δ, ⟨ ed_init, ed_update conf refresh_freq (fn conf), ed_init_bound, ed_improve_estimate_over ⟩
 
 meta def edit_distance (conf : ed_config := {}) : metric_constructor ed_state ed_partial :=
   edit_distance_weighted 0 (λ conf ts, return table.create) conf

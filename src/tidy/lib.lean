@@ -3,6 +3,7 @@ import data.pnat
 import data.nat.basic
 import data.num.bitwise
 import tactic.norm_num
+import tidy.lock_tactic_state
 
 universe u
 
@@ -11,16 +12,14 @@ def list.multiplex {α : Type u} : list α → list α → list α
 | l [] := l
 | (a₁ :: l₁) (a₂ :: l₂) := [a₁, a₂].append $ l₁.multiplex l₂
 
---FIXME the fact that we use this is really sad (ARRAYS DO IT)
 def list.at {α : Type u} [inhabited α] (l : list α) (n : ℕ) : α :=
 list.head $ option.to_list $ list.nth l n
 
 private def list_set_at_aux {α : Type u} (val : α) : list α → list α → ℕ → list α
-| _ [] _          := [] -- FIXME catastrophic failure
+| _ [] _          := []
 | l (a :: rest) 0 := l.append (val :: rest)
 | l (a :: rest) k := list_set_at_aux (l.append [a]) rest (k - 1)
 
---FIXME the fact that we use this is really sad (ARRAYS DO IT)
 def list.set_at {α : Type u} (l : list α) (idx : ℕ) (val : α) : list α :=
   list_set_at_aux val [] l idx
 
@@ -126,3 +125,15 @@ def utf8decode_aux : list char → list char → list char
 | p (c :: r) := utf8decode_aux (p.append (utf8decode_char c)) r
 
 def utf8decode (cb : list char) : list char := utf8decode_aux [] cb
+
+open tactic
+-- FIXME doesn't `unify` do exactly this??
+meta def attempt_refl (lhs rhs : expr) : tactic expr :=
+lock_tactic_state $
+do
+  gs ← get_goals,
+  m ← to_expr ``(%%lhs = %%rhs) >>= mk_meta_var,
+  set_goals [m],
+  refl ← mk_const `eq.refl,
+  tactic.apply_core refl {new_goals := new_goals.non_dep_only},
+  instantiate_mvars m
