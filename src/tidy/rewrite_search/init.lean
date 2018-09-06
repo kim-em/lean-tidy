@@ -2,7 +2,7 @@
 import .engine
 
 -- Default strategy, metric, and tracer used as a fallback by the engine (so mush be present)
-import .strategy.explore
+import .strategy.pexplore
 import .metric.edit_distance
 import .tracer.unit
 
@@ -12,8 +12,11 @@ namespace tidy.rewrite_search
 
 meta def pick_default_tracer   : tactic unit := `[exact tidy.rewrite_search.tracer.unit_tracer]
 meta def pick_default_metric   : tactic unit := `[exact tidy.rewrite_search.metric.edit_distance]
-meta def pick_default_strategy : tactic unit := `[exact tidy.rewrite_search.strategy.explore]
+meta def pick_default_strategy : tactic unit := `[exact tidy.rewrite_search.strategy.pexplore]
 
+-- This is the "public" config structure which has convenient tactic-mode invocation synatx.
+-- The data in this structure is extracted and transformed into the internal representation
+-- of the settings and modules by `try_mk_search_instance`.
 meta structure rewrite_search_config (α β γ δ : Type) extends rewrite_all_cfg :=
 (trace         : bool := ff)
 (trace_summary : bool := ff)
@@ -27,14 +30,14 @@ meta structure rewrite_search_config (α β γ δ : Type) extends rewrite_all_cf
 
 open tidy.rewrite_search.edit_distance
 open tidy.rewrite_search.metric.edit_distance
-open tidy.rewrite_search.strategy.explore
+open tidy.rewrite_search.strategy.pexplore
 
-meta def default_config : rewrite_search_config explore_state ed_state ed_partial unit := {}
+meta def default_config : rewrite_search_config pexplore_state ed_state ed_partial unit := {}
 meta def pick_default_config : tactic unit := `[exact tidy.rewrite_search.default_config]
 
 variables {α β γ δ : Type}
 
---TODO make a more robust "fallback_config"
+--TODO make a more robust "fallback_config" (vs "default_config")?
 meta def mk_fallback_config (orig : rewrite_search_config α β γ δ) :=
   default_config
 

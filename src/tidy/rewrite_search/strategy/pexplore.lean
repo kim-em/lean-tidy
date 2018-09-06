@@ -5,9 +5,9 @@ import tidy.rewrite_search.engine
 open tidy.rewrite_search
 open tidy.rewrite_search.bound_progress
 
-namespace tidy.rewrite_search.strategy.explore
+namespace tidy.rewrite_search.strategy.pexplore
 
-structure explore_config :=
+structure pexplore_config :=
 (max_iterations  : ℕ := 500)
 (pop_amt         : ℕ := 100)
 (list_combinator : list pair → list pair → list pair := list.multiplex /-c.f. list.append-/)
@@ -19,14 +19,14 @@ def ipair.de : ipair → table_ref
 | (ipair.unresolved de) := de
 | (ipair.resolved de _) := de
 
-structure explore_state :=
+structure pexplore_state :=
 (interesting_pairs : list ipair)
 
-variables {β γ δ : Type} (conf : explore_config) (m : metric explore_state β γ δ) (g : search_state explore_state β γ δ)
+variables {β γ δ : Type} (conf : pexplore_config) (m : metric pexplore_state β γ δ) (g : search_state pexplore_state β γ δ)
 
 -- updates rival's estimate tryg to beat candidate's estimate, stoppg if we do or we can't
 -- go any further. We return true if we were able to beat candidate.
-private meta def try_to_beat (candidate rival : dist_estimate γ) : tactic (search_state explore_state β γ δ × dist_estimate γ × bool) :=
+private meta def try_to_beat (candidate rival : dist_estimate γ) : tactic (search_state pexplore_state β γ δ × dist_estimate γ × bool) :=
 let cbnd := candidate.bnd.bound in
 match rival.bnd with
 | exactly n _ := return (g, rival, n <= cbnd)
@@ -36,7 +36,7 @@ match rival.bnd with
 end
 
 -- First is closer
-private meta def sort_most_interesting : search_state explore_state β γ δ → ipair × dist_estimate γ → ipair × dist_estimate γ → tactic (search_state explore_state β γ δ × (ipair × dist_estimate γ) × (ipair × dist_estimate γ))
+private meta def sort_most_interesting : search_state pexplore_state β γ δ → ipair × dist_estimate γ → ipair × dist_estimate γ → tactic (search_state pexplore_state β γ δ × (ipair × dist_estimate γ) × (ipair × dist_estimate γ))
 | g (a, a_de) (b, b_de) := do
   (g, new_b_de, better) ← try_to_beat m g a_de b_de,
   match better with
@@ -51,14 +51,14 @@ private meta def sort_most_interesting : search_state explore_state β γ δ →
   end
 end
 
-private meta def find_most_interesting_aux : search_state explore_state β γ δ → ipair × dist_estimate γ → list ipair → list ipair → tactic (search_state explore_state β γ δ × ipair × list ipair)
+private meta def find_most_interesting_aux : search_state pexplore_state β γ δ → ipair × dist_estimate γ → list ipair → list ipair → tactic (search_state pexplore_state β γ δ × ipair × list ipair)
 | g (curr_best, curr_de) seen [] := return (g, curr_best, seen)
 | g (curr_best, curr_de) seen (candidate :: rest) := do
   candidate_de ← g.estimates.get candidate.de,
   (g, (better, better_de), (worse, worse_de)) ← sort_most_interesting m g (curr_best, curr_de) (candidate, candidate_de),
   find_most_interesting_aux g (better, better_de) (worse :: seen) rest
 
-meta def find_most_interesting : tactic (search_state explore_state β γ δ × option ipair × list ipair) :=
+meta def find_most_interesting : tactic (search_state pexplore_state β γ δ × option ipair × list ipair) :=
   match g.strat_state.interesting_pairs with
   | []          := return (g, none, [])
   | (a :: rest) := do
@@ -67,11 +67,11 @@ meta def find_most_interesting : tactic (search_state explore_state β γ δ × 
     return (g, some best, others)
   end
 
-meta def find_pairs (v rel_to : vertex) : tactic (search_state explore_state β γ δ × list pair) := do
+meta def find_pairs (v rel_to : vertex) : tactic (search_state pexplore_state β γ δ × list pair) := do
   (g, adjs) ← g.visit_vertex v,
   return (g, adjs.map (λ u, ⟨u.id, rel_to.id⟩))
 
-meta def resolve_ipair : ipair → tactic (search_state explore_state β γ δ × ipair × list pair)
+meta def resolve_ipair : ipair → tactic (search_state pexplore_state β γ δ × ipair × list pair)
 | (ipair.resolved ref children) := return (g, ipair.resolved ref children, children)
 | (ipair.unresolved ref) := do
   de ← g.estimates.get ref,
@@ -81,7 +81,7 @@ meta def resolve_ipair : ipair → tactic (search_state explore_state β γ δ �
   let all_pairs := conf.list_combinator lhs_pairs rhs_pairs,
   return (g, ipair.resolved ref all_pairs, all_pairs)
 
-meta def pop_ipairs_aux : search_state explore_state β γ δ → metric explore_state β γ δ → ℕ → ipair → list pair → tactic (search_state explore_state β γ δ × ipair × list ipair)
+meta def pop_ipairs_aux : search_state pexplore_state β γ δ → metric pexplore_state β γ δ → ℕ → ipair → list pair → tactic (search_state pexplore_state β γ δ × ipair × list ipair)
 | g m n ip [] := return (g, ip, [])
 | g m n ip (a :: rest) := do
   match g.estimates.find a with
@@ -93,19 +93,19 @@ meta def pop_ipairs_aux : search_state explore_state β γ δ → metric explore
   | some de := pop_ipairs_aux g m n (ipair.resolved ip.de rest) rest
   end
 
-meta def pop_ipairs (n : ℕ) (ip : ipair) : tactic (search_state explore_state β γ δ × ipair × list ipair) := do
+meta def pop_ipairs (n : ℕ) (ip : ipair) : tactic (search_state pexplore_state β γ δ × ipair × list ipair) := do
   (g, ip, children) ← resolve_ipair conf g ip,
   pop_ipairs_aux g m n ip children
 
-meta def explore_init : explore_state := ⟨ [] ⟩
+meta def pexplore_init : pexplore_state := ⟨ [] ⟩
 
-meta def explore_startup (m : metric explore_state β γ δ) (l r : vertex) : tactic (search_state explore_state β γ δ) := do
+meta def pexplore_startup (m : metric pexplore_state β γ δ) (l r : vertex) : tactic (search_state pexplore_state β γ δ) := do
   (g, ref) ← g.alloc_estimate m ⟨l.id, r.id⟩,
   return $ g.mutate_strat ⟨ [ipair.unresolved ref] ⟩
 
 --FIXME prevent the same estimate pair but flipped from being considered if the original already is in the ipair list
 
-meta def explore_step : search_state explore_state β γ δ → metric explore_state β γ δ → ℕ → tactic (search_state explore_state β γ δ × status)
+meta def pexplore_step : search_state pexplore_state β γ δ → metric pexplore_state β γ δ → ℕ → tactic (search_state pexplore_state β γ δ × status)
 | g m itr := do
   if itr > conf.max_iterations then
     return (g, status.abort "max iterations reached!")
@@ -113,7 +113,7 @@ meta def explore_step : search_state explore_state β γ δ → metric explore_s
     (g, best, others) ← find_most_interesting m g,
     match (best, others) with
     | (none, []) := return (g, status.abort "all interesting pairs exhausted!")
-    | (none, _) := explore_step g m itr
+    | (none, _) := pexplore_step g m itr
     | (some best, others) := do
       (g, best, new) ← pop_ipairs conf m g conf.pop_amt best,
       (new_head, s) ← pure $ match new with
@@ -123,12 +123,12 @@ meta def explore_step : search_state explore_state β γ δ → metric explore_s
       return (g.mutate_strat {g.strat_state with interesting_pairs := new_head.append others }, s)
     end
 
-end tidy.rewrite_search.strategy.explore
+end tidy.rewrite_search.strategy.pexplore
 
 namespace tidy.rewrite_search.strategy
 
-open tidy.rewrite_search.strategy.explore
+open tidy.rewrite_search.strategy.pexplore
 
-meta def explore (conf : explore_config := {}) : strategy_constructor explore_state := λ β γ δ, strategy.mk explore_init (@explore_startup β γ δ) (@explore_step β γ δ conf)
+meta def pexplore (conf : pexplore_config := {}) : strategy_constructor pexplore_state := λ β γ δ, strategy.mk pexplore_init (@pexplore_startup β γ δ) (@pexplore_step β γ δ conf)
 
 end tidy.rewrite_search.strategy

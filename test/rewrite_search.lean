@@ -1,14 +1,14 @@
 import tactic.ring
 import tidy.rewrite_search
 
+open tidy.rewrite_search.metric
+open tidy.rewrite_search.strategy
+open tidy.rewrite_search.tracer
+
 namespace tidy.rewrite_search.testing
 
 axiom foo' : [6] = [7]
 axiom bar' : [[5],[5]] = [[6],[6]]
-
-open tidy.rewrite_search.metric
-open tidy.rewrite_search.strategy
-open tidy.rewrite_search.tracer
 
 example : [[7],[6]] = [[5],[5]] :=
 begin
@@ -34,9 +34,6 @@ begin
 -- nth_rewrite_rhs 1 bar2,
   rewrite_search [foo, bar1, ← bar2, bar2, ← bar3],
 end
-
-open tidy.rewrite_search.metric
-open tidy.rewrite_search.metric
 
 private example (a : unit) : [[0],[0]] = [[4],[4]] :=
 begin
@@ -134,15 +131,9 @@ constants f g : ℕ → ℕ → ℕ → ℕ
 @[search] axiom g_2_2 : ∀ a b c : ℕ, g a b c = g a b 2
 @[search] axiom f_g : f 0 1 2 = g 2 0 1
 
-open tidy.rewrite_search.metric
-open tidy.rewrite_search.strategy
-open tidy.rewrite_search.tracer
-
 lemma test : f 0 0 0 = g 0 0 0 :=
 -- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
-by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := tt, view := visualiser, strategy := explore, metric := edit_distance_cm_weighted 10}
-
-open tidy.rewrite_search.metric
+by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := tt, view := visualiser, strategy := pexplore, metric := edit_distance_cm_weighted 10}
 
 constant h : ℕ → ℕ
 @[search,simp] axiom a1 : h 0 = h 1
@@ -160,6 +151,6 @@ lemma test3 : (a * (b + c)) * d = a * (b * d) + a * (c * d) :=
 by rewrite_search [add_comm, add_assoc, mul_assoc, /-mul_comm,-/ left_distrib, right_distrib] {trace_result := tt, trace_summary := tt, /-view := visualiser,-/ metric := edit_distance}
 
 lemma test4 : (a * (b + c + 1)) * d = a * (b * d) + a * (1 * d) + a * (c * d) :=
-by rewrite_search [add_comm, add_assoc, mul_one, mul_assoc, /-mul_comm,-/ left_distrib, right_distrib] {trace_result := tt, trace_summary := tt, /-view := visualiser,-/ metric := edit_distance_cm_weighted 3, strategy := explore {max_iterations := 100}}
+by rewrite_search [add_comm, add_assoc, mul_one, mul_assoc, /-mul_comm,-/ left_distrib, right_distrib] {trace_result := tt, trace_summary := tt, /-view := visualiser,-/ metric := edit_distance_cm_weighted 0, strategy := pexplore {max_iterations := 100}}
 
 end tidy.rewrite_search.examples
