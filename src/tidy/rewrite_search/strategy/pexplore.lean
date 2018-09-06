@@ -1,7 +1,5 @@
 import tidy.rewrite_search.engine
 
---TODO give this file a less generic name, or maybe just "interesting_pair"?
-
 open tidy.rewrite_search
 open tidy.rewrite_search.bound_progress
 

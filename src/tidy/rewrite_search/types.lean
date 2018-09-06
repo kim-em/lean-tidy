@@ -171,6 +171,10 @@ meta structure inst (α β γ δ : Type) :=
 (strategy : strategy α β γ δ)
 (g        : search_state α β γ δ)
 
+meta def strategy_constructor (α : Type) := Π (β γ δ : Type), strategy α β γ δ
+meta def metric_constructor (β γ : Type) := Π (α δ : Type), metric α β γ δ
+meta def tracer_constructor (δ : Type) := Π (α β γ : Type), tracer α β γ δ
+
 namespace search_state
 variables {α β γ δ : Type} (g : search_state α β γ δ)
 

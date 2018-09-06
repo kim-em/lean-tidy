@@ -68,15 +68,6 @@ meta def improve_bound_over (weights : table ℚ) (l r : list table_ref) (m : �
   else
     improve_bound_over (improve_bound_once weights l r n p)
 
--- def l1 : list table_ref := [1,2,3,4].map table_ref.from_nat
--- def l2 : list table_ref := [1,1,2,3,4].map table_ref.from_nat
-
--- def weights : table ℚ := table.from_list [1,0,1,1,1,1]
-
--- def bp : bound_progress ed_partial := at_least 0 (empty_partial_edit_distance_data weights l1 l2)
-
--- #eval (ed_improve_bound_over weights l1 l2 10.0 bp).to_string
-
 end tidy.rewrite_search.edit_distance
 
 namespace tidy.rewrite_search.metric.edit_distance

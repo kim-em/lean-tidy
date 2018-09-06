@@ -250,8 +250,4 @@ meta def search_until_solved : tactic search_result := i.search_until_solved_aux
 
 end inst
 
-meta def strategy_constructor (α : Type) := Π (β γ δ : Type), strategy α β γ δ
-meta def metric_constructor (β γ : Type) := Π (α δ : Type), metric α β γ δ
-meta def tracer_constructor (δ : Type) := Π (α β γ : Type), tracer α β γ δ
-
 end tidy.rewrite_search

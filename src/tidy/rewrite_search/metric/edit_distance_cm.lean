@@ -1,8 +1,6 @@
 import tidy.rewrite_search.engine
 import tidy.rewrite_search.metric.edit_distance
 
-import data.rat
-
 open tidy.rewrite_search
 open tidy.rewrite_search.bound_progress
 
