@@ -1,4 +1,4 @@
-import tidy.rewrite_search.engine
+import tidy.rewrite_search.core
 
 -- The trivial metric: I just report that every vertex is distance zero from every other.
 

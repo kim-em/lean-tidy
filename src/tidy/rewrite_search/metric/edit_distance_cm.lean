@@ -1,4 +1,4 @@
-import tidy.rewrite_search.engine
+import tidy.rewrite_search.core
 import tidy.rewrite_search.metric.edit_distance
 
 open tidy.rewrite_search

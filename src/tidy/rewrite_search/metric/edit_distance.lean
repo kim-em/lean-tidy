@@ -1,4 +1,4 @@
-import tidy.rewrite_search.engine
+import tidy.rewrite_search.core
 
 import data.rat
 

@@ -1,4 +1,4 @@
-import tidy.rewrite_search.types
+import .types
 
 namespace tidy.rewrite_search
 

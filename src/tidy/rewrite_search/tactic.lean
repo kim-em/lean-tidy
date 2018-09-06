@@ -7,6 +7,8 @@ import .init
 
 open interactive interactive.types expr tactic
 
+variables {α β γ δ : Type}
+
 namespace tidy.rewrite_search
 
 def how.to_tactic (rule_strings : list string) : how → option string
@@ -35,7 +37,7 @@ do
 
 meta def pp_rules (rs : list (expr × bool)) : tactic (list string) := rs.mmap (λ p, (do pp ← pretty_print p.1, return (if p.2 then ("←" ++ pp) else pp)))
 
-meta def handle_search_result {α β γ δ : Type} (cfg : rewrite_search_config α β γ δ) (rules : list (expr × bool)) (result : search_result) : tactic string := do
+meta def handle_search_result (cfg : rewrite_search_config α β γ δ) (rules : list (expr × bool)) (result : search_result) : tactic string := do
 match result with
 | search_result.failure reason      := fail reason
 | search_result.success proof steps := do
@@ -57,34 +59,28 @@ match result with
     return explanation
 end
 
-meta def do_rewrite_search {α β γ δ : Type} (rs : list (expr × bool)) (cfg : rewrite_search_config α β γ δ) : tactic string := do
+meta def try_search (cfg : rewrite_search_config α β γ δ) (rs : list (expr × bool)) (lhs rhs : expr) : tactic string := do
+  i ← try_mk_search_instance cfg rs lhs rhs,
+  match i with
+  | none := failed
+  | some i := do
+    result ← i.search_until_solved,
+    handle_search_result cfg rs result
+  end
+
+meta def do_rewrite_search (cfg : rewrite_search_config α β γ δ) (rs : list (expr × bool)) : tactic string := do
+  if cfg.trace_rules then
+    do rs_strings ← pp_rules rs,
+      trace ("rewrite_search using:\n---\n" ++ (string.intercalate "\n" rs_strings) ++ "\n---")
+  else skip,
+
   t ← target,
   match t with
   | `(%%lhs = %%rhs) := do
-    -- if cfg.trace_rules then
-    --   do rs_strings ← pp_rules rs,
-    --     trace ("rewrite_search using:\n---\n" ++ (string.intercalate "\n" rs_strings) ++ "\n---")
-    -- else skip,
-
-    -- FIXME there is a bit of code duplication because we change the type of
-    -- "cfg" when we try a fallback config...
-    i ← try_mk_search_instance cfg rs lhs rhs,
-    match i with
-    | some i := do
-      result ← i.search_until_solved,
-      handle_search_result cfg rs result
-    | none := do
-      trace "\nError initialising rewrite_search instance, falling back to emergency config!\n",
-      let new_cfg := mk_fallback_config cfg,
-      i ← try_mk_search_instance new_cfg rs lhs rhs,
-      match i with
-      | some i := do
-        result ← i.search_until_solved,
-        handle_search_result cfg rs result
-      | none := do
-        fail "Could not initialise emergency rewrite_search instance!"
-      end
-    end
+    try_search cfg rs lhs rhs <|> do
+    trace "\nError initialising rewrite_search instance, falling back to emergency config!\n",
+    try_search (mk_fallback_config cfg) rs lhs rhs <|> do
+    fail "Could not initialise emergency rewrite_search instance!"
   | _ := fail "target is not an equation"
   end
 
@@ -94,9 +90,9 @@ namespace tactic.interactive
 
 open tidy.rewrite_search
 
-meta def rewrite_search {α β γ δ : Type} (rs : parse rw_rules) (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic string := do
+meta def rewrite_search (rs : parse rw_rules) (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic string := do
   rs ← rs.rules.mmap (λ r, do e ← to_expr' r.rule, pure (e, r.symm)),
-  do_rewrite_search rs cfg
+  do_rewrite_search cfg rs
 
 meta def is_eq_after_binders : expr → bool
   | (expr.pi n bi d b) := is_eq_after_binders b
@@ -111,7 +107,7 @@ meta def load_exprs : list name → tactic (list expr)
   l ← load_exprs rest,
   return (u ++ l)
 
-meta def rewrite_search_using {α β γ δ : Type} (as : list name) (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic string := do
+meta def rewrite_search_using (as : list name) (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic string := do
   tgt ← target,
   if tgt.has_meta_var then
     fail "rewrite_search is not suitable for goals containing metavariables"
@@ -124,7 +120,7 @@ meta def rewrite_search_using {α β γ δ : Type} (as : list name) (cfg : rewri
   let rules := exprs,
   rules ← rules.mfilter $ λ r, (do t ← infer_type r, return (is_eq_after_binders t)),
   let pairs := rules.map (λ e, (e, ff)) ++ rules.map (λ e, (e, tt)),
-  do_rewrite_search pairs cfg
+  do_rewrite_search cfg pairs
 
 end tactic.interactive
 

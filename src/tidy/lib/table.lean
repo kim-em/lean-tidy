@@ -1,4 +1,5 @@
-import tidy.lib
+import data.list
+import .list
 
 universes u v w z
 
@@ -15,9 +16,11 @@ class indexed (α : Type u) :=
 class keyed (α : Type u) (κ : Type v) [decidable_eq κ] :=
 (key : α → κ)
 
+-- TODO support array-backed tables
+
 structure table (α : Type u) :=
 (next_id : table_ref)
-(entries : list α) -- FIXME use array
+(entries : list α)
 
 variables {α : Type u} {β : Type v} {κ : Type w} [decidable_eq κ] (t : table α)
 

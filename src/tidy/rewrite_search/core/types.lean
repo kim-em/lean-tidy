@@ -1,5 +1,5 @@
 import tidy.rewrite_all
-import .table
+import tidy.lib
 
 universe u
 

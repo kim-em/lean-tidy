@@ -1,5 +1,4 @@
--- Never import tidy.rewrite_search.engine directly. Go through me.
-import .engine
+import .core
 
 -- Default strategy, metric, and tracer used as a fallback by the engine (so mush be present)
 import .strategy.pexplore
@@ -22,6 +21,7 @@ meta structure rewrite_search_config (α β γ δ : Type) extends rewrite_all_cf
 (trace          : bool := ff)
 (trace_summary  : bool := ff)
 (trace_result   : bool := ff)
+(trace_rules    : bool := ff)
 (exhaustive     : bool := ff)
 (metric         : metric_constructor β γ . pick_default_metric)
 (strategy       : strategy_constructor α . pick_default_strategy)
