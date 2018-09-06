@@ -38,9 +38,8 @@ meta def pick_default_config : tactic unit := `[exact tidy.rewrite_search.defaul
 
 variables {α β γ δ : Type}
 
---TODO make a more robust "fallback_config" (vs "default_config")?
-meta def mk_fallback_config (orig : rewrite_search_config α β γ δ) :=
-  default_config
+meta def mk_fallback_config (orig : rewrite_search_config α β γ δ) : rewrite_search_config α β γ unit :=
+  {orig with view := begin pick_default_tracer end}
 
 meta def mk_initial_search_state (conf : config) (s : strategy α β γ δ) (m : metric α β γ δ) (tr : tracer α β γ δ) (tr_state : δ) : search_state α β γ δ :=
 ⟨tr, conf, s.init, m.init, table.create, table.create, table.create, none, tr_state⟩
