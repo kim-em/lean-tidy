@@ -8,7 +8,6 @@ open tidy.rewrite_search.bound_progress
 namespace tidy.rewrite_search.strategy.pexplore
 
 structure pexplore_config :=
-(max_iterations  : ℕ := 500)
 (pop_amt         : ℕ := 100)
 (list_combinator : list pair → list pair → list pair := list.multiplex /-c.f. list.append-/)
 
@@ -107,21 +106,18 @@ meta def pexplore_startup (m : metric pexplore_state β γ δ) (l r : vertex) : 
 
 meta def pexplore_step : search_state pexplore_state β γ δ → metric pexplore_state β γ δ → ℕ → tactic (search_state pexplore_state β γ δ × status)
 | g m itr := do
-  if itr > conf.max_iterations then
-    return (g, status.abort "max iterations reached!")
-  else do
-    (g, best, others) ← find_most_interesting m g,
-    match (best, others) with
-    | (none, []) := return (g, status.abort "all interesting pairs exhausted!")
-    | (none, _) := pexplore_step g m itr
-    | (some best, others) := do
-      (g, best, new) ← pop_ipairs conf m g conf.pop_amt best,
-      (new_head, s) ← pure $ match new with
-      | [] := ([], status.repeat)
-      | l  := (l.concat best, status.continue)
-      end,
-      return (g.mutate_strat {g.strat_state with interesting_pairs := new_head.append others }, s)
-    end
+  (g, best, others) ← find_most_interesting m g,
+  match (best, others) with
+  | (none, []) := return (g, status.abort "all interesting pairs exhausted!")
+  | (none, _) := pexplore_step g m itr
+  | (some best, others) := do
+    (g, best, new) ← pop_ipairs conf m g conf.pop_amt best,
+    (new_head, s) ← pure $ match new with
+    | [] := ([], status.repeat)
+    | l  := (l.concat best, status.continue)
+    end,
+    return (g.mutate_strat {g.strat_state with interesting_pairs := new_head.append others }, s)
+  end
 
 end tidy.rewrite_search.strategy.pexplore
 

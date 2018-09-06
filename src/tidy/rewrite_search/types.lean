@@ -121,11 +121,12 @@ inductive init_result (γ : Type)
 | failure : string → init_result
 
 meta structure config extends rewrite_all_cfg :=
-(rs            : list (expr × bool))
-(trace         : bool := ff)
-(trace_summary : bool := ff)
-(trace_result  : bool := ff)
-(exhaustive    : bool := ff)
+(rs             : list (expr × bool))
+(max_iterations : ℕ)
+(trace          : bool)
+(trace_summary  : bool)
+(trace_result   : bool)
+(exhaustive     : bool)
 
 meta structure tracer (α β γ δ : Type) :=
 (init             : tactic (init_result δ))

@@ -156,9 +156,12 @@ meta def step_once (itr : ℕ) : tactic (inst α β γ δ × status) :=
 match i.g.solving_edge with
 | some e := return (i, status.done e)
 | none := do
-  g ← i.metric.update i.g itr,
-  (g, s) ← i.strategy.step g i.metric itr,
-  return (i.mutate g, s)
+  if itr > i.g.conf.max_iterations then
+    return (i, status.abort "max iterations reached!")
+  else do
+    g ← i.metric.update i.g itr,
+    (g, s) ← i.strategy.step g i.metric itr,
+    return (i.mutate g, s)
 end
 
 -- Find a vertex we haven't visited, and visit it. The bool is true if there might

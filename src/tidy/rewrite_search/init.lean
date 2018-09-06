@@ -18,13 +18,14 @@ meta def pick_default_strategy : tactic unit := `[exact tidy.rewrite_search.stra
 -- The data in this structure is extracted and transformed into the internal representation
 -- of the settings and modules by `try_mk_search_instance`.
 meta structure rewrite_search_config (α β γ δ : Type) extends rewrite_all_cfg :=
-(trace         : bool := ff)
-(trace_summary : bool := ff)
-(trace_result  : bool := ff)
-(exhaustive    : bool := ff)
-(metric        : metric_constructor β γ . pick_default_metric)
-(strategy      : strategy_constructor α . pick_default_strategy)
-(view          : tracer_constructor δ   . pick_default_tracer)
+(max_iterations : ℕ := 500)
+(trace          : bool := ff)
+(trace_summary  : bool := ff)
+(trace_result   : bool := ff)
+(exhaustive     : bool := ff)
+(metric         : metric_constructor β γ . pick_default_metric)
+(strategy       : strategy_constructor α . pick_default_strategy)
+(view           : tracer_constructor δ   . pick_default_tracer)
 
 -- TODO coerce {} = ∅ into default_config?
 
@@ -65,6 +66,7 @@ do
   | init_result.success tracer_state := do
     let conf : config := {
       rs := rs,
+      max_iterations := cfg.max_iterations,
       trace := cfg.trace,
       trace_summary := cfg.trace_summary,
       trace_result := cfg.trace_result,
