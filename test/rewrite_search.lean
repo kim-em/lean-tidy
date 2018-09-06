@@ -1,3 +1,4 @@
+import tactic.ring
 import tidy.rewrite_search
 
 namespace tidy.rewrite_search.testing
@@ -153,7 +154,7 @@ lemma test2 : h 0 = h 4 :=
 -- by erw [a1, a2, ←a4, ←a3]
 by rewrite_search_using [`search]
 
-constants a b c d : ℚ
+constants a b c d e : ℚ
 
 lemma test3 : (a * (b + c)) * d = a * (b * d) + a * (c * d) :=
 by rewrite_search [add_comm, add_assoc, mul_assoc, /-mul_comm,-/ left_distrib, right_distrib] {trace_result := tt, trace_summary := tt, /-view := visualiser,-/ metric := edit_distance}
