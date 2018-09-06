@@ -42,7 +42,7 @@ private meta def find_vertex_aux (pp : string) : list vertex → option vertex
 -- found.
 meta def find_vertex (e : expr) : tactic (option vertex) := do
   pp ← pretty_print e,
-  return (g.vertices.find pp)
+  return (g.vertices.find_key pp)
 
 -- Forcibly add a new vertex to the vertex table. You probably actually want to call
 -- add_vertex, which will check that we haven't seen the vertex before first.

@@ -54,7 +54,7 @@ instance token.indexed : indexed token := ⟨λ t, t.id⟩
 instance token.keyed : keyed token string := ⟨λ v, v.str⟩
 
 def find_or_create_token (tokens : table token) (s : side) (tstr : string) : table token × token :=
-match tokens.find tstr with
+match tokens.find_key tstr with
 | none := do
   let t : token := ⟨tokens.next_id, tstr, 0, 0⟩,
   let t := t.inc s in (tokens.alloc t, t)

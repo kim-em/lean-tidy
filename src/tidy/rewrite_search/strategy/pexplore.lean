@@ -81,7 +81,7 @@ meta def resolve_ipair : ipair → tactic (search_state pexplore_state β γ δ 
 meta def pop_ipairs_aux : search_state pexplore_state β γ δ → metric pexplore_state β γ δ → ℕ → ipair → list pair → tactic (search_state pexplore_state β γ δ × ipair × list ipair)
 | g m n ip [] := return (g, ip, [])
 | g m n ip (a :: rest) := do
-  match g.estimates.find a with
+  match g.estimates.find (λ de, a = de.to_pair ∨ (a = de.to_pair.flip)) with
   | none := do
     (g, ref) ← g.alloc_estimate m a,
     let newip := ipair.unresolved ref,
