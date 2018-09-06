@@ -47,7 +47,7 @@ def token.freq (t : token) : side → ℕ
 | side.R := t.rhs_freq
 
 def null_token : token :=
-⟨ null_table_ref, "__NULLTOKEN", 0, 0 ⟩
+⟨ table_ref.null, "__NULLTOKEN", 0, 0 ⟩
 
 instance token.inhabited : inhabited token := ⟨null_token⟩
 instance token.indexed : indexed token := ⟨λ t, t.id⟩
@@ -78,7 +78,7 @@ meta def vertex.to_string (v : vertex) : string := v.s.to_string ++ v.pp
 
 meta def null_expr : expr := default expr
 meta def null_vertex : vertex :=
-⟨ null_table_ref, null_expr, "__NULLEXPR", [], ff, ff, side.L, none, [] ⟩
+⟨ table_ref.null, null_expr, "__NULLEXPR", [], ff, ff, side.L, none, [] ⟩
 
 meta instance vertex.inhabited : inhabited vertex := ⟨null_vertex⟩
 meta instance vertex.indexed : indexed vertex := ⟨λ v, v.id⟩

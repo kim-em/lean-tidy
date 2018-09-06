@@ -1,6 +1,6 @@
 import tidy.lock_tactic_state
 
-open tactic
+namespace tactic
 
 -- FIXME doesn't `unify` do exactly this??
 meta def attempt_refl (lhs rhs : expr) : tactic expr :=
@@ -12,3 +12,5 @@ do
   refl ← mk_const `eq.refl,
   tactic.apply_core refl {new_goals := new_goals.non_dep_only},
   instantiate_mvars m
+
+end tactic

@@ -8,8 +8,8 @@ def table_ref.from_nat (r : ℕ) : table_ref := r
 def table_ref.to_nat (r : table_ref) : ℕ := r
 def table_ref.to_string (r : table_ref) : string := to_string r.to_nat
 def table_ref.next (r : table_ref) : table_ref := table_ref.from_nat (r + 1)
-def null_table_ref  : table_ref := table_ref.from_nat 0x8FFFFFFF
-def first_table_ref : table_ref := table_ref.from_nat 0
+def table_ref.null  : table_ref := table_ref.from_nat 0x8FFFFFFF
+def table_ref.first : table_ref := table_ref.from_nat 0
 
 class indexed (α : Type u) :=
 (index : α → table_ref)
@@ -24,7 +24,7 @@ structure table (α : Type u) :=
 
 variables {α : Type u} {β : Type v} {κ : Type w} [decidable_eq κ] (t : table α)
 
-def table.create : table α := ⟨ first_table_ref, [] ⟩
+def table.create : table α := ⟨ table_ref.first, [] ⟩
 def table.from_list (l : list α) : table α := ⟨ l.length, l ⟩
 
 def table.length := t.entries.length
