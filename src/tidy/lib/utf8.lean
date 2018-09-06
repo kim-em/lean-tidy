@@ -1,4 +1,5 @@
 import data.num.bitwise
+import data.nat.cast
 import .num
 
 namespace utf8

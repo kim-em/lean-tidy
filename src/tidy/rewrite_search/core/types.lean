@@ -1,5 +1,6 @@
 import tidy.rewrite_all
 import tidy.lib
+import data.rat
 
 universe u
 
