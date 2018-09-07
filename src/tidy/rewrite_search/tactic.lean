@@ -59,13 +59,14 @@ match result with
     return explanation
 end
 
-meta def try_search (cfg : rewrite_search_config α β γ δ) (rs : list (expr × bool)) (lhs rhs : expr) : tactic string := do
+meta def try_search (cfg : rewrite_search_config α β γ δ) (rs : list (expr × bool)) (lhs rhs : expr) : tactic (option string) := do
   i ← try_mk_search_instance cfg rs lhs rhs,
   match i with
-  | none := failed
+  | none := return none
   | some i := do
     result ← i.search_until_solved,
-    handle_search_result cfg rs result
+    str ←  handle_search_result cfg rs result,
+    return str
   end
 
 meta def do_rewrite_search (cfg : rewrite_search_config α β γ δ) (rs : list (expr × bool)) : tactic string := do
@@ -77,10 +78,17 @@ meta def do_rewrite_search (cfg : rewrite_search_config α β γ δ) (rs : list 
   t ← target,
   match t with
   | `(%%lhs = %%rhs) := do
-    try_search cfg rs lhs rhs <|> do
-    trace "\nError initialising rewrite_search instance, falling back to emergency config!\n",
-    try_search (mk_fallback_config cfg) rs lhs rhs <|> do
-    fail "Could not initialise emergency rewrite_search instance!"
+    result ← try_search cfg rs lhs rhs,
+    match result with
+    | some str := return str
+    | none := do
+      trace "\nError initialising rewrite_search instance, falling back to emergency config!\n",
+      result ← try_search (mk_fallback_config cfg) rs lhs rhs,
+      match result with
+      | some str := return str
+      | none := fail "Could not initialise emergency rewrite_search instance!"
+      end
+    end
   | _ := fail "target is not an equation"
   end
 
