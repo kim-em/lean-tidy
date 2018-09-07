@@ -39,6 +39,7 @@ namespace tidy.rewrite_search.strategy
 
 open tidy.rewrite_search.strategy.bfs
 
-meta def bfs (conf : bfs_config := {}) : strategy_constructor bfs_state := λ β γ δ, strategy.mk bfs_init (@bfs_startup β γ δ) (@bfs_step β γ δ conf)
+meta def bfs (conf : bfs_config := {}) : strategy_constructor bfs_state := 
+λ β γ δ, strategy.mk bfs_init (@bfs_startup β γ δ) (@bfs_step β γ δ conf)
 
 end tidy.rewrite_search.strategy

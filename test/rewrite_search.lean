@@ -133,7 +133,7 @@ constants f g : ℕ → ℕ → ℕ → ℕ
 
 lemma test : f 0 0 0 = g 0 0 0 :=
 -- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
-by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := tt, view := visualiser, strategy := pexplore, metric := edit_distance {} weight.cm}
+by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := tt, view := no visualiser, strategy := pexplore, metric := edit_distance {} weight.cm}
 
 lemma test_bfs : f 0 0 0 = g 0 0 0 :=
 -- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
@@ -219,15 +219,15 @@ by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summar
 end v1
 
 namespace v2
-@[search] axiom f_1_f_2' : f_1 0 1 2 = f_2 0 1 2
-@[search] axiom f_2_f_3' : f_2 0 1 2 = f_3 0 1 2
-@[search] axiom f_3_f_5' : f_3 0 1 2 = f_5 0 1 2
+@[search] axiom f_1_f_2' : f_1 0 1 2 = f_2 2 0 1
+@[search] axiom f_2_f_3' : f_2 0 1 2 = f_3 2 0 1
+@[search] axiom f_3_f_5' : f_3 0 1 2 = f_5 2 0 1
 @[search] axiom f_1_f_4' : f_1 0 1 2 = f_4 2 0 1
-@[search] axiom f_4_f_5' : f_4 0 1 2 = f_5 2 0 1
+-- @[search] axiom f_4_f_5' : f_4 0 1 2 = f_5 2 0 1
 
 lemma test : f_1 0 0 0 = f_5 0 0 0 :=
 -- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
-by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := ff, view := no visualiser, strategy := pexplore, metric := edit_distance {refresh_freq := 5} weight.cm}
+by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := ff, view := visualiser, strategy := pexplore { pop_amt := 100 }, metric := edit_distance {refresh_freq := 5} weight.cm}
 end v2
 
 end tidy.rewrite_search.tesseract

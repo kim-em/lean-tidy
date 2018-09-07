@@ -12,6 +12,12 @@ begin
    trace ty,
    k ← kabstract t a transparency.reducible ff,
    trace k,
+   n ← mk_fresh_name,
+   let w := expr.local_const n `w binder_info.default ty,
+   k ← return $ k.instantiate_var w,
+   a' ← to_expr ``(f _),
+   k' ← kabstract k a' transparency.reducible ff,
+   trace k',
    skip),
    refl
 end

@@ -78,7 +78,9 @@ meta def resolve_ipair : ipair → tactic (search_state pexplore_state β γ δ 
   let all_pairs := conf.list_combinator lhs_pairs rhs_pairs,
   return (g, ipair.resolved ref all_pairs, all_pairs)
 
+-- TODO rename n to pop_amt
 meta def pop_ipairs_aux : search_state pexplore_state β γ δ → metric pexplore_state β γ δ → ℕ → ipair → list pair → tactic (search_state pexplore_state β γ δ × ipair × list ipair)
+| g m 0 ip _ := return (g, ip, [])
 | g m n ip [] := return (g, ip, [])
 | g m n ip (a :: rest) := do
   match g.estimates.find (λ de, a = de.to_pair ∨ (a = de.to_pair.flip)) with
@@ -123,6 +125,7 @@ namespace tidy.rewrite_search.strategy
 
 open tidy.rewrite_search.strategy.pexplore
 
-meta def pexplore (conf : pexplore_config := {}) : strategy_constructor pexplore_state := λ β γ δ, strategy.mk pexplore_init (@pexplore_startup β γ δ) (@pexplore_step β γ δ conf)
+meta def pexplore (conf : pexplore_config := {}) : strategy_constructor pexplore_state := 
+λ β γ δ, strategy.mk pexplore_init (@pexplore_startup β γ δ) (@pexplore_step β γ δ conf)
 
 end tidy.rewrite_search.strategy
