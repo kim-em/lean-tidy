@@ -1,4 +1,9 @@
+import tactic.ring
 import tidy.rewrite_search
+
+open tidy.rewrite_search.metric
+open tidy.rewrite_search.strategy
+open tidy.rewrite_search.tracer
 
 namespace tidy.rewrite_search.testing
 
@@ -29,8 +34,6 @@ begin
 -- nth_rewrite_rhs 1 bar2,
   rewrite_search [foo, bar1, ← bar2, bar2, ← bar3],
 end
-
-open tidy.rewrite_search.strategy
 
 private example (a : unit) : [[0],[0]] = [[4],[4]] :=
 begin
@@ -70,7 +73,7 @@ begin
 -- nth_rewrite_lhs 0 bar1,
 -- nth_rewrite_rhs 1 ←bar3,
 -- nth_rewrite_rhs 0 bar2,
-  rewrite_search_using [`search],
+  rewrite_search_using [`search] { trace_result := ff },
 end
 
 private structure cat :=
@@ -128,13 +131,13 @@ constants f g : ℕ → ℕ → ℕ → ℕ
 @[search] axiom g_2_2 : ∀ a b c : ℕ, g a b c = g a b 2
 @[search] axiom f_g : f 0 1 2 = g 2 0 1
 
-open tidy.rewrite_search.strategy
-
 lemma test : f 0 0 0 = g 0 0 0 :=
 -- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
-by rewrite_search_using [`search] {trace_result := tt, trace_summary := tt, exhaustive := tt, /-view := visualiser,-/ strategy := edit_distance_cm_weighted 4}
+by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := tt, view := visualiser, strategy := pexplore, metric := edit_distance {} weight.cm}
 
-open tidy.rewrite_search.strategy
+lemma test_bfs : f 0 0 0 = g 0 0 0 :=
+-- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
+by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := tt, /-view := visualiser,-/ strategy := bfs {max_depth := 5}, metric := trivial}
 
 constant h : ℕ → ℕ
 @[search,simp] axiom a1 : h 0 = h 1
@@ -146,12 +149,87 @@ lemma test2 : h 0 = h 4 :=
 -- by erw [a1, a2, ←a4, ←a3]
 by rewrite_search_using [`search]
 
-constants a b c d : ℚ
+constants a b c d e : ℚ
 
 lemma test3 : (a * (b + c)) * d = a * (b * d) + a * (c * d) :=
-by rewrite_search [add_comm, add_assoc, mul_assoc, mul_comm, left_distrib, right_distrib] {trace_result := tt, trace_summary := tt, view := visualiser, strategy := edit_distance}
+by rewrite_search [add_comm, add_assoc, mul_assoc, /-mul_comm,-/ left_distrib, right_distrib] {trace_result := tt, trace_summary := tt, view := no visualiser, metric := edit_distance}
 
 lemma test4 : (a * (b + c + 1)) * d = a * (b * d) + a * (1 * d) + a * (c * d) :=
-by rewrite_search [add_comm, add_assoc, mul_one, mul_assoc, mul_comm, left_distrib, right_distrib] {trace_result := tt, trace_summary := tt, /-view := visualiser,-/ strategy := edit_distance_cm_weighted 3}
+by rewrite_search [add_comm, add_assoc, mul_one, mul_assoc, /-mul_comm,-/ left_distrib, right_distrib] {trace_result := tt, trace_summary := tt, view := no visualiser, metric := edit_distance {} weight.cm, strategy := pexplore, max_iterations := 100}
+
+namespace tidy.rewrite_search.tesseract
+
+constants f_1 f_2 f_3 f_4 f_5 : ℕ -> ℕ -> ℕ ->  ℕ
+@[search] axiom f_1_1_1: forall n1 n2 n3  : ℕ, f_1 n1 n2 n3  = f_1 1 n2 n3
+@[search] axiom f_2_1_1: forall n1 n2 n3  : ℕ, f_2 n1 n2 n3  = f_2 1 n2 n3
+@[search] axiom f_3_1_1: forall n1 n2 n3  : ℕ, f_3 n1 n2 n3  = f_3 1 n2 n3
+@[search] axiom f_4_1_1: forall n1 n2 n3  : ℕ, f_4 n1 n2 n3  = f_4 1 n2 n3
+@[search] axiom f_5_1_1: forall n1 n2 n3  : ℕ, f_5 n1 n2 n3  = f_5 1 n2 n3
+@[search] axiom f_1_1_2: forall n1 n2 n3  : ℕ, f_1 n1 n2 n3  = f_1 2 n2 n3
+@[search] axiom f_2_1_2: forall n1 n2 n3  : ℕ, f_2 n1 n2 n3  = f_2 2 n2 n3
+@[search] axiom f_3_1_2: forall n1 n2 n3  : ℕ, f_3 n1 n2 n3  = f_3 2 n2 n3
+@[search] axiom f_4_1_2: forall n1 n2 n3  : ℕ, f_4 n1 n2 n3  = f_4 2 n2 n3
+@[search] axiom f_5_1_2: forall n1 n2 n3  : ℕ, f_5 n1 n2 n3  = f_5 2 n2 n3
+@[search] axiom f_1_1_3: forall n1 n2 n3  : ℕ, f_1 n1 n2 n3  = f_1 3 n2 n3
+@[search] axiom f_2_1_3: forall n1 n2 n3  : ℕ, f_2 n1 n2 n3  = f_2 3 n2 n3
+@[search] axiom f_3_1_3: forall n1 n2 n3  : ℕ, f_3 n1 n2 n3  = f_3 3 n2 n3
+@[search] axiom f_4_1_3: forall n1 n2 n3  : ℕ, f_4 n1 n2 n3  = f_4 3 n2 n3
+@[search] axiom f_5_1_3: forall n1 n2 n3  : ℕ, f_5 n1 n2 n3  = f_5 3 n2 n3
+@[search] axiom f_1_2_1: forall n1 n2 n3  : ℕ, f_1 n1 n2 n3  = f_1 n1 1 n3
+@[search] axiom f_2_2_1: forall n1 n2 n3  : ℕ, f_2 n1 n2 n3  = f_2 n1 1 n3
+@[search] axiom f_3_2_1: forall n1 n2 n3  : ℕ, f_3 n1 n2 n3  = f_3 n1 1 n3
+@[search] axiom f_4_2_1: forall n1 n2 n3  : ℕ, f_4 n1 n2 n3  = f_4 n1 1 n3
+@[search] axiom f_5_2_1: forall n1 n2 n3  : ℕ, f_5 n1 n2 n3  = f_5 n1 1 n3
+@[search] axiom f_1_2_2: forall n1 n2 n3  : ℕ, f_1 n1 n2 n3  = f_1 n1 2 n3
+@[search] axiom f_2_2_2: forall n1 n2 n3  : ℕ, f_2 n1 n2 n3  = f_2 n1 2 n3
+@[search] axiom f_3_2_2: forall n1 n2 n3  : ℕ, f_3 n1 n2 n3  = f_3 n1 2 n3
+@[search] axiom f_4_2_2: forall n1 n2 n3  : ℕ, f_4 n1 n2 n3  = f_4 n1 2 n3
+@[search] axiom f_5_2_2: forall n1 n2 n3  : ℕ, f_5 n1 n2 n3  = f_5 n1 2 n3
+@[search] axiom f_1_2_3: forall n1 n2 n3  : ℕ, f_1 n1 n2 n3  = f_1 n1 3 n3
+@[search] axiom f_2_2_3: forall n1 n2 n3  : ℕ, f_2 n1 n2 n3  = f_2 n1 3 n3
+@[search] axiom f_3_2_3: forall n1 n2 n3  : ℕ, f_3 n1 n2 n3  = f_3 n1 3 n3
+@[search] axiom f_4_2_3: forall n1 n2 n3  : ℕ, f_4 n1 n2 n3  = f_4 n1 3 n3
+@[search] axiom f_5_2_3: forall n1 n2 n3  : ℕ, f_5 n1 n2 n3  = f_5 n1 3 n3
+@[search] axiom f_1_3_1: forall n1 n2 n3  : ℕ, f_1 n1 n2 n3  = f_1 n1 n2 1
+@[search] axiom f_2_3_1: forall n1 n2 n3  : ℕ, f_2 n1 n2 n3  = f_2 n1 n2 1
+@[search] axiom f_3_3_1: forall n1 n2 n3  : ℕ, f_3 n1 n2 n3  = f_3 n1 n2 1
+@[search] axiom f_4_3_1: forall n1 n2 n3  : ℕ, f_4 n1 n2 n3  = f_4 n1 n2 1
+@[search] axiom f_5_3_1: forall n1 n2 n3  : ℕ, f_5 n1 n2 n3  = f_5 n1 n2 1
+@[search] axiom f_1_3_2: forall n1 n2 n3  : ℕ, f_1 n1 n2 n3  = f_1 n1 n2 2
+@[search] axiom f_2_3_2: forall n1 n2 n3  : ℕ, f_2 n1 n2 n3  = f_2 n1 n2 2
+@[search] axiom f_3_3_2: forall n1 n2 n3  : ℕ, f_3 n1 n2 n3  = f_3 n1 n2 2
+@[search] axiom f_4_3_2: forall n1 n2 n3  : ℕ, f_4 n1 n2 n3  = f_4 n1 n2 2
+@[search] axiom f_5_3_2: forall n1 n2 n3  : ℕ, f_5 n1 n2 n3  = f_5 n1 n2 2
+@[search] axiom f_1_3_3: forall n1 n2 n3  : ℕ, f_1 n1 n2 n3  = f_1 n1 n2 3
+@[search] axiom f_2_3_3: forall n1 n2 n3  : ℕ, f_2 n1 n2 n3  = f_2 n1 n2 3
+@[search] axiom f_3_3_3: forall n1 n2 n3  : ℕ, f_3 n1 n2 n3  = f_3 n1 n2 3
+@[search] axiom f_4_3_3: forall n1 n2 n3  : ℕ, f_4 n1 n2 n3  = f_4 n1 n2 3
+@[search] axiom f_5_3_3: forall n1 n2 n3  : ℕ, f_5 n1 n2 n3  = f_5 n1 n2 3
+
+namespace v1
+@[search] axiom f_1_f_2 : f_1 1 1 1 = f_2 1 1 1
+@[search] axiom f_2_f_3 : f_2 1 1 1 = f_3 1 1 1
+@[search] axiom f_3_f_5 : f_3 1 1 1 = f_5 1 1 1
+@[search] axiom f_1_f_4 : f_1 0 1 2 = f_4 2 0 1
+@[search] axiom f_4_f_5 : f_4 0 1 2 = f_5 2 0 1
+
+lemma test : f_1 0 0 0 = f_5 0 0 0 :=
+-- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
+by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := ff, view := no visualiser, strategy := pexplore, metric := edit_distance {refresh_freq := 5} weight.cm}
+end v1
+
+namespace v2
+@[search] axiom f_1_f_2' : f_1 0 1 2 = f_2 0 1 2
+@[search] axiom f_2_f_3' : f_2 0 1 2 = f_3 0 1 2
+@[search] axiom f_3_f_5' : f_3 0 1 2 = f_5 0 1 2
+@[search] axiom f_1_f_4' : f_1 0 1 2 = f_4 2 0 1
+@[search] axiom f_4_f_5' : f_4 0 1 2 = f_5 2 0 1
+
+lemma test : f_1 0 0 0 = f_5 0 0 0 :=
+-- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
+by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := ff, view := no visualiser, strategy := pexplore, metric := edit_distance {refresh_freq := 5} weight.cm}
+end v2
+
+end tidy.rewrite_search.tesseract
 
 end tidy.rewrite_search.examples

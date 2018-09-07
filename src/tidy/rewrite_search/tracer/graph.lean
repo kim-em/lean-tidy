@@ -1,5 +1,5 @@
-import tidy.rewrite_search.engine
-import tidy.lib
+import tidy.rewrite_search.core
+import tidy.lib.utf8
 
 import system.io
 
@@ -35,7 +35,7 @@ structure visualiser :=
   (proc : io.proc.child)
 meta def visualiser.publish (v : visualiser) (s : string) : tactic unit :=
   let chrs : list char := (s.to_list.stripl ['\n', '\x0D']).append ['\n'] in
-  tactic.unsafe_run_io (io.fs.write v.proc.stdin (char_buffer.from_list (utf8decode chrs)))
+  tactic.unsafe_run_io (io.fs.write v.proc.stdin (char_buffer.from_list (utf8.decode chrs)) >> io.fs.flush v.proc.stdin)
 meta def visualiser.pause (v : visualiser) : tactic unit :=
   tactic.unsafe_run_io (do io.fs.read v.proc.stdout 1, return ())
 
@@ -113,9 +113,6 @@ meta def graph_tracer_publish_vertex (vs : visualiser) (v : vertex) : tactic uni
 meta def graph_tracer_publish_edge (vs : visualiser) (e : edge) : tactic unit :=
   vs.publish (to_string (format!"E|{e.f.to_string}|{e.t.to_string}"))
 
-meta def graph_tracer_publish_pair (vs : visualiser) (l r : table_ref) : tactic unit :=
-  vs.publish (to_string (format!"P|{l.to_string}|{r.to_string}"))
-
 meta def graph_tracer_publish_visited (vs : visualiser) (v : vertex) : tactic unit :=
   vs.publish (to_string (format!"B|{v.id.to_string}"))
 
@@ -135,9 +132,10 @@ namespace tidy.rewrite_search.tracer
 
 open tidy.rewrite_search.tracer.graph
 
-meta def graph_tracer : tracer visualiser :=
-  ⟨ graph_tracer_init, graph_tracer_publish_vertex, graph_tracer_publish_edge,
-    graph_tracer_publish_pair, graph_tracer_publish_visited, graph_tracer_publish_finished, graph_tracer_dump,
-    graph_tracer_pause ⟩
+meta def graph_tracer : tracer_constructor visualiser := λ α β γ,
+  tracer.mk α β γ graph_tracer_init graph_tracer_publish_vertex graph_tracer_publish_edge
+    graph_tracer_publish_visited graph_tracer_publish_finished graph_tracer_dump graph_tracer_pause
+
+meta def visualiser := graph_tracer
 
 end tidy.rewrite_search.tracer
