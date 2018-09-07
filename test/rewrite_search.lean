@@ -133,11 +133,11 @@ constants f g : ℕ → ℕ → ℕ → ℕ
 
 lemma test : f 0 0 0 = g 0 0 0 :=
 -- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
-by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := tt, /-view := visualiser,-/ strategy := pexplore, metric := edit_distance_cm_weighted 10}
+by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := tt, view := visualiser, strategy := pexplore, metric := edit_distance {} weight.cm}
 
 lemma test_bfs : f 0 0 0 = g 0 0 0 :=
 -- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
-by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := tt, view := visualiser, strategy := bfs {max_depth := 5}, metric := trivial}
+by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := tt, /-view := visualiser,-/ strategy := bfs {max_depth := 5}, metric := trivial}
 
 constant h : ℕ → ℕ
 @[search,simp] axiom a1 : h 0 = h 1
@@ -155,6 +155,6 @@ lemma test3 : (a * (b + c)) * d = a * (b * d) + a * (c * d) :=
 by rewrite_search [add_comm, add_assoc, mul_assoc, /-mul_comm,-/ left_distrib, right_distrib] {trace_result := tt, trace_summary := tt, /-view := visualiser,-/ metric := edit_distance}
 
 lemma test4 : (a * (b + c + 1)) * d = a * (b * d) + a * (1 * d) + a * (c * d) :=
-by rewrite_search [add_comm, add_assoc, mul_one, mul_assoc, /-mul_comm,-/ left_distrib, right_distrib] {trace_result := tt, trace_summary := tt, /-view := visualiser,-/ metric := edit_distance_cm_weighted 0, strategy := pexplore, max_iterations := 100}
+by rewrite_search [add_comm, add_assoc, mul_one, mul_assoc, /-mul_comm,-/ left_distrib, right_distrib] {trace_result := tt, trace_summary := tt, /-view := visualiser,-/ metric := edit_distance {} weight.cm, strategy := pexplore, max_iterations := 100}
 
 end tidy.rewrite_search.examples

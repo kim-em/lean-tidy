@@ -39,22 +39,21 @@ def minl {α : Type u} [inhabited α] [decidable_linear_order α] : list α → 
 | [a] := a
 | (n :: rest) := min n (minl rest)
 
---FIXME explain me
+--TODO explain me
 meta def fold_fn (weights : table ℚ) (h : table_ref) (n : ℚ × list ℚ) : ℚ × ℚ × table_ref → ℚ × list ℚ
 | (a, b, r) :=
   let m := if h = r then b else minl [
     /- deletion     -/ a + (get_weight weights r),
     /- substitution -/ b + max (get_weight weights r) (get_weight weights h),
     /- insertion    -/ n.2.head + (get_weight weights h)
-  ] in
-  (min m n.1, list.cons m n.2)
+  ] in (min m n.1, list.cons m n.2)
 
---FIXME explain me
+--TODO explain me
 meta def improve_bound_once (weights : table ℚ) (l r : list table_ref) (cur : ℚ) (p : ed_partial) : bound_progress ed_partial :=
   match p.suffix with
     | [] := exactly p.distances.ilast p
     | (h :: t) :=
-      let new_prefix_length := p.prefix_length + /-(get_weight weights h)-/0 in
+      let new_prefix_length := p.prefix_length + (get_weight weights h) in
       let initial : ℚ × list ℚ := (new_prefix_length, [new_prefix_length]) in
       let new_distances : ℚ × list ℚ := (triples p r).foldl (fold_fn weights h) initial in
       at_least new_distances.1 ⟨ new_prefix_length, t, new_distances.2.reverse.drop 1 ⟩
@@ -75,6 +74,7 @@ namespace tidy.rewrite_search.metric.edit_distance
 open tidy.rewrite_search.edit_distance
 
 structure ed_config :=
+(refresh_freq     : ℕ := 10)
 (explain_thoughts : bool := ff)
 (trace_weights    : bool := ff)
 
@@ -103,8 +103,8 @@ meta def ed_reweight (conf : ed_config) (fn : table token → tactic (table ℚ)
     tactic.skip,
   return $ g.mutate_metric ⟨weights⟩
 
-meta def ed_update (conf : ed_config) (refresh_freq : ℕ) (fn : table token → tactic (table ℚ)) (g : search_state α ed_state ed_partial δ) (itr : ℕ) : tactic (search_state α ed_state ed_partial δ) :=
-  if refresh_freq > 0 ∧ (itr % (refresh_freq + 1) = 0) then do
+meta def ed_update (conf : ed_config) (fn : table token → tactic (table ℚ)) (g : search_state α ed_state ed_partial δ) (itr : ℕ) : tactic (search_state α ed_state ed_partial δ) :=
+  if conf.refresh_freq > 0 ∧ (itr % (conf.refresh_freq + 1) = 0) then do
     if conf.explain_thoughts then tactic.trace "pause! refreshing weights..." else tactic.skip,
     ed_reweight conf fn g
   else
@@ -116,14 +116,12 @@ meta def ed_improve_estimate_over (m : ℚ) (l r : vertex) (bnd : bound_progress
 end tidy.rewrite_search.metric.edit_distance
 
 namespace tidy.rewrite_search.metric
-
 open tidy.rewrite_search.edit_distance
 open tidy.rewrite_search.metric.edit_distance
 
-meta def edit_distance_weighted (refresh_freq : ℕ) (fn : calc_weights_fn) (conf : ed_config := {}) : metric_constructor ed_state ed_partial :=
-  λ α δ, ⟨ ed_init, ed_update conf refresh_freq (fn conf), ed_init_bound, ed_improve_estimate_over ⟩
+meta def weight.none : calc_weights_fn := λ conf ts, return table.create
 
-meta def edit_distance (conf : ed_config := {}) : metric_constructor ed_state ed_partial :=
-  edit_distance_weighted 0 (λ conf ts, return table.create) conf
+meta def edit_distance (conf : ed_config := {}) (fn : calc_weights_fn := weight.none) : metric_constructor ed_state ed_partial :=
+  λ α δ, ⟨ ed_init, ed_update conf (fn conf), ed_init_bound, ed_improve_estimate_over ⟩
 
 end tidy.rewrite_search.metric

@@ -2,10 +2,10 @@ import tidy.rewrite_search.core
 import tidy.rewrite_search.metric.edit_distance
 
 open tidy.rewrite_search
-open tidy.rewrite_search.bound_progress
-
 open tidy.rewrite_search.edit_distance
 open tidy.rewrite_search.metric.edit_distance
+
+namespace tidy.rewrite_search.metric.edit_distance.weight.cm
 
 def cm_of_side (l : list token) (s : side) : list ℚ :=
   let (tot, vec) := l.foldl (
@@ -13,20 +13,22 @@ def cm_of_side (l : list token) (s : side) : list ℚ :=
   ) (0, []) in
   vec.map (λ n : ℕ, n / tot)
 
-def cm_compare : list ℚ → list ℚ → list ℚ
-  | (a :: l1) (b :: l2) := ((abs ((a - b) * 4)) + 1) :: (cm_compare l1 l2)
+def compare_component (a b : ℚ) : ℚ := (abs (a - b)) * 4 + 1
+
+def compare : list ℚ → list ℚ → list ℚ
+  | (a :: l1) (b :: l2) := compare_component a b :: compare l1 l2
   | _ _ := []
 
-def cm_calculate_weights (tokens : table token) : list ℚ :=
+def calculate_weights (tokens : table token) : list ℚ :=
   let tl := tokens.to_list in
-  cm_compare (cm_of_side tl side.L) (cm_of_side tl side.R)
+  compare (cm_of_side tl side.L) (cm_of_side tl side.R)
 
-meta def cm_calc_weights (_ : ed_config) (tokens : table token) : tactic (table ℚ) :=
-  return $ table.from_list (cm_calculate_weights tokens)
+end tidy.rewrite_search.metric.edit_distance.weight.cm
 
 namespace tidy.rewrite_search.metric
+open tidy.rewrite_search.metric.edit_distance.weight.cm
 
-meta def edit_distance_cm_weighted (refresh_freq : ℕ) (conf : ed_config := {}) : metric_constructor ed_state ed_partial :=
-  edit_distance_weighted refresh_freq cm_calc_weights conf
+meta def weight.cm (_ : ed_config) (tokens : table token) : tactic (table ℚ) :=
+  return $ table.from_list (calculate_weights tokens)
 
 end tidy.rewrite_search.metric
