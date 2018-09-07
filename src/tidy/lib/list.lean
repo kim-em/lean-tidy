@@ -3,6 +3,10 @@ import data.buffer
 
 universe u
 
+def list.contains {α : Type u} [decidable_eq α] (a : α) : list α → bool
+| [] := ff
+| (h :: rest) := if a = h then tt else rest.contains
+
 def list.multiplex {α : Type u} : list α → list α → list α
 | [] l := l
 | l [] := l
