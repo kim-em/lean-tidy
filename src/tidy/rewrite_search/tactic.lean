@@ -154,6 +154,3 @@ run_cmd attribute.register `search_attribute
 -- begin
 -- rewrite_search_using `search {trace := tt, trace_rules:=tt},
 -- end
-
-
--- PROJECT cache all_rewrites_list?
