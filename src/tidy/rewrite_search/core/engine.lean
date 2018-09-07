@@ -136,13 +136,16 @@ meta def alloc_estimate {α β γ δ : Type} (g : search_state α β γ δ) (m :
   return ({g with estimates := new_estimates}, ref)
 
 /-- Check if `eq.refl _` suffices to prove the two sides are equal. -/
-meta def unify (p : pair) : tactic (search_state α β γ δ) :=
+meta def try_unify (p : pair) : tactic (search_state α β γ δ × bool) :=
 do
   (lhs, rhs) ← g.lookup_pair p,
-  prf ← attempt_refl lhs.exp rhs.exp,
-  -- success! we're done
-  (g, _) ← g.add_edge lhs rhs prf how.defeq,
-  return g
+  prf ← try_core $ attempt_refl lhs.exp rhs.exp,
+  match prf with
+  | none := return (g, ff)
+  | some prf := do
+    (g, _) ← g.add_edge lhs rhs prf how.defeq,
+    return (g, tt)
+  end
 
 end search_state
 

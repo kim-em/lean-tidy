@@ -72,6 +72,7 @@ meta def resolve_ipair : ipair → tactic (search_state pexplore_state β γ δ 
 | (ipair.resolved ref children) := return (g, ipair.resolved ref children, children)
 | (ipair.unresolved ref) := do
   de ← g.estimates.get ref,
+  (g, _) ← g.try_unify de.to_pair,
   (vl, vr) ← g.get_estimate_verts de,
   (g, lhs_pairs) ← find_pairs g vl vr,
   (g, rhs_pairs) ← find_pairs g vr vl,
@@ -125,7 +126,7 @@ namespace tidy.rewrite_search.strategy
 
 open tidy.rewrite_search.strategy.pexplore
 
-meta def pexplore (conf : pexplore_config := {}) : strategy_constructor pexplore_state := 
+meta def pexplore (conf : pexplore_config := {}) : strategy_constructor pexplore_state :=
 λ β γ δ, strategy.mk pexplore_init (@pexplore_startup β γ δ) (@pexplore_step β γ δ conf)
 
 end tidy.rewrite_search.strategy
