@@ -23,4 +23,6 @@ open tidy.rewrite_search.tracer.unit
 meta def unit_tracer : tracer_constructor unit := λ α β γ,
   tracer.mk α β γ unit_tracer_init unit_tracer_publish_vertex unit_tracer_publish_edge unit_tracer_publish_visited unit_tracer_publish_finished unit_tracer_dump unit_tracer_pause
 
+meta def no {δ : Type} (_ : tracer_constructor δ) : tracer_constructor unit := unit_tracer
+
 end tidy.rewrite_search.tracer

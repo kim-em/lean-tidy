@@ -136,4 +136,6 @@ meta def graph_tracer : tracer_constructor visualiser := λ α β γ,
   tracer.mk α β γ graph_tracer_init graph_tracer_publish_vertex graph_tracer_publish_edge
     graph_tracer_publish_visited graph_tracer_publish_finished graph_tracer_dump graph_tracer_pause
 
+meta def visualiser := graph_tracer
+
 end tidy.rewrite_search.tracer
