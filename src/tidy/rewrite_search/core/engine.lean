@@ -227,8 +227,12 @@ meta def exhaust_one_unvisited : list vertex → tactic (search_state α β γ �
 meta def exhaust_all_unvisited : search_state α β γ δ → tactic (search_state α β γ δ)
 | g := do
   (g, more_left) ← g.exhaust_one_unvisited g.vertices.to_list,
-  tactic.trace "exhaustall",
   if more_left then g.exhaust_all_unvisited else return g
+
+meta def exhaust_all : tactic (search_state α β γ δ) := do
+  g ← g.exhaust_all_visited,
+  g ← g.exhaust_all_unvisited,
+  return g
 
 end search_state
 
@@ -301,8 +305,7 @@ do
     skip,
 
   i ← if i.g.conf.exhaustive then do
-        g ← i.g.exhaust_all_visited,
-        g ← g.exhaust_all_unvisited,
+        g ← i.g.exhaust_all,
         pure $ i.mutate g
       else
         pure i,
