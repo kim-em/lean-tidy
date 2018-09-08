@@ -133,7 +133,7 @@ constants f g : ℕ → ℕ → ℕ → ℕ
 
 lemma test : f 0 0 0 = g 0 0 0 :=
 -- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
-by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := tt, view := no visualiser, strategy := pexplore {pop_size := 10}, metric := edit_distance {} weight.cm}
+by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := tt, view := visualiser, strategy := pexplore {pop_size := 10}, metric := edit_distance {} weight.cm}
 
 lemma test_bfs : f 0 0 0 = g 0 0 0 :=
 -- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
@@ -155,7 +155,7 @@ lemma test3 : (a * (b + c)) * d = a * (b * d) + a * (c * d) :=
 by rewrite_search [add_comm, add_assoc, mul_assoc, mul_comm, left_distrib, right_distrib] {trace_result := tt, trace_summary := tt, view := no visualiser, metric := edit_distance}
 
 lemma test4 : (a * (b + c + 1)) * d = a * (b * d) + a * (1 * d) + a * (c * d) :=
-by rewrite_search [add_comm, add_assoc, mul_one, mul_assoc, mul_comm, left_distrib, right_distrib] {trace_result := tt, trace_summary := tt, view := no visualiser, metric := edit_distance {} weight.cm, strategy := pexplore, max_iterations := 100}
+by rewrite_search [add_comm, add_assoc, mul_one, mul_assoc, mul_comm, left_distrib, right_distrib] {trace_result := tt, trace_summary := tt, view := no visualiser, metric := edit_distance {refresh_freq := 10} weight.cm, strategy := pexplore, max_iterations := 100}
 
 namespace tidy.rewrite_search.tesseract
 
@@ -215,7 +215,7 @@ namespace v1
 
 lemma test : f_1 0 0 0 = f_5 0 0 0 :=
 -- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
-by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := ff, view := visualiser, strategy := pexplore {pop_size := 100, pop_alternate := ff}, metric := edit_distance {refresh_freq := 10} weight.cm, max_iterations := 500}
+by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := ff, view := no visualiser, strategy := pexplore {pop_size := 1, pop_alternate := ff}, metric := edit_distance, max_iterations := 1000}
 end v1
 
 namespace v2

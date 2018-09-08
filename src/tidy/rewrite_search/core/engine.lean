@@ -118,7 +118,7 @@ meta def find_more_rewrites (v : vertex) : tactic (search_state α β γ δ × v
       return (g, v, all_rws.nth 0)
   end
 
--- TODO implement table-backed queue?
+-- TODO implement a table-backed queue?
 meta def find_more_adjs (o : vertex) : tactic (search_state α β γ δ × vertex × option (vertex × edge)) := do
   (g, o, rw) ← match o.rws.at_ref o.rw_front with
   | none := find_more_rewrites g o
@@ -167,8 +167,6 @@ do
 
 end search_state
 
---FIXME the new rewriterator stuff broke exhaustive
-
 namespace rewriterator
 
 private meta def advance (it : rewriterator) : rewriterator := {it with front := it.front.next}
@@ -199,6 +197,41 @@ meta def exhaust : rewriterator → search_state α β γ δ → tactic (search_
 
 end rewriterator
 
+namespace search_state
+
+meta def exhaust_vertex (v : vertex) : tactic (search_state α β γ δ) := do
+  (g, it) ← g.visit_vertex v,
+  (g, it) ← it.exhaust g,
+  return g
+
+meta def exhaust_all_visited_aux : search_state α β γ δ → list vertex → tactic (search_state α β γ δ)
+| g []          := return g
+| g (v :: rest) := do
+  g ← g.exhaust_vertex v,
+  exhaust_all_visited_aux g rest
+
+meta def exhaust_all_visited : tactic (search_state α β γ δ) :=
+  g.exhaust_all_visited_aux g.vertices.to_list
+
+-- Find a vertex we haven't visited, and visit it. The bool is true if there might
+-- be other unvisited vertices.
+meta def exhaust_one_unvisited : list vertex → tactic (search_state α β γ δ × bool)
+| []          := return (g, ff)
+| (v :: rest) :=
+  if v.visited then
+    exhaust_one_unvisited rest
+  else do
+    g ← g.exhaust_vertex v,
+    return (g, tt)
+
+meta def exhaust_all_unvisited : search_state α β γ δ → tactic (search_state α β γ δ)
+| g := do
+  (g, more_left) ← g.exhaust_one_unvisited g.vertices.to_list,
+  tactic.trace "exhaustall",
+  if more_left then g.exhaust_all_unvisited else return g
+
+end search_state
+
 namespace inst
 
 meta def mutate : inst α β γ δ :=
@@ -215,21 +248,6 @@ match i.g.solving_edge with
     (g, s) ← i.strategy.step g i.metric itr,
     return (i.mutate g, s)
 end
-
--- Find a vertex we haven't visited, and visit it. The bool is true if there might
--- be any more unvisited vertices.
-meta def exhaust_one : list vertex → tactic (inst α β γ δ × bool)
-| []          := return (i, ff)
-| (v :: rest) :=
-  if v.visited then
-    exhaust_one rest
-  else do
-    (g, _) ← i.g.visit_vertex v,
-    return (i.mutate g, tt)
-
-meta def exhaust_all : inst α β γ δ → tactic (inst α β γ δ) := λ i, do
-  (i, more_left) ← i.exhaust_one i.g.vertices.to_list,
-  if more_left then i.exhaust_all else return i
 
 meta def backtrack : vertex → option edge → tactic (option expr × list edge)
 | v e := match e with
@@ -282,7 +300,12 @@ do
   else
     skip,
 
-  i ← if i.g.conf.exhaustive then i.exhaust_all else pure i,
+  i ← if i.g.conf.exhaustive then do
+        g ← i.g.exhaust_all_visited,
+        g ← g.exhaust_all_unvisited,
+        pure $ i.mutate g
+      else
+        pure i,
 
   return (proof, edges)
 
