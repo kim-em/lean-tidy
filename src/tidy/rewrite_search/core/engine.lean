@@ -12,8 +12,9 @@ universe u
 
 namespace tidy.rewrite_search
 
+variables {α β γ δ : Type} (i : inst α β γ δ) (g : search_state α β γ δ)
+
 namespace search_state
-variables {α β γ δ : Type} (g : search_state α β γ δ)
 
 meta def reset_estimate (init : init_bound_fn α β γ δ) (de : dist_estimate γ) : tactic (dist_estimate γ) := do
   (vl, vr) ← g.get_estimate_verts de,
@@ -49,7 +50,7 @@ meta def find_vertex (e : expr) : tactic (option vertex) := do
 meta def alloc_vertex (e : expr) (root : bool) (s : side) : tactic (search_state α β γ δ × vertex) :=
 do (pp, tokens) ← tokenise_expr e,
    let (g, token_refs) := g.register_tokens s tokens,
-   let v : vertex := ⟨ g.vertices.next_id, e, pp, token_refs, root, ff, s, none, [] ⟩,
+   let v : vertex := vertex.create g.vertices.next_id e pp token_refs root s,
    return ({ g with vertices := g.vertices.alloc v }, v)
 
 -- Look up the given vertex associated to (e : expr), or create it if it is
@@ -74,7 +75,7 @@ meta def register_solved (e : edge) : search_state α β γ δ :=
 { g with solving_edge := some e }
 
 meta def add_adj (v : vertex) (e : edge) : search_state α β γ δ × vertex :=
-let v : vertex := { v with adj := v.adj.concat e } in (g.set_vertex v, v)
+g.set_vertex { v with adj := v.adj.alloc e }
 
 meta def publish_parent (f t : vertex) (e : edge) : search_state α β γ δ × vertex :=
 if t.root then
@@ -82,46 +83,63 @@ if t.root then
 else
   match t.parent with
   | some parent := (g, t)
-  | none := let t : vertex := { t with parent := some e } in (g.set_vertex t, t)
+  | none := g.set_vertex { t with parent := some e }
   end
 
-meta def mark_vertex_visited (r : table_ref) : tactic (search_state α β γ δ) := do
-  v ← g.vertices.get r,
+meta def mark_vertex_visited (v : vertex) : tactic (search_state α β γ δ × vertex) := do
   return $ g.set_vertex { v with visited := tt }
 
-meta def add_edge (f t : vertex) (proof : expr) (how : how) : tactic (search_state α β γ δ × edge) :=
+meta def add_edge (f t : vertex) (proof : expr) (how : how) : tactic (search_state α β γ δ × vertex × vertex × edge) :=
 do let new_edge : edge := ⟨ f.id, t.id, proof, how ⟩,
    g.tracer_edge_added new_edge,
    let (g, f) := g.add_adj f new_edge,
    let (g, t) := g.add_adj t new_edge,
    let (g, t) := g.publish_parent f t new_edge,
    if ¬(vertex.same_side f t) then
-     return (g.register_solved new_edge, new_edge)
+     return (g.register_solved new_edge, f, t, new_edge)
    else
-     return (g, new_edge)
+     return (g, f, t, new_edge)
 
-meta def process_new_rewrites (f : vertex) : search_state α β γ δ → list (expr × expr × how) → tactic (search_state α β γ δ × list vertex × list edge)
-| g [] := return (g, [], [])
-| g ((new_expr, prf, how) :: rest) := do
-    (g, v) ← g.add_vertex new_expr f.s,
-    (g, e) ← g.add_edge f v prf how,
-    (g, vs, es) ← process_new_rewrites g rest,
-    return (g, (v :: vs), (e :: es))
+meta def commit_rewrite (f : vertex) (r : rewrite) : tactic (search_state α β γ δ × vertex × (vertex × edge)) := do
+  (g, v) ← g.add_vertex r.e f.s,
+  (g, f, v, e) ← g.add_edge f v r.prf r.how,
+  return (g, f, (v, e))
 
-meta def visit_vertex (v : vertex) : tactic (search_state α β γ δ × list vertex) :=
-do
-  match v.visited with
-  | tt := do
-            vertices ← v.adj.mmap (λ e, g.vertices.get e.t),
-            return (g, vertices)
-  | ff := do
-            all_rws ← all_rewrites_list g.conf.rs ff v.exp g.conf.to_rewrite_all_cfg,
-            let all_rws := all_rws.map (λ t, (t.1, t.2.1, how.rewrite t.2.2.1 v.s t.2.2.2)),
-            (g, adjacent_vertices, _) ← g.process_new_rewrites v all_rws,
-            g ← g.mark_vertex_visited v.id,
-            g.tracer_visited v,
-            return (g, adjacent_vertices)
+-- TODO once partial rewriting is implemented, this will inspect the rewrite_progress data in v
+-- to add one (or more, if convenient) `rewrite`s to the rewrite table. We then return the updated
+-- mutable state, and (to eliminated an uneccesary lookup) the first rewrite which we found, if any.
+meta def find_more_rewrites (v : vertex) : tactic (search_state α β γ δ × vertex × option rewrite) :=
+  match v.rw_prog with
+    | some _ := return (g, v, none)
+    | none := do
+      all_rws ← all_rewrites_list g.conf.rs ff v.exp g.conf.to_rewrite_all_cfg,
+      let all_rws : list rewrite := all_rws.map (λ t, ⟨t.1, t.2.1, how.rewrite t.2.2.1 v.s t.2.2.2⟩),
+      (g, v) ← pure $ g.set_vertex {v with rws := table.from_list all_rws, rw_prog := some ⟨()⟩},
+      return (g, v, all_rws.nth 0)
   end
+
+-- TODO implement table-backed queue?
+meta def find_more_adjs (o : vertex) : tactic (search_state α β γ δ × vertex × option (vertex × edge)) := do
+  (g, o, rw) ← match o.rws.at_ref o.rw_front with
+  | none := find_more_rewrites g o
+  | some rw := pure (g, o, some rw)
+  end,
+  match rw with
+  | none := return (g, o, none)
+  | some rw := do
+    (g, o, (v, e)) ← g.commit_rewrite o rw,
+    (g, o) ← pure $ g.set_vertex {o with rw_front := o.rw_front.next},
+    return (g, o, some (v, e))
+  end
+
+meta def visit_vertex (v : vertex) : tactic (search_state α β γ δ × rewriterator) :=
+do
+  (g, v) ← if ¬v.visited then do
+        g.tracer_visited v,
+        g.mark_vertex_visited v
+      else
+        pure (g, v),
+  return ⟨g, ⟨v.id, table_ref.first⟩⟩
 
 meta def improve_estimate_over {α β γ δ : Type} (g : search_state α β γ δ) (m : metric α β γ δ) (threshold : ℚ) (de : dist_estimate γ) : tactic (search_state α β γ δ × dist_estimate γ) := do
   (vl, vr) ← g.get_estimate_verts de,
@@ -149,10 +167,41 @@ do
 
 end search_state
 
-namespace inst
-variables {α β γ δ : Type} (i : inst α β γ δ)
+--FIXME the new rewriterator stuff broke exhaustive
 
-meta def mutate (g : search_state α β γ δ) : inst α β γ δ :=
+namespace rewriterator
+
+private meta def advance (it : rewriterator) : rewriterator := {it with front := it.front.next}
+
+meta def next (it : rewriterator) (g : search_state α β γ δ) : tactic (search_state α β γ δ × rewriterator × option (vertex × edge)) := do
+  o ← g.vertices.get it.orig,
+  match o.adj.at_ref it.front with
+  | some e := do
+    v ← g.vertices.get e.t,
+    return (g, advance it, some (v, e))
+  | none := do
+    (g, o, ret) ← g.find_more_adjs o,
+    match ret with
+    | some (v, e) := return (g, advance it, some (v, e))
+    | none := return (g, it, none)
+    end
+  end
+
+meta def exhaust : rewriterator → search_state α β γ δ → tactic (search_state α β γ δ × rewriterator × list (vertex × edge))
+| it g := do
+  (g, it, ret) ← it.next g,
+  match ret with
+  | none := return (g, it, [])
+  | some (v, e) := do
+    (g, it, rest) ← exhaust it g,
+    return (g, it, ((v, e) :: rest))
+  end
+
+end rewriterator
+
+namespace inst
+
+meta def mutate : inst α β γ δ :=
 { i with g := g }
 
 meta def step_once (itr : ℕ) : tactic (inst α β γ δ × status) :=

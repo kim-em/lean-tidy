@@ -10,6 +10,7 @@ def table_ref.to_string (r : table_ref) : string := to_string r.to_nat
 def table_ref.next (r : table_ref) : table_ref := table_ref.from_nat (r + 1)
 def table_ref.null  : table_ref := table_ref.from_nat 0x8FFFFFFF
 def table_ref.first : table_ref := table_ref.from_nat 0
+instance : has_to_string table_ref := ⟨λ t, t.to_string⟩
 
 class indexed (α : Type u) :=
 (index : α → table_ref)
@@ -34,7 +35,8 @@ def to_list : list α := t.entries
 
 def alloc (a : α) : table α :=
   { t with next_id := t.next_id.next, entries := t.entries.concat a }
-meta def get (r : table_ref) : tactic α := t.entries.nth r
+def at_ref (r : table_ref) : option α := t.entries.nth r
+meta def get (r : table_ref) : tactic α := t.at_ref r
 def iget [inhabited α] (r : table_ref) : α := (t.entries.nth r).iget
 def set (r : table_ref) (a : α) : table α :=
   { t with entries := t.entries.set_at r a }
@@ -51,6 +53,8 @@ def mmap {m : Type v → Type z} [monad m] (f : α → m β) : m (table β) := d
   new_entries ← t.entries.mmap f,
   return ⟨t.next_id, new_entries⟩
 
-meta instance [has_to_format α] : has_to_format (table α) := ⟨λ t, @has_to_format.to_format _ _ t.to_list⟩
+def is_after_last (r : table_ref) : bool := t.next_id.to_nat <= r.to_nat
+
+instance [has_to_string α] : has_to_string (table α) := ⟨λ t, to_string t.to_list⟩
 
 end table
