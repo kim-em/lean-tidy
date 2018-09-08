@@ -7,7 +7,7 @@ namespace tidy.rewrite_search.strategy.pexplore
 
 structure pexplore_config :=
 (pop_size      : ℕ := 100)
-(pop_alternate : bool := ff)
+(pop_alternate : bool := tt)
 -- TODO consider putting something like this back, with an "alternate" flag or similar
 -- (list_combinator : list pair → list pair → list pair := list.multiplex /-c.f. list.append-/)
 
@@ -152,7 +152,6 @@ meta def pexplore_startup (m : metric pexplore_state β γ δ) (l r : vertex) : 
 
 meta def pexplore_step : search_state pexplore_state β γ δ → metric pexplore_state β γ δ → ℕ → tactic (search_state pexplore_state β γ δ × status)
 | g m itr := do
-  tactic.trace format!"#{g.strat_state.interesting_pairs.length}",
   (g, best, others) ← find_most_interesting m g,
   match (best, others) with
   | (none, []) := return (g, status.abort "all interesting pairs exhausted!")

@@ -24,7 +24,7 @@ meta def reset_all_estimates (init : init_bound_fn α β γ δ) : tactic (search
   new_estimates ← g.estimates.mmap (g.reset_estimate init),
   return { g with estimates := new_estimates }
 
-private def register_tokens_aux (s : side) : table token → list string → table token × list table_ref
+private meta def register_tokens_aux (s : side) : table token → list string → table token × list table_ref
 | tokens [] := (tokens, [])
 | tokens (tstr :: rest) := do
   let (tokens, t) := find_or_create_token tokens s tstr,
