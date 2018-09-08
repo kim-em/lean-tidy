@@ -63,7 +63,10 @@ do
   -- trace n,
   pp ← pretty_print type,
   e ← get_env,
-  -- ol ← e.decl_olean n,
+  let ret := match  e.decl_olean n with
+  | none := "???"
+  | some ret := ret
+  end,
   -- if (ol.split_on '/').contains "mathlib" ∨ tt then skip else failed,
   -- if (n.to_string.split_on '.').contains "to_fun_eq_coe" then skip else failed,
   -- trace n,
@@ -77,14 +80,17 @@ do
   m ← mk_meta_var type,
   gs ← get_goals,
   set_goals [m],
+  trace format!"TRY:{n}@{ret}",
   -- o ← try_core `[refl],
-  o ← `[tactic.tidy { tactics := extended_tidy_tactics }],
-  trace format!"{n}",
+  o ← try_core `[tactic.tidy { tactics := extended_tidy_tactics }],
+  match o with
+  | some _ := do trace format!"OK",
   -- trace format!"{o}",
   r ← instantiate_mvars m,
   -- trace format!"{r}",
-  set_goals gs,
-  skip.
+  set_goals gs
+  | none := trace format!"BAD"
+  end
 
 lemma qux : false := begin
   tactic.tidy { tactics := extended_tidy_tactics }
