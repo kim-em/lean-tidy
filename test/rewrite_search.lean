@@ -14,7 +14,8 @@ example : [[7],[6]] = [[5],[5]] :=
 begin
   nth_rewrite_lhs 0 foo',
   nth_rewrite_rhs 0 bar',
-  nth_rewrite_lhs 0 ← foo', 
+  nth_rewrite_lhs 0 ← foo',
+  nth_rewrite_lhs 0 ← foo'
   -- FIXME this isn't really the behaviour I want: I'd like to be able to rewrite these two separately.
 end
 
@@ -144,7 +145,7 @@ set_option trace.app_builder true
 lemma test : f 0 0 0 = g 0 0 0 :=
 -- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
 by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := tt, view := no visualiser, strategy := pexplore {pop_size := 1}, metric := edit_distance {refresh_freq := 5} weight.cm}
--- begin 
+-- begin
 -- perform_nth_rewrite [f_2_2] 0,
 -- perform_nth_rewrite [f_1_1] 0,
 -- perform_nth_rewrite [g_0_2] 0,
@@ -166,7 +167,7 @@ by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summar
 
 lemma test_svm2 : f 0 0 0 = g 0 0 0 :=
 -- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
-by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := tt, view := visualiser, strategy := pexplore {pop_size := 5}, metric := edit_distance {refresh_freq := 1} weight.svm}
+by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := tt, view := no visualiser, strategy := pexplore {pop_size := 5}, metric := edit_distance {refresh_freq := 1} weight.svm}
 
 lemma test_cm2 : f 0 0 0 = g 0 0 0 :=
 -- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
