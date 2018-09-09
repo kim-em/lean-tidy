@@ -10,7 +10,7 @@ meta def repeat_kabstract_core (e : tactic (expr × list expr)) : expr → list 
   r ← try_core (do r ← kabstract t e', guard r.has_var, return r),
   match r with
   | none := return (t, results)
-  | (some t') := do 
+  | (some t') := do
     ty ← infer_type e',
     -- n ← mk_fresh_name,
     -- let w := expr.local_const n n binder_info.default ty,
@@ -18,13 +18,13 @@ meta def repeat_kabstract_core (e : tactic (expr × list expr)) : expr → list 
     t'' ← return $ t'.instantiate_var w,
     mvars' ← mvars.mmap instantiate_mvars,
     repeat_kabstract_core t'' ((w, mvars') :: results)
-  end   
+  end
 
-meta def substitutions_core : expr → list expr → 
+meta def substitutions_core : expr → list expr →
   tactic (tactic (expr × list expr) × (list expr → tactic expr) × (list expr → tactic expr))
-| (expr.pi n bi d b) types := 
-  do substitutions_core b (d :: types)          
-| `(%%lhs = %%rhs) types := 
+| (expr.pi n bi d b) types :=
+  do substitutions_core b (d :: types)
+| `(%%lhs = %%rhs) types :=
   do let fresh_mvars := (do mvars ← types.mmap mk_meta_var,
                            let pattern := lhs.instantiate_vars mvars,
                            return (pattern, mvars)),
@@ -49,11 +49,11 @@ def list.rotate_left {α : Type u} (L : list α) (n : ℕ) := L.drop n ++ L.take
 def list.rotations {α : Type u} (L : list α) : list (list α) :=
 (list.range L.length).map $ λ n, L.rotate_left n
 
-/-- `repeat_kabstract t eq` repeatedly calls `kabstract` on `t`, 
-    looking for subexpressions matching the lhs, after binders, of `eq`. 
+/-- `repeat_kabstract t eq` repeatedly calls `kabstract` on `t`,
+    looking for subexpressions matching the lhs, after binders, of `eq`.
     After each call, the local variable is replaced with a local constant, and the
     bindings of metavariables in `e` are recorded.
-    
+
     The result consists of `(t', L)`, where `t'` is `t` with subexpressions replaced by local
     constants. The list `L` contains pairs `(n, M)`, where `n` is one of the local constants,
     and `M` is the list of values of metavariables for that replacement. -/
@@ -63,7 +63,7 @@ do (lhs_matcher, lhs_substituter, rhs_substituter) ← substitutions eq,
   trace t',
   trace mvars,
   let substituter : list (expr × list expr) → tactic expr := λ mvars,
-    lock_tactic_state $ 
+    lock_tactic_state $
     (do m_h :: m_t ← return mvars,
        rhs ← rhs_substituter m_h.2,
        unify rhs m_h.1,
@@ -84,7 +84,8 @@ begin
     trace eq,
     ty ← infer_type eq,
     r ← repeat_kabstract lhs ty,
-    trace r
+    trace r,
+    admit
 )
 end
 
@@ -112,7 +113,8 @@ begin
    k'' ← kabstract k' a'' transparency.reducible ff,
    trace k'',
 skip),
-   refl
+   refl,
+   admit
 end
 
 
