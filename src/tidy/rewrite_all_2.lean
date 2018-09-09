@@ -1,137 +1,163 @@
+import tactic.basic
 import .lock_tactic_state
+import .mllist
+
+universes u
 
 open tactic
+open mllist
 
-def f (x : ℕ) (y : ℕ) := 2
+meta def kabstract_no_new_goals (t e : expr) (md : transparency) : tactic expr :=
+do gs ← get_goals,
+   r ← kabstract t e md,
+   ng ← num_goals,
+   guard (ng = gs.length),
+   return r
 
-meta def repeat_kabstract_core (e : tactic (expr × list expr)) : expr → list (expr × list expr) → tactic (expr × list (expr × list expr))
-| t results := do
-  (e', mvars) ← e,
-  r ← try_core (do r ← kabstract t e', guard r.has_var, return r),
-  match r with
-  | none := return (t, results)
-  | (some t') := do
-    ty ← infer_type e',
-    -- n ← mk_fresh_name,
-    -- let w := expr.local_const n n binder_info.default ty,
-    w ← mk_meta_var ty,
-    t'' ← return $ t'.instantiate_var w,
-    mvars' ← mvars.mmap instantiate_mvars,
-    repeat_kabstract_core t'' ((w, mvars') :: results)
-  end
+meta def kabstracter'
+  (pattern : tactic (expr × expr × list expr))
+  (lhs_replacer : list expr → tactic expr) :
+  expr × list (expr × (list expr)) → tactic (expr × list (expr × (list expr)))
+| p := do
+  (t, L) ← pure p,
+  (e, e_type, mvars) ← pattern,
+  t' ← kabstract_no_new_goals t e semireducible,
+  -- TODO use the discharger to clear remaining metavariables
+  -- trace "kabstract:",
+  -- trace t,
+  -- trace e,
+  -- trace mvars,
+  -- mvars.mmap (λ m, infer_type m) >>= trace,
+  -- trace t',
+  guard t'.has_var,
+  w ← mk_meta_var e_type,
+  let t'' := t'.instantiate_var w,
+  mvars' ← mvars.mmap instantiate_mvars,
+  return (t'', (w, mvars') :: L) -- FIXME should there be a prime here??
 
-meta def substitutions_core : expr → list expr →
-  tactic (tactic (expr × list expr) × (list expr → tactic expr) × (list expr → tactic expr))
-| (expr.pi n bi d b) types :=
-  do substitutions_core b (d :: types)
-| `(%%lhs = %%rhs) types :=
-  do let fresh_mvars := (do mvars ← types.mmap mk_meta_var,
-                           let pattern := lhs.instantiate_vars mvars,
-                           return (pattern, mvars)),
-     let lhs_replacer : list expr → tactic expr := (λ values, return (lhs.instantiate_vars values)),
-     let rhs_replacer : list expr → tactic expr := (λ values, return (rhs.instantiate_vars values)),
-     return (fresh_mvars, lhs_replacer, rhs_replacer)
-| _ _ := failed
+meta def kabstracter 
+  (pattern : tactic (expr × expr × list expr))
+  (lhs_replacer : list expr → tactic expr) (t : expr) : tactic (mllist tactic (expr × list (expr × list expr))) :=
+mllist.fix (kabstracter' pattern lhs_replacer) (t, [])
 
-/-- Given a lemma `eq`, returns three tactics.
-    1) returning `(lhs', mvars)` where `lhs'` is a copy of the left hand side of the lemma, with
-    variables replaced by fresh metavariables `mvars`.
-    2) taking a list of expressions, and returning `lhs'`, the left hand side with variables
-    instantiated with these values.
-    3) as with 2), but for the right hand side. -/
-meta def substitutions (eq : expr) : tactic (tactic (expr × list expr) × (list expr → tactic expr) × (list expr → tactic expr)) :=
-substitutions_core eq []
+meta def get_lhs : expr -> bool → list expr -> tactic (expr × expr × list expr)
+| (expr.pi n bi d b) symm mvars :=
+do v <- mk_meta_var d,
+   b' <- whnf $ b.instantiate_var v,
+   get_lhs b' symm (v :: mvars)
+| `(%%a = %%b) symm mvars := 
+  do let (a, b) := if symm then (b, a) else (a, b),
+     ty ← infer_type a,
+     return (a, ty, mvars)
+| _ _ _ := failed
 
-universe u
+meta def replacer : expr -> bool → list expr -> tactic expr
+| (expr.pi n bi d b) symm values := replacer b symm values
+| `(%%a = %%b) symm values := 
+  do let (a, b) := if symm then (b, a) else (a, b),
+     return (a.instantiate_vars values)
+| _ _ _ := failed
 
-def list.rotate_left {α : Type u} (L : list α) (n : ℕ) := L.drop n ++ L.take n
+meta def mvars_to_var (e : expr) : expr :=
+e.replace (λ e n, if e.is_meta_var then some (expr.var n) else none)
 
-def list.rotations {α : Type u} (L : list α) : list (list α) :=
-(list.range L.length).map $ λ n, L.rotate_left n
+meta def do_substitutions
+  (eq : expr) (symm : bool)
+  (t_original : expr)
+  (lhs rhs : list expr → tactic expr)
+  (t_abstracted : expr)
+  (rewrite_mvar : expr × list expr)
+  (restore_mvars : list (expr × list expr)) : tactic (expr × tactic expr × list expr) :=
+lock_tactic_state $
+do -- We first restore all the "other" metavariables to their original values.
+  --  trace "do_substitutions",
+   restore_mvars.mmap (λ p, do l ← lhs p.2, unify p.1 l),
+   t_restored ← instantiate_mvars t_abstracted,
 
-/-- `repeat_kabstract t eq` repeatedly calls `kabstract` on `t`,
-    looking for subexpressions matching the lhs, after binders, of `eq`.
-    After each call, the local variable is replaced with a local constant, and the
-    bindings of metavariables in `e` are recorded.
+   -- r' is the value of the remaining metavariable, after applying the lemma.
+   r' ← rhs rewrite_mvar.2,
 
-    The result consists of `(t', L)`, where `t'` is `t` with subexpressions replaced by local
-    constants. The list `L` contains pairs `(n, M)`, where `n` is one of the local constants,
-    and `M` is the list of values of metavariables for that replacement. -/
-meta def repeat_kabstract (t eq : expr) : tactic unit :=
-do (lhs_matcher, lhs_substituter, rhs_substituter) ← substitutions eq,
-  (t', mvars) ← repeat_kabstract_core lhs_matcher t [],
-  trace t',
-  trace mvars,
-  let substituter : list (expr × list expr) → tactic expr := λ mvars,
-    lock_tactic_state $
-    (do m_h :: m_t ← return mvars,
-       rhs ← rhs_substituter m_h.2,
-       unify rhs m_h.1,
-       m_t.mmap (λ p, do lhs ← lhs_substituter p.2, unify lhs p.1),
-       instantiate_mvars t'),
-  t' ← mvars.rotations.mmap substituter,
-  -- t' ← substituter mvars,
-  trace t',
-  skip
+   guard (¬ r'.has_meta_var),
 
-lemma fx (n : ℕ) (m : ℕ) : f n m = f 17 19 := sorry
+   -- We now begin constructing the `eq.rec` proof of equality. In fact, we don't construct it here,
+   -- we just construct a tactic that can produce it on demand!
+   let proof_tactic : tactic expr := do {
+    -- r is the original value of the remaining metavariable
+    r ← lhs rewrite_mvar.2,
 
-example : [f 1 2, 3, f 2 5] = [f 3 1, f 4 1] :=
+    -- The lemma itself proves `r = r'`.
+    let inner_proof := rewrite_mvar.2.reverse.foldl (λ f x : expr, f x) eq,
+    inner_proof ← if symm then mk_eq_symm inner_proof else return inner_proof,
+    -- trace "inner_proof:",
+    -- trace inner_proof,
+
+    -- Next we compute the motive.
+    let t_with_var := mvars_to_var t_restored,
+    n ← mk_fresh_name,
+    -- trace "--",
+    -- trace t_with_var,
+    -- trace t_original,
+    -- trace "r:",
+    -- trace r,
+    ty ← infer_type r,
+    feq ← mk_const `eq,
+    v ← mk_mvar,
+    let C := expr.lam n binder_info.default ty (feq v t_original t_with_var),
+    -- trace "motive:",
+    -- trace C,
+
+    -- ... and prepare the actual proof.
+    refl ← mk_eq_refl t_original,
+    proof ← to_expr ```(@eq.rec _ %%r %%C %%refl _ %%inner_proof),
+    -- trace "proof:",
+    -- trace proof,
+    infer_type proof, -- this is a sanity check (perhaps we should be doing this earlier?)
+    return proof
+   },
+   -- Finally we finish rewriting the expression
+   unify rewrite_mvar.1 r',
+   result ← instantiate_mvars t_restored,
+
+   metas : list expr ← rewrite_mvar.2.mfilter (λ m, do r ← is_assigned m <|> return tt, return ¬ r),
+   return (result, proof_tactic, metas)
+
+meta def all_rewrites_core (t eq : expr) (symm : bool): tactic (mllist tactic (expr × tactic expr × list expr)) :=
+do ty ← infer_type eq,
+  let matcher := get_lhs ty symm [],
+  let lhs := replacer ty symm,
+  let rhs := replacer ty ¬ symm,
+  L ← kabstracter matcher lhs t,
+  L ← L.mmap (λ p, do_substitutions eq symm t lhs rhs p.1 p.2.head p.2.tail),
+  return L
+
+meta def all_rewrites' (t eq : expr) (symm : bool) : tactic (list (expr × expr × list expr)) :=
+do L ← all_rewrites_core t eq symm,
+   L' ← L.mmap (λ p, do r ← p.2.1, return (p.1, r, p.2.2)),
+   R ← L'.force,
+  --  trace "all_rewrite':",
+  --  trace (t, eq, symm),
+  --  trace R,
+   return R
+  
+constant f (x : ℕ) (y : ℕ) : ℕ
+axiom fx (n : ℕ) (m : ℕ) : f n m = f 17 19
+
+example : [f 1 2, 3, f 2 5] = [f 1 2, 3, f 2 5] :=
 begin
 (do `(%%lhs = %%rhs) ← target,
-    trace lhs,
     eq ← mk_const `fx,
-    trace eq,
-    ty ← infer_type eq,
-    r ← repeat_kabstract lhs ty,
-    trace r,
-    admit
-)
-end
-
-example : f 1 = f 2 :=
-begin
-(do t ← target,
-   trace t,
-   a ← to_expr ``(f _),
-   trace a,
-   ty ← infer_type a,
-   trace ty,
-   k ← kabstract t a transparency.reducible ff,
-   trace k,
-   n ← mk_fresh_name,
-   let w := expr.local_const n `w binder_info.default ty,
-   k ← return $ k.instantiate_var w,
-   a' ← to_expr ``(f _),
-   k' ← kabstract k a' transparency.reducible ff,
-   trace k',
-   n ← mk_fresh_name,
-   let w := expr.local_const n `w binder_info.default ty,
-   k' ← return $ k'.instantiate_var w,
-   trace k',
-   a'' ← to_expr ``(f _),
-   k'' ← kabstract k' a'' transparency.reducible ff,
-   trace k'',
-skip),
-   refl,
-   admit
-end
-
-
-constant v : ℕ
-
-example : 1 = 1 :=
-begin
-(do t ← target,
-   let a := `(1),
-   ty ← infer_type a,
-   trace t,
-   k ← kabstract t a,
-   trace k,
-   v ← mk_const `v,
-   let w := expr.local_const `w `w binder_info.default ty,
-   trace (k.instantiate_var v),
-   trace (k.instantiate_var w),
-   skip),
+    r ← all_rewrites' lhs eq ff,
+    trace r),
 refl
 end
+
+meta structure rewrite_all_cfg extends rewrite_cfg :=
+(discharger : tactic unit := skip)
+(simplifier : expr → tactic (expr × expr) := λ e, failed) -- FIXME get rid of this
+
+meta def all_rewrites (r : expr × bool) (t : expr) (cfg : rewrite_all_cfg := {}): tactic (list (expr × expr)) :=
+do results ← all_rewrites' t r.1 r.2,
+   let results := results.filter (λ p, p.2.2 = []),
+   let results := results.map (λ p, (p.1, p.2.1)),
+   return results
+

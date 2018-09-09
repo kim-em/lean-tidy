@@ -2,7 +2,7 @@
 -- Released under Apache 2.0 license as described in the file LICENSE.
 -- Authors: Keeley Hoek, Scott Morrison
 
-import tidy.rewrite_all
+import tidy.rewrite_all_wrappers
 import .init
 
 open interactive interactive.types expr tactic
