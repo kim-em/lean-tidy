@@ -1,4 +1,4 @@
-import .rewrite_all
+import .rewrite_all_2
 
 open tactic
 open lean.parser

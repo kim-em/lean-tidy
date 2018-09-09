@@ -7,8 +7,6 @@ universes u
 open tactic
 open mllist
 
-def f (x : ℕ) (y : ℕ) := x + y
-
 meta def kabstracter'
   (pattern : tactic (expr × expr × list expr))
   (lhs_replacer : list expr → tactic expr) :
@@ -112,19 +110,21 @@ do L ← all_rewrites_core t eq,
    L' ← L.mmap (λ p, do r ← p.2.1, return (p.1, r, p.2.2)),
    L'.force
   
-lemma fx (n : ℕ) (m : ℕ) : f n m = f 17 19 := sorry
+constant f (x : ℕ) (y : ℕ) : ℕ
+axiom fx (n : ℕ) (m : ℕ) : f n m = f 17 19
 
-example : [f 1 2, 3, f 2 5] = [f 3 1, f 4 1] :=
+example : [f 1 2, 3, f 2 5] = [f 1 2, 3, f 2 5] :=
 begin
 (do `(%%lhs = %%rhs) ← target,
     eq ← mk_const `fx,
     r ← all_rewrites' lhs eq,
     trace r),
-sorry
+refl
 end
 
 meta structure rewrite_all_cfg extends rewrite_cfg :=
 (discharger : tactic unit := skip)
+(simplifier : expr → tactic (expr × expr) := λ e, failed) -- FIXME get rid of this
 
 meta def all_rewrites (r : expr × bool) (t : expr) (cfg : rewrite_all_cfg := {}): tactic (list (expr × expr)) :=
 do e ← if r.2 then mk_eq_symm r.1 else return r.1,

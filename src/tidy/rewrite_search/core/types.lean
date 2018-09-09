@@ -1,10 +1,22 @@
-import tidy.rewrite_all
+import tidy.rewrite_all_wrappers
 import tidy.lib
 import data.rat
 
 universe u
 
 namespace tidy.rewrite_search
+
+@[derive decidable_eq]
+inductive side
+| L
+| R
+def side.other : side → side
+| side.L := side.R
+| side.R := side.L
+def side.to_string : side → string
+| side.L := "L"
+| side.R := "R"
+instance : has_to_string side := ⟨side.to_string⟩
 
 inductive how
 | rewrite (rule_index : ℕ) (side : side) (location : ℕ) : how
@@ -123,7 +135,7 @@ instance has_to_string [has_to_string α] : has_to_string (sided_pair α) := ⟨
 end sided_pair
 
 def pair := sided_pair table_ref
-instance has_to_string : has_to_string pair := ⟨sided_pair.to_string⟩
+instance pair_has_to_string : has_to_string pair := ⟨sided_pair.to_string⟩
 
 structure dist_estimate (state_type : Type u) extends sided_pair table_ref :=
   (id : table_ref)
