@@ -44,7 +44,7 @@ meta def dump_rws : list (expr × expr × ℕ × ℕ) → tactic unit
 meta def dump_tokens : list token → tactic unit
 | [] := tactic.skip
 | (a :: rest) := do
-    tactic.trace format!"V{a.id.to_string}:{a.str}|{a.lhs_freq}v{a.rhs_freq}",
+    tactic.trace format!"V{a.id.to_string}:{a.str}|{a.freq.get side.L}v{a.freq.get side.R}",
     dump_tokens rest
 
 meta def dump_vertices : list vertex → tactic unit

@@ -94,17 +94,15 @@ meta def diagnose_launch_failure : io string := do
   | ret := return (format!"bug: unexpected return code {ret} during launch failure diagnosis").to_string
   end
 
-open tidy.rewrite_search.init_result
-
 meta def graph_tracer_init : tactic (init_result visualiser) := do
   c ← tactic.unsafe_run_io (try_launch_with_paths SEARCH_PATHS),
   match c with
-  | spawn_result.success c    := let vs : visualiser := ⟨ c ⟩ in do vs.publish "S\n", return (success vs)
-  | spawn_result.abort reason := return (failure visualiser ("Error! " ++ reason))
+  | spawn_result.success c    := let vs : visualiser := ⟨ c ⟩ in do vs.publish "S\n", init_result.pure vs
+  | spawn_result.abort reason := init_result.fail ("Error! " ++ reason)
   | spawn_result.failure      := do
     reason ← tactic.unsafe_run_io diagnose_launch_failure,
-    return (failure visualiser ("Error! " ++ reason))
-  | spawn_result.missing      := return (failure visualiser ("Error! bug: could not determine client location"))
+    init_result.fail ("Error! " ++ reason)
+  | spawn_result.missing      := init_result.fail "Error! bug: could not determine client location"
   end
 
 meta def graph_tracer_publish_vertex (vs : visualiser) (v : vertex) : tactic unit := do

@@ -38,14 +38,16 @@ meta def pick_default_config : tactic unit := `[exact tidy.rewrite_search.defaul
 
 variables {α β γ δ : Type}
 
-meta def mk_fallback_config (orig : rewrite_search_config α β γ δ) : rewrite_search_config α β γ unit :=
-  {orig with view := begin pick_default_tracer end}
+meta def mk_fallback_config (orig : rewrite_search_config α β γ δ) : rewrite_search_config pexplore_state ed_state ed_partial unit :=
+  {orig with view := begin pick_default_tracer end,
+             metric := begin pick_default_metric end,
+             strategy := begin pick_default_strategy end}
 
-meta def mk_initial_search_state (conf : config) (s : strategy α β γ δ) (m : metric α β γ δ) (tr : tracer α β γ δ) (tr_state : δ) : search_state α β γ δ :=
-⟨tr, conf, s.init, m.init, table.create, table.create, table.create, none, tr_state⟩
+meta def mk_initial_search_state (conf : config) (s : strategy α β γ δ) (m : metric α β γ δ) (tr : tracer α β γ δ) (strat_state : α) (metric_state : β) (tr_state : δ) : search_state α β γ δ :=
+⟨tr, conf, strat_state, metric_state, table.create, table.create, table.create, none, tr_state⟩
 
-meta def setup_instance (conf : config) (s : strategy α β γ δ) (m : metric α β γ δ) (tr : tracer α β γ δ) (tr_state : δ) (lhs rhs : expr) : tactic (inst α β γ δ) := do
-  let g := mk_initial_search_state conf s m tr tr_state,
+meta def setup_instance (conf : config) (s : strategy α β γ δ) (m : metric α β γ δ) (tr : tracer α β γ δ) (s_state : α) (m_state : β) (tr_state : δ) (lhs rhs : expr) : tactic (inst α β γ δ) := do
+  let g := mk_initial_search_state conf s m tr s_state m_state tr_state,
   (g, vl) ← g.add_root_vertex lhs side.L,
   (g, vr) ← g.add_root_vertex rhs side.R,
   g ← s.startup g m vl vr,
@@ -57,24 +59,21 @@ meta def instantiate_modules (cfg : rewrite_search_config α β γ δ) : strateg
 meta def try_mk_search_instance (cfg : rewrite_search_config α β γ δ) (rs : list (expr × bool)) (lhs rhs : expr) : tactic (option (inst α β γ δ)) :=
 do
   let (strat, m, tr) := instantiate_modules cfg,
-  tracer_state ← tr.init,
-  match tracer_state with
-  | init_result.failure α reason := do
-    trace ("Warning: failed to initialise tracer! Reason:\n" ++ reason),
-    return none
-  | init_result.success tracer_state := do
-    let conf : config := {
-      rs := rs,
-      max_iterations := cfg.max_iterations,
-      trace := cfg.trace,
-      trace_summary := cfg.trace_summary,
-      trace_result := cfg.trace_result,
-      exhaustive := cfg.exhaustive,
-      discharger := cfg.discharger,
-      simplifier := cfg.simplifier
-    },
-    i ← setup_instance conf strat m tr tracer_state lhs rhs,
-    return (some i)
-  end
+  init_result.try "tracer"   tr.init    $ λ tracer_state,
+  init_result.try "metric"   m.init     $ λ metric_state,
+  init_result.try "strategy" strat.init $ λ strat_state,
+  do
+  let conf : config := {
+    rs := rs,
+    max_iterations := cfg.max_iterations,
+    trace := cfg.trace,
+    trace_summary := cfg.trace_summary,
+    trace_result := cfg.trace_result,
+    exhaustive := cfg.exhaustive,
+    discharger := cfg.discharger,
+    simplifier := cfg.simplifier
+  },
+  i ← setup_instance conf strat m tr strat_state metric_state tracer_state lhs rhs,
+  return i
 
 end tidy.rewrite_search

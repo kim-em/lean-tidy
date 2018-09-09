@@ -8,8 +8,6 @@ namespace tidy.rewrite_search.strategy.pexplore
 structure pexplore_config :=
 (pop_size      : ℕ := 100)
 (pop_alternate : bool := tt)
--- TODO consider putting something like this back, with an "alternate" flag or similar
--- (list_combinator : list pair → list pair → list pair := list.multiplex /-c.f. list.append-/)
 
 structure pair_stream :=
 (last_side : side)
@@ -143,7 +141,7 @@ meta def pop_ipairs (pop_size : ℕ) (ip : ipair) : tactic (search_state pexplor
   (g, ip, new) ← pop_ipairs_aux conf g m pop_size ip,
   return (g, ip, new)
 
-meta def pexplore_init : pexplore_state := ⟨ [] ⟩
+meta def pexplore_init : tactic (init_result pexplore_state) := init_result.pure ⟨[]⟩
 
 meta def pexplore_startup (m : metric pexplore_state β γ δ) (l r : vertex) : tactic (search_state pexplore_state β γ δ) := do
   let p : pair := ⟨l.id, r.id⟩,

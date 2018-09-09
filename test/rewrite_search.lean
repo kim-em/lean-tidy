@@ -131,13 +131,32 @@ constants f g : ℕ → ℕ → ℕ → ℕ
 @[search] axiom g_2_2 : ∀ a b c : ℕ, g a b c = g a b 2
 @[search] axiom f_g : f 0 1 2 = g 2 0 1
 
+lemma testtt : f 0 0 0 = g 0 0 0 :=
+-- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
+by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := tt, view := no visualiser, strategy := pexplore {pop_size := 1}, metric := edit_distance {refresh_freq := 5} weight.cm}
+
 lemma test : f 0 0 0 = g 0 0 0 :=
 -- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
-by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := tt, view := visualiser, strategy := pexplore {pop_size := 1}, metric := edit_distance {refresh_freq := 5} weight.cm}
+by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := tt, view := no visualiser, strategy := pexplore {pop_size := 1}, metric := edit_distance {refresh_freq := 5} weight.cm}
 
 lemma test_bfs : f 0 0 0 = g 0 0 0 :=
 -- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
-by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := tt, view := no visualiser, strategy := bfs {max_depth := 5}, metric := trivial}
+by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := tt, view := no visualiser, strategy := pexplore {pop_size:=5}, metric := edit_distance {} weight.svm }
+
+-- Compare: in these next two we just change pop_size 1 -> 5, and we find a much much
+-- better proof, but we see a little more stuff.
+
+lemma test_svm : f 0 0 0 = g 0 0 0 :=
+-- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
+by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := tt, view := no visualiser, strategy := pexplore {pop_size := 1}, metric := edit_distance {refresh_freq := 1} weight.svm}
+
+lemma test_svm2 : f 0 0 0 = g 0 0 0 :=
+-- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
+by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := tt, view := visualiser, strategy := pexplore {pop_size := 5}, metric := edit_distance {refresh_freq := 1} weight.svm}
+
+lemma test_cm2 : f 0 0 0 = g 0 0 0 :=
+-- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
+by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := tt, view := no visualiser, strategy := pexplore {pop_size := 5}, metric := edit_distance {refresh_freq := 1} weight.cm}
 
 constant h : ℕ → ℕ
 @[search,simp] axiom a1 : h 0 = h 1
@@ -215,7 +234,7 @@ namespace v1
 
 lemma test : f_1 0 0 0 = f_5 0 0 0 :=
 -- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
-by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := ff, view := no visualiser, strategy := pexplore {pop_size := 1, pop_alternate := ff}, metric := edit_distance, max_iterations := 1000}
+by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := ff, view := no visualiser, strategy := pexplore {pop_size := 1, pop_alternate := ff}, metric := edit_distance {refresh_freq := 0} weight.cm, max_iterations := 1000}
 end v1
 
 namespace v2
@@ -223,11 +242,14 @@ namespace v2
 @[search] axiom f_2_f_3' : f_2 0 1 2 = f_3 2 0 1
 @[search] axiom f_3_f_5' : f_3 0 1 2 = f_5 2 0 1
 @[search] axiom f_1_f_4' : f_1 0 1 2 = f_4 2 0 1
--- @[search] axiom f_4_f_5' : f_4 0 1 2 = f_5 2 0 1
+@[search] axiom f_4_f_5' : f_4 0 1 2 = f_5 2 0 1
 
--- lemma test : f_1 0 0 0 = f_5 0 0 0 :=
--- -- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
--- by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := ff, view := no visualiser, strategy := pexplore { pop_size := 100 }, metric := edit_distance {refresh_freq := 5} weight.cm}
+-- This guy begins to get overwhelmed by too many interesting pairs. I guess this
+-- is a long-term thing to think about.
+
+lemma test : f_1 0 0 0 = f_5 0 0 0 :=
+-- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
+by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := ff, view := no visualiser, strategy := pexplore {pop_size := 1}, metric := edit_distance {refresh_freq := 5, trace_weights := ff} weight.svm, max_iterations := 1000}
 end v2
 
 end tidy.rewrite_search.tesseract

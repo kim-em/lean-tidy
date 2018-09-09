@@ -8,7 +8,7 @@ begin
   simp
 end
 
-lemma fin.with_max (n m : ℕ) (h : m ≠ 0): fin m :=
+def fin.with_max (n m : ℕ) (h : m ≠ 0): fin m :=
 ⟨ min n (m-1), begin
                  have p := min_le_right n (nat.pred m),
                  have q := nat.lt_succ_of_le p,
@@ -25,7 +25,7 @@ begin
   simp
 end
 
-lemma fin.with_max' (n : ℕ) (m : ℕ+) : fin m :=
+def fin.with_max' (n : ℕ) (m : ℕ+) : fin m :=
 ⟨ min n (m-1), begin
                  have p := min_le_right n (nat.pred m),
                  have q := nat.lt_succ_of_le p,

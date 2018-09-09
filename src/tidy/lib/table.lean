@@ -31,12 +31,20 @@ variables {α : Type u} {β : Type v} {κ : Type w} [decidable_eq κ] (t : table
 
 def DEFAULT_BUFF_LEN := 10
 
-def create (buff_len : ℕ := DEFAULT_BUFF_LEN) : table α := ⟨ table_ref.first, buff_len, mk_array buff_len none ⟩
+def create (buff_len : ℕ := DEFAULT_BUFF_LEN) : table α :=
+  ⟨ table_ref.first, buff_len, mk_array buff_len none ⟩
 
 meta def from_list (l : list α) : table α :=
   let n := l.length in
-  let t : array n (option α) := mk_array n none in
-  ⟨ table_ref.from_nat n, n, t.list_map_copy (λ a, some a) l⟩
+  let buff : array n (option α) := mk_array n none in
+  ⟨ table_ref.from_nat n, n, buff.list_map_copy (λ a, some a) l⟩
+
+meta def from_map_array {dim : ℕ} (x : array dim α) (f : α → β) : table β :=
+  let buff : array dim (option β) := mk_array dim none in
+  ⟨table_ref.from_nat dim, dim, x.map_copy buff (λ a, some $ f a)⟩
+
+meta def from_array {dim : ℕ} (x : array dim α) : table α :=
+  from_map_array x $ λ a, a
 
 def is_full : bool := t.next_id.to_nat = t.buff_len
 
@@ -79,6 +87,8 @@ meta def alloc (a : α) : table α :=
   { t with next_id := t.next_id.next }
 
 def update [indexed α] (a : α) : table α := t.set (indexed.index a) a
+
+def length : ℕ := t.next_id.to_nat
 
 meta def find_from (p : α → Prop) [decidable_pred p] : table_ref → option α
 | ref := match t.at_ref ref with

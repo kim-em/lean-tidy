@@ -1,8 +1,9 @@
 [package]
 name = "lean-tidy"
 version = "0.1"
-lean_version = "nightly-2018-06-21"
+lean_version = "khoek/klean:3.4.4"
 path = "src"
 
 [dependencies]
-mathlib = {git = "https://github.com/leanprover/mathlib", rev = "cd731156a1964ac8d9803012a794bf2211a1b246"}
+mathlib = {git = "https://github.com/leanprover/mathlib", rev = "fc1fd3dcda346617f633cb07f2f10e0d734f8bce"}
+libk = {git = "https://github.com/khoek/libk", rev = "f4272b393e47c23d1f97d07a339411ab2cf03f88"}

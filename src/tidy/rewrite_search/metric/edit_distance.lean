@@ -78,32 +78,43 @@ structure ed_config :=
 (explain_thoughts : bool := ff)
 (trace_weights    : bool := ff)
 
-meta def calc_weights_fn := ed_config → table token → tactic (table ℚ)
-
 structure ed_state :=
   (weights : table ℚ)
 def ed_state.init : ed_state := ⟨table.create⟩
 
-meta def ed_init : ed_state := ed_state.init
+-- In future we might allow init_fn to return some internal weight state. At
+-- the moment, it is just used to ensure that an external depedency (e.g.
+-- external program or custom lean fork) is present.
+meta def calc_weights_fn (α δ : Type) := ed_config → search_state α ed_state ed_partial δ → tactic (table ℚ)
 
-variables {α δ : Type} (g : search_state α ed_state ed_partial δ)
+meta structure ed_weight (α δ : Type) :=
+(init : init_fn unit)
+(calc_weights : calc_weights_fn α δ)
+
+meta def ed_weight_constructor := Π α δ, ed_weight α δ
+
+variables {α δ : Type} (g : search_state α ed_state ed_partial δ) (conf : ed_config)
+
+meta def ed_init (weight_init : init_fn unit) : tactic (init_result ed_state) := do
+  init_result.chain "weight" weight_init $ λ _,
+    init_result.pure ed_state.init
 
 meta def ed_init_bound (l r : vertex) : bound_progress ed_partial :=
   at_least 0 (empty_partial_edit_distance_data g.metric_state.weights l.tokens r.tokens)
 
-meta def ed_reweight (conf : ed_config) (fn : table token → tactic (table ℚ)) (g : search_state α ed_state ed_partial δ) : tactic (search_state α ed_state ed_partial δ) := do
+meta def ed_reweight (fn : search_state α ed_state ed_partial δ → tactic (table ℚ)) (g : search_state α ed_state ed_partial δ) : tactic (search_state α ed_state ed_partial δ) := do
   g ← g.reset_all_estimates ed_init_bound,
-  weights ← fn g.tokens,
+  weights ← fn g,
   if conf.trace_weights then
     let weight_pairs := (g.tokens.to_list.zip weights.to_list).map (
-      λ p : token × ℚ, to_string format!"{p.1.str}:{p.2}"
+      λ p : token × ℚ, to_string format!"{p.1.str}={p.2}"
     ) in
     tactic.trace format!"reweighted: {weight_pairs}"
   else
     tactic.skip,
   return $ g.mutate_metric ⟨weights⟩
 
-meta def ed_update (conf : ed_config) (fn : table token → tactic (table ℚ)) (g : search_state α ed_state ed_partial δ) (itr : ℕ) : tactic (search_state α ed_state ed_partial δ) :=
+meta def ed_update (fn : search_state α ed_state ed_partial δ → tactic (table ℚ)) (g : search_state α ed_state ed_partial δ) (itr : ℕ) : tactic (search_state α ed_state ed_partial δ) :=
   if conf.refresh_freq > 0 ∧ (itr % (conf.refresh_freq + 1) = 0) then do
     if conf.explain_thoughts then tactic.trace "pause! refreshing weights..." else tactic.skip,
     ed_reweight conf fn g
@@ -119,9 +130,11 @@ namespace tidy.rewrite_search.metric
 open tidy.rewrite_search.edit_distance
 open tidy.rewrite_search.metric.edit_distance
 
-meta def weight.none : calc_weights_fn := λ conf ts, return table.create
+meta def weight.none : ed_weight_constructor :=
+  λ α δ, ⟨init_result.pure (), λ conf g, return table.create⟩
 
-meta def edit_distance (conf : ed_config := {}) (fn : calc_weights_fn := weight.none) : metric_constructor ed_state ed_partial :=
-  λ α δ, ⟨ ed_init, ed_update conf (fn conf), ed_init_bound, ed_improve_estimate_over ⟩
+meta def edit_distance (conf : ed_config := {}) (w_cons : ed_weight_constructor := weight.none) : metric_constructor ed_state ed_partial :=
+  λ α δ, let w := w_cons α δ in
+  ⟨ ed_init w.init, ed_update conf $ w.calc_weights conf, ed_init_bound, ed_improve_estimate_over ⟩
 
 end tidy.rewrite_search.metric

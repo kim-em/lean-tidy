@@ -13,7 +13,7 @@ structure bfs_state :=
 
 variables {β γ δ : Type} (conf : bfs_config) (g : search_state bfs_state β γ δ)
 
-meta def bfs_init : bfs_state := ⟨ 1, [] ⟩
+meta def bfs_init : tactic (init_result bfs_state) := init_result.pure ⟨1, []⟩
 
 meta def bfs_startup (m : metric bfs_state β γ δ) (l r : vertex) : tactic (search_state bfs_state β γ δ) :=
   return $ g.mutate_strat ⟨ 1, [l.id, r.id, none] ⟩

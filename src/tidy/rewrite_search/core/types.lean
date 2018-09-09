@@ -35,33 +35,6 @@ meta structure edge :=
 (proof : expr)
 (how   : how)
 
-structure token :=
-(id                : table_ref)
-(str               : string)
-(lhs_freq rhs_freq : ℕ)
-def token.inc (t : token) : side → token
-| side.L := { t with lhs_freq := t.lhs_freq + 1}
-| side.R := { t with rhs_freq := t.rhs_freq + 1}
-def token.freq (t : token) : side → ℕ
-| side.L := t.lhs_freq
-| side.R := t.rhs_freq
-
-def null_token : token :=
-⟨ table_ref.null, "__NULLTOKEN", 0, 0 ⟩
-
-instance token.inhabited : inhabited token := ⟨null_token⟩
-instance token.indexed : indexed token := ⟨λ t, t.id⟩
-instance token.keyed : keyed token string := ⟨λ v, v.str⟩
-
-meta def find_or_create_token (tokens : table token) (s : side) (tstr : string) : table token × token :=
-match tokens.find_key tstr with
-| none := do
-  let t : token := ⟨tokens.next_id, tstr, 0, 0⟩,
-  let t := t.inc s in (tokens.alloc t, t)
-| (some t) := do
-  let t := t.inc s in (tokens.update t, t)
-end
-
 meta structure rewrite :=
 (e prf : expr)
 (how : how)
@@ -143,15 +116,60 @@ instance {γ : Type} : keyed (dist_estimate γ) pair := ⟨λ v, v.to_pair⟩
 
 end dist_estimate
 
+structure token :=
+(id   : table_ref)
+(str  : string)
+(freq : sided_pair ℕ)
+def token.inc (t : token) (s : side) : token := {t with freq := t.freq.set s $ (t.freq.get s) + 1}
+
+def null_token : token :=
+⟨ table_ref.null, "__NULLTOKEN", 0, 0 ⟩
+
+instance token.inhabited : inhabited token := ⟨null_token⟩
+instance token.indexed : indexed token := ⟨λ t, t.id⟩
+instance token.keyed : keyed token string := ⟨λ v, v.str⟩
+
+meta def find_or_create_token (tokens : table token) (s : side) (tstr : string) : table token × token :=
+match tokens.find_key tstr with
+| none := do
+  let t : token := ⟨tokens.next_id, tstr, ⟨0, 0⟩⟩,
+  let t := t.inc s in (tokens.alloc t, t)
+| (some t) := do
+  let t := t.inc s in (tokens.update t, t)
+end
+
 meta inductive status
 | continue : status
 | repeat : status
 | done : edge → status
 | abort : string → status
 
-inductive init_result (γ : Type)
-| success : γ → init_result
+inductive init_result (ε : Type)
+| success : ε → init_result
 | failure : string → init_result
+
+meta def init_fn (ε : Type) := tactic (init_result ε)
+
+meta def init_result.pure {ε : Type} (v : ε) : tactic (init_result ε) := pure $ init_result.success v
+
+meta def init_result.fail {ε : Type} (reason : string) : tactic (init_result ε) := pure $ init_result.failure ε reason
+
+meta def init_result.cases {ε η : Type} (name : string) (fn : init_fn ε) (next_step : ε → tactic η) (fallback : string → tactic η) : tactic η := do
+  val ← fn,
+  match val with
+  | init_result.failure _ reason := do
+    fallback reason
+  | init_result.success val := do
+    next_step val
+  end
+
+meta def init_result.chain {ε η : Type} (name : string) (fn : init_fn ε) (next_step : ε → init_fn η) : tactic (init_result η) :=
+  init_result.cases name fn next_step $ λ reason, return $ init_result.failure _ ("An error occurred while initialising " ++ name ++ ": " ++ reason)
+
+meta def init_result.try {ε η : Type} (name : string) (fn : init_fn ε) (next_step : ε → tactic (option η)) : tactic (option η) :=
+  init_result.cases name fn next_step $ λ reason, do
+    tactic.trace ("\nWarning: failed to initialise " ++ name ++ "! Reason:\n\n" ++ reason),
+    return none
 
 meta structure config extends rewrite_all_cfg :=
 (rs             : list (expr × bool))
@@ -162,7 +180,7 @@ meta structure config extends rewrite_all_cfg :=
 (exhaustive     : bool)
 
 meta structure tracer (α β γ δ : Type) :=
-(init             : tactic (init_result δ))
+(init             : init_fn δ)
 (publish_vertex   : δ → vertex → tactic unit)
 (publish_edge     : δ → edge → tactic unit)
 (publish_visited  : δ → vertex → tactic unit)
@@ -186,7 +204,7 @@ meta def init_bound_fn (α β γ δ : Type) := search_state α β γ δ → vert
 meta def improve_estimate_fn (α β γ δ : Type) := search_state α β γ δ → ℚ → vertex → vertex → bound_progress γ → bound_progress γ
 
 meta structure metric (α β γ δ : Type) :=
-(init : β)
+(init : init_fn β)
 (update : update_fn α β γ δ)
 (init_bound : init_bound_fn α β γ δ)
 (improve_estimate_over : improve_estimate_fn α β γ δ)
@@ -195,7 +213,7 @@ meta def startup_fn (α β γ δ : Type) : Type := search_state α β γ δ → 
 meta def step_fn (α β γ δ : Type) : Type := search_state α β γ δ → metric α β γ δ → ℕ → tactic (search_state α β γ δ × status)
 
 meta structure strategy (α β γ δ : Type) :=
-(init : α)
+(init : init_fn α)
 (startup : startup_fn α β γ δ)
 (step : step_fn α β γ δ)
 

@@ -69,6 +69,10 @@ meta def try_search (cfg : rewrite_search_config α β γ δ) (rs : list (expr �
     return str
   end
 
+-- TODO If try_search fails due to a failure to init any of the tracer, metric, or strategy we try again
+-- using the "fallback" default versions of all three of these. Instead we could be more thoughtful,
+-- and try again only replacing the failing one of these with its respective fallback module version.
+
 meta def do_rewrite_search (cfg : rewrite_search_config α β γ δ) (rs : list (expr × bool)) : tactic string := do
   if cfg.trace_rules then
     do rs_strings ← pp_rules rs,
@@ -82,7 +86,7 @@ meta def do_rewrite_search (cfg : rewrite_search_config α β γ δ) (rs : list 
     match result with
     | some str := return str
     | none := do
-      trace "\nError initialising rewrite_search instance, falling back to emergency config!\n",
+      trace "\nError initialising rewrite_search instance, falling back to emergency config!",
       result ← try_search (mk_fallback_config cfg) rs lhs rhs,
       match result with
       | some str := return str
