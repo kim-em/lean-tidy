@@ -62,7 +62,7 @@ meta def do_substitutions
   (lhs rhs : list expr → tactic expr)
   (t_abstracted : expr)
   (rewrite_mvar : expr × list expr)
-  (restore_mvars : list (expr × list expr)) : tactic (expr × tactic expr) :=
+  (restore_mvars : list (expr × list expr)) : tactic (expr × tactic expr × list expr) :=
 lock_tactic_state $
 do -- We first restore all the "other" metavariables to their original values.
    restore_mvars.mmap (λ p, do l ← lhs p.2, unify p.1 l),
@@ -96,27 +96,41 @@ do -- We first restore all the "other" metavariables to their original values.
    -- Finally we finish rewriting the expression
    unify rewrite_mvar.1 r',
    result ← instantiate_mvars t_restored,
-   return (result, proof_tactic)
 
-meta def all_rewrites (t eq ty : expr) : tactic (mllist tactic (expr × tactic expr)) :=
-do (matcher, lhs, rhs) ← substitutions ty,
+   metas : list expr ← rewrite_mvar.2.mfilter (λ m, do r ← is_assigned m, return ¬ r), -- FIXME check if there are any remaining metavariables
+   return (result, proof_tactic, metas)
+
+meta def all_rewrites_core (t eq : expr) : tactic (mllist tactic (expr × tactic expr × list expr)) :=
+do ty ← infer_type eq,
+  (matcher, lhs, rhs) ← substitutions ty,
   L ← kabstracter matcher lhs t,
   L ← L.mmap (λ p, do_substitutions eq t lhs rhs p.1 p.2.head p.2.tail),
-  L' ← L.mmap (λ p, do r ← p.2, return (p.1, r)),
-  L' ← L'.force,
-  trace "L:",
-  trace L',
   return L
 
+meta def all_rewrites' (t eq : expr) : tactic (list (expr × expr × list expr)) :=
+do L ← all_rewrites_core t eq,
+   L' ← L.mmap (λ p, do r ← p.2.1, return (p.1, r, p.2.2)),
+   L'.force
+  
 lemma fx (n : ℕ) (m : ℕ) : f n m = f 17 19 := sorry
 
 example : [f 1 2, 3, f 2 5] = [f 3 1, f 4 1] :=
 begin
 (do `(%%lhs = %%rhs) ← target,
     eq ← mk_const `fx,
-    ty ← infer_type eq,
-    r ← all_rewrites lhs eq ty,
-    skip),
+    r ← all_rewrites' lhs eq,
+    trace r),
 sorry
 end
+
+meta structure rewrite_all_cfg extends rewrite_cfg :=
+(discharger : tactic unit := skip)
+
+meta def all_rewrites (r : expr × bool) (t : expr) (cfg : rewrite_all_cfg := {}): tactic (list (expr × expr)) :=
+do e ← if r.2 then mk_eq_symm r.1 else return r.1,
+   results ← all_rewrites' t e,
+   -- TODO use the discharger to clear remaining metavariables
+   let results := results.filter (λ p, p.2.2 = []),
+   let results := results.map (λ p, (p.1, p.2.1)),
+   return results
 

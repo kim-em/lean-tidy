@@ -1,7 +1,7 @@
 import data.list
 import data.option
 import tidy.pretty_print
-import tidy.rewrite_all
+import tidy.rewrite_all_wrappers
 
 import .types
 import .debug
@@ -112,7 +112,7 @@ meta def find_more_rewrites (v : vertex) : tactic (search_state α β γ δ × v
   match v.rw_prog with
     | some _ := return (g, v, none)
     | none := do
-      all_rws ← all_rewrites_list g.conf.rs ff v.exp g.conf.to_rewrite_all_cfg,
+      all_rws ← all_rewrites_list g.conf.rs v.exp g.conf.to_rewrite_all_cfg,
       let all_rws : list rewrite := all_rws.map (λ t, ⟨t.1, t.2.1, how.rewrite t.2.2.1 v.s t.2.2.2⟩),
       (g, v) ← pure $ g.set_vertex {v with rws := table.from_list all_rws, rw_prog := some ⟨()⟩},
       return (g, v, all_rws.nth 0)
