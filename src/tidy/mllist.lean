@@ -18,8 +18,8 @@ meta def map {m} [monad m] {α β : Type u} (f : α → β) : mllist m α → m 
 | nil := pure nil
 | (cons a l) := do r ← l, return (cons (f a) (map r))
 
-meta def mmap {m} [monad m] {α β : Type u} (f : α → m β) : mllist m α → m (mllist m β)
+meta def mmap {m} [monad m] [alternative m] {α β : Type u} (f : α → m β) : mllist m α → m (mllist m β)
 | nil := pure nil
-| (cons a l) := do r ← l, b ← f a, return (cons b (mmap r))
+| (cons a l) := do r ← l, (f a >>= λ b, return (cons b (mmap r))) <|> mmap r
 
 end mllist

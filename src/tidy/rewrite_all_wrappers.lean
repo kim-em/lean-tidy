@@ -1,4 +1,4 @@
-import .rewrite_all_2
+import .rewrite_all
 
 open tactic
 open lean.parser
@@ -35,14 +35,15 @@ do names ← attribute.get_instances a,
 
 namespace tactic.interactive
 
-private meta def perform_nth_rewrite' (q : parse rw_rules) (n : ℕ) (e : expr) : tactic (expr × expr) :=
+private meta def perform_nth_rewrite' (n : parse small_nat) (q : parse rw_rules) (e : expr) : tactic (expr × expr) :=
 do rewrites ← q.rules.mmap $ λ p : rw_rule, to_expr p.rule tt ff >>= λ r, all_rewrites (r, p.symm) e,
    let rewrites := rewrites.join,
+   guard (n < rewrites.length) <|> fail format!"failed: not enough rewrites found",
    rewrites.nth n
 
-meta def perform_nth_rewrite (q : parse rw_rules) (n : ℕ) : tactic unit :=
+meta def perform_nth_rewrite (n : parse small_nat) (q : parse rw_rules) : tactic unit :=
 do e ← target,
-   (new_t, prf) ← perform_nth_rewrite' q n e,
+   (new_t, prf) ← perform_nth_rewrite' n q e,
   --  trace new_t,
   --  trace prf,
    replace_target new_t prf,
@@ -62,13 +63,13 @@ do `(%%lhs = %%rhs) ← target,
 
 meta def nth_rewrite_lhs (n : parse small_nat) (q : parse rw_rules) : tactic unit :=
 do `(%%lhs = %%rhs) ← target,
-   (new_t, prf) ← perform_nth_rewrite' q n lhs,
+   (new_t, prf) ← perform_nth_rewrite' n q lhs,
    replace_target_lhs new_t prf,
    tactic.try tactic.reflexivity
 
 meta def nth_rewrite_rhs (n : parse small_nat) (q : parse rw_rules) : tactic unit :=
 do `(%%lhs = %%rhs) ← target,
-   (new_t, prf) ← perform_nth_rewrite' q n rhs,
+   (new_t, prf) ← perform_nth_rewrite' n q rhs,
    replace_target_rhs new_t prf,
    tactic.try tactic.reflexivity
 

@@ -12,6 +12,14 @@ axiom bar' : [[5],[5]] = [[6],[6]]
 
 example : [[7],[6]] = [[5],[5]] :=
 begin
+  nth_rewrite_lhs 0 foo',
+  nth_rewrite_rhs 0 bar',
+  nth_rewrite_lhs 0 ← foo', 
+  -- FIXME this isn't really the behaviour I want: I'd like to be able to rewrite these two separately.
+end
+
+example : [[7],[6]] = [[5],[5]] :=
+begin
  success_if_fail { rewrite_search [] },
 -- rw [←foo', bar']
  rewrite_search [←foo', bar'],
@@ -60,7 +68,7 @@ begin
 -- nth_rewrite_lhs 0 bar1,
 -- nth_rewrite_lhs 0 qux',
 -- nth_rewrite_rhs 1 ←qux'',
-  rewrite_search_using [`search],
+  rewrite_search_using [`search], -- FIXME this is broken until we can do single replacements.
 end
 
 private example : [[0],[0]] = [[4],[4]] :=
@@ -90,13 +98,13 @@ attribute [search] cat.li cat.a
 private example (C : cat) (X Y Z : C.O) (f : C.H X Y) (g : C.H Y X) (w : C.c g f = C.i Y) (h k : C.H Y Z) (p : C.c f h = C.c f k) : h = k :=
 begin
 -- rewrite_search_using `search {trace := tt, trace_rules:=tt}, -- not quite there, we haven't activated intense search
-perform_nth_rewrite [← @cat.li C Y Z h] 0,
-perform_nth_rewrite [← w] 0,
-perform_nth_rewrite [C.a] 0,
-perform_nth_rewrite [p] 0,
-perform_nth_rewrite [← C.a] 0,
-perform_nth_rewrite [w] 0,
-perform_nth_rewrite [@cat.li C Y Z k] 0,
+perform_nth_rewrite 0 [← @cat.li C Y Z h],
+perform_nth_rewrite 0 [← w],
+perform_nth_rewrite 0 [C.a],
+perform_nth_rewrite 0 [p],
+perform_nth_rewrite 0 [← C.a],
+perform_nth_rewrite 0 [w],
+perform_nth_rewrite 0 [@cat.li C Y Z k],
 -- PROJECT automate this!
 -- rw [← C.li Y Z h],
 -- rw [← C.li Y Z k],
@@ -131,9 +139,19 @@ constants f g : ℕ → ℕ → ℕ → ℕ
 @[search] axiom g_2_2 : ∀ a b c : ℕ, g a b c = g a b 2
 @[search] axiom f_g : f 0 1 2 = g 2 0 1
 
+set_option trace.app_builder true
+
 lemma test : f 0 0 0 = g 0 0 0 :=
 -- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
-by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := tt, view := visualiser, strategy := pexplore {pop_size := 1}, metric := edit_distance {refresh_freq := 5} weight.cm}
+by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := tt, view := no visualiser, strategy := pexplore {pop_size := 1}, metric := edit_distance {refresh_freq := 5} weight.cm}
+-- begin 
+-- perform_nth_rewrite [f_2_2] 0,
+-- perform_nth_rewrite [f_1_1] 0,
+-- perform_nth_rewrite [g_0_2] 0,
+-- perform_nth_rewrite [g_2_1] 0,
+-- perform_nth_rewrite [← f_g] 0,
+-- end
+
 
 lemma test_bfs : f 0 0 0 = g 0 0 0 :=
 -- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
@@ -213,6 +231,7 @@ namespace v1
 @[search] axiom f_1_f_4 : f_1 0 1 2 = f_4 2 0 1
 @[search] axiom f_4_f_5 : f_4 0 1 2 = f_5 2 0 1
 
+-- rewrite_search (saw/visited/used) 114/112/13 expressions during proof of tidy.rewrite_search.examples.tidy.rewrite_search.tesseract.v1.test
 lemma test : f_1 0 0 0 = f_5 0 0 0 :=
 -- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
 by rewrite_search_using [`search] {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := ff, view := no visualiser, strategy := pexplore {pop_size := 1, pop_alternate := ff}, metric := edit_distance, max_iterations := 1000}
