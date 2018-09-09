@@ -53,7 +53,7 @@ instance token.inhabited : inhabited token := ⟨null_token⟩
 instance token.indexed : indexed token := ⟨λ t, t.id⟩
 instance token.keyed : keyed token string := ⟨λ v, v.str⟩
 
-def find_or_create_token (tokens : table token) (s : side) (tstr : string) : table token × token :=
+meta def find_or_create_token (tokens : table token) (s : side) (tstr : string) : table token × token :=
 match tokens.find_key tstr with
 | none := do
   let t : token := ⟨tokens.next_id, tstr, 0, 0⟩,
@@ -62,23 +62,39 @@ match tokens.find_key tstr with
   let t := t.inc s in (tokens.update t, t)
 end
 
+meta structure rewrite :=
+(e prf : expr)
+(how : how)
+
+structure rewriterator :=
+(orig : table_ref)
+(front : table_ref)
+
+-- TODO once partial rewriting is implemented, use this to hold the
+-- partial rewrite state
+meta structure rewrite_progress :=
+(dummy : unit)
+
 meta structure vertex :=
-(id      : table_ref)
-(exp     : expr)
-(pp      : string)
-(tokens  : list table_ref)
-(root    : bool)
-(visited : bool)
-(s       : side)
-(parent  : option edge)
-(adj     : list edge)
+(id       : table_ref)
+(exp      : expr)
+(pp       : string)
+(tokens   : list table_ref)
+(root     : bool)
+(visited  : bool)
+(s        : side)
+(parent   : option edge)
+(rw_prog  : option rewrite_progress)
+(rws      : table rewrite)
+(rw_front : table_ref)
+(adj      : table edge)
 
 meta def vertex.same_side (a b : vertex) : bool := a.s = b.s
 meta def vertex.to_string (v : vertex) : string := v.s.to_string ++ v.pp
+meta def vertex.create (id : table_ref) (e : expr) (pp : string) (token_refs : list table_ref) (root : bool) (s : side) : vertex := ⟨ id, e, pp, token_refs, root, ff, s, none, none, table.create, table_ref.first, table.create ⟩
 
 meta def null_expr : expr := default expr
-meta def null_vertex : vertex :=
-⟨ table_ref.null, null_expr, "__NULLEXPR", [], ff, ff, side.L, none, [] ⟩
+meta def null_vertex : vertex := vertex.create table_ref.null null_expr "__NULLEXPR" [] ff side.L
 
 meta instance vertex.inhabited : inhabited vertex := ⟨null_vertex⟩
 meta instance vertex.indexed : indexed vertex := ⟨λ v, v.id⟩
@@ -86,30 +102,46 @@ meta instance vertex.keyed : keyed vertex string := ⟨λ v, v.pp⟩
 meta instance vertex.has_to_format : has_to_format vertex := ⟨λ v, v.pp⟩
 
 @[derive decidable_eq]
-structure pair :=
-  (l r : table_ref)
-def pair.side (p : pair) (s : side) : table_ref :=
+structure sided_pair (α : Type u) :=
+  (l r : α)
+namespace sided_pair
+variables {α : Type}
+
+def get (p : sided_pair α) (s : side) : α :=
 match s with
 | side.L := p.l
 | side.R := p.r
 end
-def pair.flip (p : pair) : pair := ⟨p.r, p.l⟩
-def pair.to_string (c : pair) : string :=
-  (c.l.to_string) ++ "-" ++ (c.r.to_string)
-instance pair.has_to_string : has_to_string pair := ⟨pair.to_string⟩
+def set (p : sided_pair α) : side → α → sided_pair α
+| side.L v := ⟨v, p.r⟩
+| side.R v := ⟨p.l, v⟩
+def flip (p : sided_pair α) : sided_pair α := ⟨p.r, p.l⟩
+def to_string [has_to_string α] (p : sided_pair α) : string :=
+  to_string p.l ++ "-" ++ to_string p.r
+instance has_to_string [has_to_string α] : has_to_string (sided_pair α) := ⟨to_string⟩
 
-structure dist_estimate (state_type : Type u) extends pair :=
+end sided_pair
+
+def pair := sided_pair table_ref
+instance has_to_string : has_to_string pair := ⟨sided_pair.to_string⟩
+
+structure dist_estimate (state_type : Type u) extends sided_pair table_ref :=
   (id : table_ref)
   (bnd : bound_progress state_type)
-def dist_estimate.side {α : Type u} (de : dist_estimate α) (s : side) : table_ref :=
-  de.to_pair.side s
-def dist_estimate.to_string {α : Type u} (de : dist_estimate α) : string :=
-(pair.to_string de.to_pair) ++ "Δ" ++ de.bnd.to_string
-def dist_estimate.set_bound {α : Type u} (de : dist_estimate α) (bnd : bound_progress α) : dist_estimate α := { de with bnd := bnd }
+namespace dist_estimate
+variables {α : Type} (de : dist_estimate α)
 
-instance dist_estimate.has_to_string {α : Type u} : has_to_string (dist_estimate α) := ⟨λ v, v.to_string⟩
-instance dist_estimate.indexed {α : Type u} : indexed (dist_estimate α) := ⟨λ v, v.id⟩
-instance dist_estimate.keyed {α : Type u} : keyed (dist_estimate α) pair := ⟨λ v, v.to_pair⟩
+def to_pair : pair := de.to_sided_pair
+def side (s : side) : table_ref := de.to_pair.get s
+def to_string : string := de.to_pair.to_string ++ "Δ" ++ de.bnd.to_string
+def set_bound (de : dist_estimate α) (bnd : bound_progress α) : dist_estimate α :=
+{ de with bnd := bnd }
+
+instance {γ : Type} : has_to_string (dist_estimate γ) := ⟨λ v, v.to_string⟩
+instance {γ : Type} : indexed (dist_estimate γ) := ⟨λ v, v.id⟩
+instance {γ : Type} : keyed (dist_estimate γ) pair := ⟨λ v, v.to_pair⟩
+
+end dist_estimate
 
 meta inductive status
 | continue : status
@@ -168,9 +200,9 @@ meta structure strategy (α β γ δ : Type) :=
 (step : step_fn α β γ δ)
 
 meta structure inst (α β γ δ : Type) :=
-(metric   : metric α β γ δ)
+(metric : metric α β γ δ)
 (strategy : strategy α β γ δ)
-(g        : search_state α β γ δ)
+(g : search_state α β γ δ)
 
 meta def strategy_constructor (α : Type) := Π (β γ δ : Type), strategy α β γ δ
 meta def metric_constructor (β γ : Type) := Π (α δ : Type), metric α β γ δ
@@ -185,8 +217,8 @@ meta def mutate_strat (new_state : α) : search_state α β γ δ :=
 meta def mutate_metric (new_state : β) : search_state α β γ δ :=
 { g with metric_state := new_state }
 
-meta def set_vertex (v : vertex) : (search_state α β γ δ) :=
-{ g with vertices := g.vertices.set v.id v }
+meta def set_vertex (v : vertex) : (search_state α β γ δ × vertex) :=
+({ g with vertices := g.vertices.set v.id v }, v)
 
 meta def lookup_pair (p : pair) : tactic (vertex × vertex) := do
 vf ← g.vertices.get p.l, vt ← g.vertices.get p.r, return (vf, vt)
@@ -197,5 +229,7 @@ vf ← g.vertices.get e.f, vt ← g.vertices.get e.t, return (vf, vt)
 meta def get_estimate_verts (de : dist_estimate γ) : tactic (vertex × vertex) := g.lookup_pair de.to_pair
 
 end search_state
+
+meta structure siterator (α : Type)
 
 end tidy.rewrite_search

@@ -3,3 +3,4 @@ import .num
 import .utf8
 import .tactic
 import .table
+import .array

@@ -28,9 +28,10 @@ meta def bfs_step (g : search_state bfs_state β γ δ) (_ : metric bfs_state β
     return (g.mutate_strat {state with queue := rest.concat none, curr_depth := state.curr_depth + 1}, status.repeat)
   | (some v :: rest) := do
     v ← g.vertices.get v,
-    (g, adjs) ← g.visit_vertex v,
-    let adjs := adjs.filter $ λ u, ¬u.visited,
-    return (g.mutate_strat {state with queue := rest.append $ adjs.map $ λ u, some u.id}, status.continue)
+    (g, it) ← g.visit_vertex v,
+    (g, it, adjs) ← it.exhaust g,
+    let adjs := adjs.filter $ λ u, ¬u.1.visited,
+    return (g.mutate_strat {state with queue := rest.append $ adjs.map $ λ u, some u.1.id}, status.continue)
   end
 
 end tidy.rewrite_search.strategy.bfs
@@ -39,7 +40,7 @@ namespace tidy.rewrite_search.strategy
 
 open tidy.rewrite_search.strategy.bfs
 
-meta def bfs (conf : bfs_config := {}) : strategy_constructor bfs_state := 
+meta def bfs (conf : bfs_config := {}) : strategy_constructor bfs_state :=
 λ β γ δ, strategy.mk bfs_init (@bfs_startup β γ δ) (@bfs_step β γ δ conf)
 
 end tidy.rewrite_search.strategy

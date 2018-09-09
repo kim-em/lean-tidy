@@ -19,7 +19,7 @@ def compare : list ℚ → list ℚ → list ℚ
   | (a :: l1) (b :: l2) := compare_component a b :: compare l1 l2
   | _ _ := []
 
-def calculate_weights (tokens : table token) : list ℚ :=
+meta def calculate_weights (tokens : table token) : list ℚ :=
   let tl := tokens.to_list in
   compare (cm_of_side tl side.L) (cm_of_side tl side.R)
 

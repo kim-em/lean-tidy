@@ -23,6 +23,7 @@ def side.other : side → side
 def side.to_string : side → string
 | side.L := "L"
 | side.R := "R"
+instance : has_to_string side := ⟨side.to_string⟩
 
 meta structure rewrite_all_cfg extends rewrite_cfg :=
 (discharger : tactic unit := skip)
