@@ -86,6 +86,10 @@ meta def alloc (a : α) : table α :=
   let t := t.set t.next_id a in
   { t with next_id := t.next_id.next }
 
+meta def alloc_list : table α → list α → table α
+| t [] := t
+| t (a :: rest) := alloc_list (t.alloc a) rest
+
 def update [indexed α] (a : α) : table α := t.set (indexed.index a) a
 
 def length : ℕ := t.next_id.to_nat

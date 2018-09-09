@@ -2,25 +2,12 @@ import tidy.rewrite_all_wrappers
 import tidy.lib
 import data.rat
 
+import .primitives
+import .hook
+
 universe u
 
 namespace tidy.rewrite_search
-
-@[derive decidable_eq]
-inductive side
-| L
-| R
-def side.other : side → side
-| side.L := side.R
-| side.R := side.L
-def side.to_string : side → string
-| side.L := "L"
-| side.R := "R"
-instance : has_to_string side := ⟨side.to_string⟩
-
-inductive how
-| rewrite (rule_index : ℕ) (side : side) (location : ℕ) : how
-| defeq
 
 meta inductive search_result
 | success (proof : expr) (steps : list how) : search_result
@@ -47,18 +34,9 @@ meta structure edge :=
 (proof : expr)
 (how   : how)
 
-meta structure rewrite :=
-(e prf : expr)
-(how : how)
-
 structure rewriterator :=
 (orig : table_ref)
 (front : table_ref)
-
--- TODO once partial rewriting is implemented, use this to hold the
--- partial rewrite state
-meta structure rewrite_progress :=
-(dummy : unit)
 
 meta structure vertex :=
 (id       : table_ref)
@@ -86,29 +64,8 @@ meta instance vertex.indexed : indexed vertex := ⟨λ v, v.id⟩
 meta instance vertex.keyed : keyed vertex string := ⟨λ v, v.pp⟩
 meta instance vertex.has_to_format : has_to_format vertex := ⟨λ v, v.pp⟩
 
-@[derive decidable_eq]
-structure sided_pair (α : Type u) :=
-  (l r : α)
-namespace sided_pair
-variables {α : Type}
-
-def get (p : sided_pair α) (s : side) : α :=
-match s with
-| side.L := p.l
-| side.R := p.r
-end
-def set (p : sided_pair α) : side → α → sided_pair α
-| side.L v := ⟨v, p.r⟩
-| side.R v := ⟨p.l, v⟩
-def flip (p : sided_pair α) : sided_pair α := ⟨p.r, p.l⟩
-def to_string [has_to_string α] (p : sided_pair α) : string :=
-  to_string p.l ++ "-" ++ to_string p.r
-instance has_to_string [has_to_string α] : has_to_string (sided_pair α) := ⟨to_string⟩
-
-end sided_pair
-
 def pair := sided_pair table_ref
-instance pair_has_to_string : has_to_string pair := ⟨sided_pair.to_string⟩
+instance pair.has_to_string : has_to_string pair := ⟨sided_pair.to_string⟩
 
 structure dist_estimate (state_type : Type u) extends sided_pair table_ref :=
   (id : table_ref)

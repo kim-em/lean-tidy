@@ -1,9 +1,9 @@
 import data.list
 import data.option
 import tidy.pretty_print
-import tidy.rewrite_all_wrappers
 
 import .types
+import .hook
 import .debug
 
 open tactic
@@ -105,23 +105,19 @@ meta def commit_rewrite (f : vertex) (r : rewrite) : tactic (search_state α β 
   (g, f, v, e) ← g.add_edge f v r.prf r.how,
   return (g, f, (v, e))
 
--- TODO once partial rewriting is implemented, this will inspect the rewrite_progress data in v
--- to add one (or more, if convenient) `rewrite`s to the rewrite table. We then return the updated
--- mutable state, and (to eliminated an uneccesary lookup) the first rewrite which we found, if any.
-meta def find_more_rewrites (v : vertex) : tactic (search_state α β γ δ × vertex × option rewrite) :=
+meta def reveal_more_rewrites (v : vertex) : tactic (search_state α β γ δ × vertex × option rewrite) :=
   match v.rw_prog with
     | some _ := return (g, v, none)
     | none := do
-      all_rws ← all_rewrites_list g.conf.rs v.exp g.conf.to_rewrite_all_cfg,
-      let all_rws : list rewrite := all_rws.map (λ t, ⟨t.1, t.2.1, how.rewrite t.2.2.1 v.s t.2.2.2⟩),
-      (g, v) ← pure $ g.set_vertex {v with rws := table.from_list all_rws, rw_prog := some ⟨()⟩},
-      return (g, v, all_rws.nth 0)
+      (rw_prog, new_rws) ← discover_more_rewrites g.conf.rs v.exp g.conf.to_rewrite_all_cfg v.s v.rw_prog,
+      (g, v) ← pure $ g.set_vertex {v with rw_prog := rw_prog, rws := v.rws.alloc_list new_rws},
+      return (g, v, new_rws.nth 0)
   end
 
 -- TODO implement a table-backed queue?
-meta def find_more_adjs (o : vertex) : tactic (search_state α β γ δ × vertex × option (vertex × edge)) := do
+meta def reveal_more_adjs (o : vertex) : tactic (search_state α β γ δ × vertex × option (vertex × edge)) := do
   (g, o, rw) ← match o.rws.at_ref o.rw_front with
-  | none := find_more_rewrites g o
+  | none := g.reveal_more_rewrites o
   | some rw := pure (g, o, some rw)
   end,
   match rw with
@@ -178,7 +174,7 @@ meta def next (it : rewriterator) (g : search_state α β γ δ) : tactic (searc
     v ← g.vertices.get e.t,
     return (g, advance it, some (v, e))
   | none := do
-    (g, o, ret) ← g.find_more_adjs o,
+    (g, o, ret) ← g.reveal_more_adjs o,
     match ret with
     | some (v, e) := return (g, advance it, some (v, e))
     | none := return (g, it, none)
