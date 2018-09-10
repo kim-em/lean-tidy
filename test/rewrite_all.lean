@@ -1,6 +1,6 @@
 import tidy.rewrite_all_wrappers
 import data.vector
-structure F := 
+structure F :=
 (a : ℕ)
 (v : vector ℕ a)
 (p : v.val = [])

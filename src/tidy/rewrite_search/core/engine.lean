@@ -3,7 +3,6 @@ import data.option
 import tidy.pretty_print
 
 import .types
-import .hook
 import .debug
 
 open tactic
@@ -105,14 +104,10 @@ meta def commit_rewrite (f : vertex) (r : rewrite) : tactic (search_state α β 
   (g, f, v, e) ← g.add_edge f v r.prf r.how,
   return (g, f, (v, e))
 
-meta def reveal_more_rewrites (v : vertex) : tactic (search_state α β γ δ × vertex × option rewrite) :=
-  match v.rw_prog with
-    | some _ := return (g, v, none)
-    | none := do
-      (rw_prog, new_rws) ← discover_more_rewrites g.conf.rs v.exp g.conf.to_rewrite_all_cfg v.s v.rw_prog,
-      (g, v) ← pure $ g.set_vertex {v with rw_prog := rw_prog, rws := v.rws.alloc_list new_rws},
-      return (g, v, new_rws.nth 0)
-  end
+meta def reveal_more_rewrites (v : vertex) : tactic (search_state α β γ δ × vertex × option rewrite) := do
+  (rw_prog, new_rws) ← discover_more_rewrites g.conf.rs v.exp g.conf.to_rewrite_all_cfg v.s v.rw_prog,
+  (g, v) ← pure $ g.set_vertex {v with rw_prog := rw_prog, rws := v.rws.alloc_list new_rws},
+  return (g, v, new_rws.nth 0)
 
 -- TODO implement a table-backed queue?
 meta def reveal_more_adjs (o : vertex) : tactic (search_state α β γ δ × vertex × option (vertex × edge)) := do

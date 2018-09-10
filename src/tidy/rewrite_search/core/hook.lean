@@ -1,50 +1,45 @@
-import data.list
+import tidy.lib.tactic
 import tidy.rewrite_all_wrappers
 
 import .primitives
 
 namespace tidy.rewrite_search
 
-inductive how
-| rewrite (rule_index : ℕ) (side : side) (location : ℕ)
-| defeq
-| simp  -- TODO handle "explaining" me
+meta def rewrite_progress := mllist tactic rewrite
 
-meta structure rewrite :=
-(e   : expr)
-(prf : tactic expr) -- we defer constructing the proofs until they are needed
-(how : how)
+meta def progress_init (rs : list (expr × bool)) (exp : expr) (cfg : rewrite_all_cfg) (s : side) : tactic rewrite_progress := do
+  l ← rs.mmap $ λ r, all_rewrites_lazy r exp cfg,
+  l ← l.enum.mmap (λ p, do
+    pe ← p.2.enum,
+    pe.map (λ q, (q.2.1, q.2.2, p.1, q.1))
+  ),
+  l ← (mllist.of_list l).join,
+  l.map (λ t, ⟨t.1, t.2.1, how.rewrite t.2.2.1 s t.2.2.2⟩)
 
--- TODO once partial rewriting is implemented, use this to hold the
--- partial rewrite state.
-meta structure rewrite_progress :=
-(dummy : unit)
+meta def progress_next : rewrite_progress → tactic (rewrite_progress × option rewrite)
+| mllist.nil        := return (mllist.nil, none)
+| (mllist.cons a l) := do r ← l, return (r, some a)
 
-open tactic
+meta def try_simp_rewrite (exp : expr) : tactic (option rewrite) := do
+  (do (simp_exp, simp_prf) ← tactic.simp_expr exp,
+      return $ some ⟨simp_exp, pure simp_prf, how.simp⟩)
+  <|> return none
 
--- TODO Am I even good? Do I work? Do I slow us down too much?
-meta def simp_expr (t : expr) (no_defaults := ff) (attr_names : list name := []) (hs : list simp_arg_type := []) (cfg : simp_config := {}) (discharger : tactic unit := failed) : tactic (expr × expr) := do
-  (s, to_unfold) ← mk_simp_set no_defaults attr_names hs,
-  simplify s to_unfold t cfg `eq discharger
+-- FIXME I don't know how to extract a proof of equality from `simp_lemmas.dsimplify`
+-- meta def try_dsimp_rewrite (exp : expr) : tactic (option rewrite) := do
+--   (do dsimp_exp ← tactic.dsimp_expr exp,
+--       return $ some ⟨dsimp_exp, ???, how.defeq⟩)
+--   <|> return none
 
-meta def dsimp_expr (t : expr) (no_defaults := ff) (attr_names : list name := []) (hs : list simp_arg_type := []) (cfg : dsimp_config := {}) (discharger : tactic unit := failed) : tactic expr := do
-  (s, to_unfold) ← mk_simp_set no_defaults attr_names hs,
-  s.dsimplify to_unfold t cfg
-
--- @Scott
--- TODO once partial rewriting is implemented, this will inspect the passed rewrite_progress data
--- and return a list of one (or more, if convenient) `rewrite`s for addition to the rewrite table.
--- We return the updated mutable progress state, along with the list we generated. If there are no
--- more rewrtes, return an empty list---the handler functions will understand.
--- Remark: the first time we ever get called, we get passed prog = none.
-meta def discover_more_rewrites (rs : list (expr × bool)) (exp : expr) (cfg : rewrite_all_cfg) (s : side) : option rewrite_progress → tactic (option rewrite_progress × list rewrite)
-| (some prog) := return (some prog, [])
-| none := do
-  all_rws ← all_rewrites_list rs exp cfg,
-  let all_rws : list rewrite := all_rws.map (λ t, ⟨t.1, t.2.1, how.rewrite t.2.2.1 s t.2.2.2⟩),
-  all_rws ← (do (simp_exp, simp_prf) ← simp_expr exp,
-                pure $ all_rws.concat ⟨simp_exp, pure simp_prf, how.simp⟩)
-            <|> pure all_rws,
-  return (some ⟨()⟩, all_rws)
+meta def discover_more_rewrites (rs : list (expr × bool)) (exp : expr) (cfg : rewrite_all_cfg) (s : side) (prog : option rewrite_progress) : tactic (option rewrite_progress × list rewrite) := do
+  (prog, head) ← match prog with
+         | some prog := pure (prog, [])
+         | none := do
+          prog ← progress_init rs exp cfg s,
+          sl ← try_simp_rewrite exp,
+          pure (prog, sl.to_list)
+         end,
+  (prog, rw) ← progress_next prog,
+  return (some prog, head.append rw.to_list)
 
 end tidy.rewrite_search

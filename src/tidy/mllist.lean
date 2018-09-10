@@ -50,4 +50,10 @@ meta def join {m} [monad m] {α : Type u} : mllist m (mllist m α) → m (mllist
 | (cons nil l) := do r ← l, join r
 | (cons (cons a m) l) := do n ← m, return (cons a (join (cons n l)))
 
+meta def enum_from {m} [monad m] {α : Type u} : ℕ → mllist m α → m (mllist m (ℕ × α))
+| n nil := return nil
+| n (cons a l) := do r ← l, return (cons (n, a) (enum_from (n + 1) r))
+
+meta def enum {m} [monad m] {α : Type u} : mllist m α → m (mllist m (ℕ × α)) := enum_from 0
+
 end mllist

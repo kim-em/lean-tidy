@@ -148,5 +148,5 @@ do
 
 meta def all_rewrites_lazy (r : expr × bool) (e : expr) (cfg : rewrite_all_cfg := {}) : tactic (mllist tactic (expr × tactic expr)) :=
 do L ← all_rewrites r e cfg,
-   let L : list (expr × tactic expr) := L.map (λ p, (p.1, do pure p.2)),
+   let L : list (expr × tactic expr) := L.map (λ p, (p.1, pure p.2)),
    return (mllist.of_list L)

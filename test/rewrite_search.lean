@@ -53,11 +53,11 @@ begin
 -- nth_rewrite_lhs 0 foo,
 -- nth_rewrite_lhs 0 bar1,
 -- nth_rewrite_lhs 0 ←bar2,
--- nth_rewrite_lhs 0 bar3,
 -- nth_rewrite_lhs 0 foo,
--- nth_rewrite_lhs 0 bar1,
--- nth_rewrite_rhs 1 ←bar3,
--- nth_rewrite_rhs 0 bar2,
+-- nth_rewrite_rhs 0 ←bar3,
+-- nth_rewrite_rhs 0 ←bar3,
+-- nth_rewrite_rhs 1 bar2,
+-- nth_rewrite_rhs 0 ←bar1
   rewrite_search_using [`search],
 end
 

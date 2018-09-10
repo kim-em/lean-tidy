@@ -35,4 +35,14 @@ instance has_to_string [has_to_string α] : has_to_string (sided_pair α) := ⟨
 
 end sided_pair
 
+inductive how
+| rewrite (rule_index : ℕ) (side : side) (location : ℕ)
+| defeq
+| simp  -- TODO handle "explaining" me
+
+meta structure rewrite :=
+(e   : expr)
+(prf : tactic expr) -- we defer constructing the proofs until they are needed
+(how : how)
+
 end tidy.rewrite_search

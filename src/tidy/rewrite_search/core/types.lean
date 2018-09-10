@@ -1,4 +1,3 @@
-import tidy.rewrite_all_wrappers
 import tidy.lib
 import data.rat
 
