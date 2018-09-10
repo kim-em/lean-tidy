@@ -1,4 +1,5 @@
 import data.list
+import tidy.mllist
 import tidy.rewrite_all_wrappers
 
 import .primitives
@@ -15,10 +16,8 @@ meta structure rewrite :=
 (prf : tactic expr) -- we defer constructing the proofs until they are needed
 (how : how)
 
--- TODO once partial rewriting is implemented, use this to hold the
--- partial rewrite state.
 meta structure rewrite_progress :=
-(dummy : unit)
+(list : mllist tactic rewrite)
 
 open tactic
 
@@ -37,7 +36,7 @@ meta def dsimp_expr (t : expr) (no_defaults := ff) (attr_names : list name := []
 -- We return the updated mutable progress state, along with the list we generated. If there are no
 -- more rewrtes, return an empty list---the handler functions will understand.
 -- Remark: the first time we ever get called, we get passed prog = none.
-meta def discover_more_rewrites (rs : list (expr × bool)) (exp : expr) (cfg : rewrite_all_cfg) (s : side) : option rewrite_progress → tactic (option rewrite_progress × list rewrite)
+meta def discover_more_rewrites_old (rs : list (expr × bool)) (exp : expr) (cfg : rewrite_all_cfg) (s : side) : option rewrite_progress → tactic (option rewrite_progress × list rewrite)
 | (some prog) := return (some prog, [])
 | none := do
   all_rws ← all_rewrites_list rs exp cfg,
@@ -45,6 +44,19 @@ meta def discover_more_rewrites (rs : list (expr × bool)) (exp : expr) (cfg : r
   all_rws ← (do (simp_exp, simp_prf) ← simp_expr exp,
                 pure $ all_rws.concat ⟨simp_exp, pure simp_prf, how.simp⟩)
             <|> pure all_rws,
-  return (some ⟨()⟩, all_rws)
+  return (some ⟨mllist.nil⟩, all_rws)
+
+meta def discover_more_rewrites (rs : list (expr × bool)) (exp : expr) (cfg : rewrite_all_cfg) (s : side) : option rewrite_progress → tactic (option rewrite_progress × list rewrite)
+| (some ⟨ mllist.nil ⟩) := fail "no more rewrites available"
+| (some ⟨ mllist.cons a L ⟩) := do r ← L, return (some ⟨ r ⟩, [a])
+| none := do
+  all_rws ← all_rewrites_mllist rs exp cfg,
+  all_rws ← all_rws.map (λ t, { rewrite . e := t.1, prf := t.2.1, how := how.rewrite t.2.2.1 s t.2.2.2 }),
+  -- TODO hook up `simp` again.
+  -- all_rws ← (do (simp_exp, simp_prf) ← simp_expr exp,
+  --               pure $ all_rws.concat ⟨simp_exp, pure simp_prf, how.simp⟩)
+  --           <|> pure all_rws,
+  discover_more_rewrites (some ⟨ all_rws ⟩)
+
 
 end tidy.rewrite_search

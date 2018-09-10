@@ -14,6 +14,10 @@ meta def of_list {m} [monad m] {α : Type u} : list α → mllist m α
 | [] := nil
 | (h :: t) := cons h (pure (of_list t))
 
+meta def m_of_list {m} [monad m] {α : Type u} : list (m α) → m (mllist m α)
+| [] := return nil
+| (h :: t) := do a ← h, return (cons a (m_of_list t))
+
 meta def force {m} [monad m] {α} : mllist m α → m (list α)
 | nil := pure []
 | (cons a l) := list.cons a <$> (l >>= force)
@@ -49,5 +53,15 @@ meta def join {m} [monad m] {α : Type u} : mllist m (mllist m α) → m (mllist
 | nil := pure nil
 | (cons nil l) := do r ← l, join r
 | (cons (cons a m) l) := do n ← m, return (cons a (join (cons n l)))
+
+meta def enum_from {m} [monad m] {α : Type u} : mllist m α → ℕ → m (mllist m (ℕ × α))
+| nil _ := pure nil
+| (cons a l) n := do r ← l, return (cons (n, a) (enum_from r (n+1)))
+
+meta def enum {m} [monad m] {α : Type u} : mllist m α → m (mllist m (ℕ × α))
+| L := enum_from L 0
+
+meta def concat {m} [monad m] {α : Type u} : mllist m α → α → m (mllist m α)
+| L a := (mllist.of_list [L, mllist.of_list [a]]).join
 
 end mllist
