@@ -130,34 +130,16 @@ do ty ← infer_type eq,
   L ← L.mmap (λ p, do_substitutions eq symm t lhs rhs p.1 p.2.head p.2.tail),
   return L
 
-meta def all_rewrites' (t eq : expr) (symm : bool) : tactic (list (expr × expr × list expr)) :=
-do L ← all_rewrites_core t eq symm,
-   L' ← L.mmap (λ p, do r ← p.2.1, return (p.1, r, p.2.2)),
-   R ← L'.force,
-  --  trace "all_rewrite':",
-  --  trace (t, eq, symm),
-  --  trace R,
-   return R
-  
-constant f (x : ℕ) (y : ℕ) : ℕ
-axiom fx (n : ℕ) (m : ℕ) : f n m = f 17 19
-
-example : [f 1 2, 3, f 2 5] = [f 1 2, 3, f 2 5] :=
-begin
-(do `(%%lhs = %%rhs) ← target,
-    eq ← mk_const `fx,
-    r ← all_rewrites' lhs eq ff,
-    trace r),
-refl
-end
-
 meta structure rewrite_all_cfg extends rewrite_cfg :=
-(discharger : tactic unit := skip)
-(simplifier : expr → tactic (expr × expr) := λ e, failed) -- FIXME get rid of this
+(discharger : tactic unit := skip) -- FIXME this is ignored for now
+(simplifier : expr → tactic (expr × expr) := λ e, failed) -- FIXME get rid of this?
+
+meta def all_rewrites_lazy (r : expr × bool) (t : expr) (cfg : rewrite_all_cfg := {}) : tactic (mllist tactic (expr × (tactic expr))) :=
+do L ← all_rewrites_core t r.1 r.2,
+   L.filter_map (λ p, if p.2.2 = [] then some (p.1, p.2.1) else none)
 
 meta def all_rewrites (r : expr × bool) (t : expr) (cfg : rewrite_all_cfg := {}): tactic (list (expr × expr)) :=
-do results ← all_rewrites' t r.1 r.2,
-   let results := results.filter (λ p, p.2.2 = []),
-   let results := results.map (λ p, (p.1, p.2.1)),
-   return results
+do L ← all_rewrites_lazy r t cfg,
+   L ← L.mmap (λ p, do r ← p.2, return (p.1, r)),
+   L.force
 

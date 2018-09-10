@@ -89,7 +89,7 @@ else
 meta def mark_vertex_visited (v : vertex) : tactic (search_state α β γ δ × vertex) := do
   return $ g.set_vertex { v with visited := tt }
 
-meta def add_edge (f t : vertex) (proof : expr) (how : how) : tactic (search_state α β γ δ × vertex × vertex × edge) :=
+meta def add_edge (f t : vertex) (proof : tactic expr) (how : how) : tactic (search_state α β γ δ × vertex × vertex × edge) :=
 do let new_edge : edge := ⟨ f.id, t.id, proof, how ⟩,
    g.tracer_edge_added new_edge,
    let (g, f) := g.add_adj f new_edge,
@@ -161,7 +161,7 @@ do
   match prf with
   | none := return (g, ff)
   | some prf := do
-    (g, _) ← g.add_edge lhs rhs prf how.defeq,
+    (g, _) ← g.add_edge lhs rhs (pure prf) how.defeq,
     return (g, tt)
   end
 
@@ -257,11 +257,12 @@ meta def backtrack : vertex → option edge → tactic (option expr × list edge
 | v e := match e with
        | none := return (none, [])
        | (some e) := do
+                      proof ← e.proof,
                       w ← i.g.vertices.get e.f,
                       (prf_o, edges) ← backtrack w w.parent,
                       match prf_o with
-                      | none := return (some e.proof, [e])
-                      | (some prf) := do new_prf ← tactic.mk_eq_trans prf e.proof,
+                      | none := return (some proof, [e])
+                      | (some prf) := do new_prf ← tactic.mk_eq_trans prf proof,
                                           return (some new_prf, e :: edges)
                       end
        end

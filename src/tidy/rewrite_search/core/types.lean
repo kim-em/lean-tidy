@@ -44,7 +44,7 @@ def bound_progress.to_string {β : Type u} : bound_progress β → string
 
 meta structure edge :=
 (f t   : table_ref)
-(proof : expr)
+(proof : tactic expr)
 (how   : how)
 
 structure token :=
@@ -75,7 +75,8 @@ match tokens.find_key tstr with
 end
 
 meta structure rewrite :=
-(e prf : expr)
+(e : expr)
+(prf : tactic expr) -- we defer constructing the proofs until they are needed
 (how : how)
 
 structure rewriterator :=
