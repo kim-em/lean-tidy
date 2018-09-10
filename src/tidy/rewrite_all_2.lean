@@ -127,8 +127,7 @@ do ty ← infer_type eq,
   let lhs := replacer ty symm,
   let rhs := replacer ty ¬ symm,
   L ← kabstracter matcher lhs t,
-  L ← L.mmap (λ p, do_substitutions eq symm t lhs rhs p.1 p.2.head p.2.tail),
-  return L
+  L.mfilter_map (λ p, do_substitutions eq symm t lhs rhs p.1 p.2.head p.2.tail)
 
 meta structure rewrite_all_cfg extends rewrite_cfg :=
 (discharger : tactic unit := skip) -- FIXME this is ignored for now
