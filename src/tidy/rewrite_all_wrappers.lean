@@ -14,9 +14,9 @@ meta def remove_duplicates {α β} (f : α → β) [decidable_eq β] : list α �
 --   prf : e = e',
 --   n is the index of the rule r used from rs, and
 --   k is the index of (e', prf) in all_rewrites r e.
-meta def all_rewrites_list (rs : list (expr × bool)) (e : expr) (cfg : rewrite_all_cfg := {md := semireducible}) : tactic (list (expr × expr × ℕ × ℕ)) :=
+meta def all_rewrites_list (rs : list (expr × bool)) (e : expr) (cfg : rewrite_all_cfg := {md := semireducible}) : tactic (list (expr × (tactic expr) × ℕ × ℕ)) :=
 do
-  results ← rs.mmap $ λ r, all_rewrites r e cfg,
+  results ← rs.mmap $ λ r, (do L ← all_rewrites_lazy r e cfg,  L.force), -- TODO in future, we won't `force` here!
   let results' := results.enum.map (λ p, p.2.enum.map (λ q, (q.2.1, q.2.2, p.1, q.1))),
 return (remove_duplicates (λ t, t.1) results'.join)
 

@@ -1,4 +1,3 @@
-import tactic.ring
 import tidy.rewrite_search
 
 open tidy.rewrite_search.metric
@@ -69,7 +68,7 @@ begin
 -- nth_rewrite_lhs 0 bar1,
 -- nth_rewrite_lhs 0 qux',
 -- nth_rewrite_rhs 1 ←qux'',
-  rewrite_search_using [`search], -- FIXME this is broken until we can do single replacements.
+  rewrite_search_using [`search] {view := no visualiser}, -- FIXME this is broken until we can do single replacements.
 end
 
 private example : [[0],[0]] = [[4],[4]] :=
@@ -141,6 +140,9 @@ constants f g : ℕ → ℕ → ℕ → ℕ
 @[search] axiom f_g : f 0 1 2 = g 2 0 1
 
 set_option trace.app_builder true
+
+-- FIXME I crash rewrite_search_2
+run_cmd do all_rewrites_lazy (`(g_0_0), tt) `(g 0 0 0)
 
 lemma test : f 0 0 0 = g 0 0 0 :=
 -- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]

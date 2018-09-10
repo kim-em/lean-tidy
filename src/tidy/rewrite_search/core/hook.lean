@@ -1,3 +1,4 @@
+import data.list
 import tidy.rewrite_all_wrappers
 
 import .primitives
@@ -10,7 +11,8 @@ inductive how
 | simp  -- TODO handle "explaining" me
 
 meta structure rewrite :=
-(e prf : expr)
+(e   : expr)
+(prf : tactic expr) -- we defer constructing the proofs until they are needed
 (how : how)
 
 -- TODO once partial rewriting is implemented, use this to hold the
@@ -41,7 +43,7 @@ meta def discover_more_rewrites (rs : list (expr × bool)) (exp : expr) (cfg : r
   all_rws ← all_rewrites_list rs exp cfg,
   let all_rws : list rewrite := all_rws.map (λ t, ⟨t.1, t.2.1, how.rewrite t.2.2.1 s t.2.2.2⟩),
   all_rws ← (do (simp_exp, simp_prf) ← simp_expr exp,
-                pure $ all_rws.concat ⟨simp_exp, simp_prf, how.simp⟩)
+                pure $ all_rws.concat ⟨simp_exp, pure simp_prf, how.simp⟩)
             <|> pure all_rws,
   return (some ⟨()⟩, all_rws)
 

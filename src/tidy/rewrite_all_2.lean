@@ -1,6 +1,7 @@
 import tactic.basic
 import .lock_tactic_state
 import .mllist
+import .pretty_print
 
 universes u
 
@@ -35,7 +36,7 @@ meta def kabstracter'
   mvars' ← mvars.mmap instantiate_mvars,
   return (t'', (w, mvars') :: L) -- FIXME should there be a prime here??
 
-meta def kabstracter 
+meta def kabstracter
   (pattern : tactic (expr × expr × list expr))
   (lhs_replacer : list expr → tactic expr) (t : expr) : tactic (mllist tactic (expr × list (expr × list expr))) :=
 mllist.fix (kabstracter' pattern lhs_replacer) (t, [])
@@ -45,7 +46,7 @@ meta def get_lhs : expr -> bool → list expr -> tactic (expr × expr × list ex
 do v <- mk_meta_var d,
    b' <- whnf $ b.instantiate_var v,
    get_lhs b' symm (v :: mvars)
-| `(%%a = %%b) symm mvars := 
+| `(%%a = %%b) symm mvars :=
   do let (a, b) := if symm then (b, a) else (a, b),
      ty ← infer_type a,
      return (a, ty, mvars)
@@ -53,7 +54,7 @@ do v <- mk_meta_var d,
 
 meta def replacer : expr -> bool → list expr -> tactic expr
 | (expr.pi n bi d b) symm values := replacer b symm values
-| `(%%a = %%b) symm values := 
+| `(%%a = %%b) symm values :=
   do let (a, b) := if symm then (b, a) else (a, b),
      return (a.instantiate_vars values)
 | _ _ _ := failed
@@ -78,7 +79,6 @@ do -- We first restore all the "other" metavariables to their original values.
    r' ← rhs rewrite_mvar.2,
 
    guard (¬ r'.has_meta_var),
-
    -- We now begin constructing the `eq.rec` proof of equality. In fact, we don't construct it here,
    -- we just construct a tactic that can produce it on demand!
    let proof_tactic : tactic expr := do {
@@ -130,34 +130,20 @@ do ty ← infer_type eq,
   L ← L.mmap (λ p, do_substitutions eq symm t lhs rhs p.1 p.2.head p.2.tail),
   return L
 
-meta def all_rewrites' (t eq : expr) (symm : bool) : tactic (list (expr × expr × list expr)) :=
-do L ← all_rewrites_core t eq symm,
-   L' ← L.mmap (λ p, do r ← p.2.1, return (p.1, r, p.2.2)),
-   R ← L'.force,
-  --  trace "all_rewrite':",
-  --  trace (t, eq, symm),
-  --  trace R,
-   return R
-  
-constant f (x : ℕ) (y : ℕ) : ℕ
-axiom fx (n : ℕ) (m : ℕ) : f n m = f 17 19
-
-example : [f 1 2, 3, f 2 5] = [f 1 2, 3, f 2 5] :=
-begin
-(do `(%%lhs = %%rhs) ← target,
-    eq ← mk_const `fx,
-    r ← all_rewrites' lhs eq ff,
-    trace r),
-refl
-end
-
 meta structure rewrite_all_cfg extends rewrite_cfg :=
-(discharger : tactic unit := skip)
-(simplifier : expr → tactic (expr × expr) := λ e, failed) -- FIXME get rid of this
+(discharger : tactic unit := skip) -- FIXME this is ignored for now
+(simplifier : expr → tactic (expr × expr) := λ e, failed) -- FIXME get rid of this?
+
+meta def all_rewrites_lazy (r : expr × bool) (t : expr) (cfg : rewrite_all_cfg := {}) : tactic (mllist tactic (expr × (tactic expr))) :=
+do
+   tactic.trace format!"{r.1}",
+   L ← all_rewrites_core t r.1 r.2,
+   ret ← L.filter_map (λ p, if p.2.2 = [] then some (p.1, p.2.1) else none),
+   return ret
 
 meta def all_rewrites (r : expr × bool) (t : expr) (cfg : rewrite_all_cfg := {}): tactic (list (expr × expr)) :=
-do results ← all_rewrites' t r.1 r.2,
-   let results := results.filter (λ p, p.2.2 = []),
-   let results := results.map (λ p, (p.1, p.2.1)),
-   return results
+do L ← all_rewrites_lazy r t cfg,
+   L ← L.mmap (λ p, do r ← p.2, return (p.1, r)),
+   r ← L.force,
+   return r
 

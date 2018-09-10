@@ -1,4 +1,4 @@
-universes u
+universes u v
 
 meta inductive mllist (m : Type u → Type u) (α : Type u) : Type u
 | nil {} : mllist
@@ -10,6 +10,10 @@ meta def fix {m : Type u → Type u} [alternative m]
   {α} (f : α → m α) : α → m (mllist m α)
 | x := (λ a, cons a (fix a)) <$> f x <|> pure nil
 
+meta def of_list {m} [monad m] {α : Type u} : list α → mllist m α
+| [] := nil
+| (h :: t) := cons h (pure (of_list t))
+
 meta def force {m} [monad m] {α} : mllist m α → m (list α)
 | nil := pure []
 | (cons a l) := list.cons a <$> (l >>= force)
@@ -20,6 +24,30 @@ meta def map {m} [monad m] {α β : Type u} (f : α → β) : mllist m α → m 
 
 meta def mmap {m} [monad m] [alternative m] {α β : Type u} (f : α → m β) : mllist m α → m (mllist m β)
 | nil := pure nil
-| (cons a l) := do r ← l, (f a >>= λ b, return (cons b (mmap r))) <|> mmap r
+| (cons a l) := do r ← l, b ← f a, return (cons b (mmap r))
+
+meta def filter {m} [monad m] {α : Type u} (p : α → Prop) [decidable_pred p] : mllist m α → m (mllist m α)
+| nil := pure nil
+| (cons a l) := do r ← l, if p a then return (cons a (filter r)) else filter r
+
+meta def mfilter {m} [monad m] [alternative m] {α β : Type} (p : α → m β) : mllist m α → m (mllist m α)
+| nil := pure nil
+| (cons a l) := do r ← l, (p a >> return (cons a (mfilter r))) <|> mfilter r
+
+meta def filter_map {m} [monad m] {α β : Type u} (f : α → option β) : mllist m α → m (mllist m β)
+| nil := pure nil
+| (cons a l) := do r ← l, match f a with
+  | (some b) := return (cons b (filter_map r))
+  | none := filter_map r
+  end
+
+meta def mfilter_map {m} [monad m] [alternative m] {α β : Type u} (f : α → m β) : mllist m α → m (mllist m β)
+| nil := pure nil
+| (cons a l) := do r ← l, (f a >>= (λ b, return (cons b (mfilter_map r)))) <|> mfilter_map r
+
+meta def join {m} [monad m] {α : Type u} : mllist m (mllist m α) → m (mllist m α)
+| nil := pure nil
+| (cons nil l) := do r ← l, join r
+| (cons (cons a m) l) := do n ← m, return (cons a (join (cons n l)))
 
 end mllist

@@ -5,6 +5,7 @@
 import data.list
 import tidy.pretty_print
 import tidy.lock_tactic_state
+import tidy.mllist
 
 open tactic
 
@@ -139,9 +140,13 @@ def remove_adjacent_duplicates {α β} (f : α → β) [decidable_eq β] : list 
 
 
 
-meta def all_rewrites (r : expr × bool) (e : expr) (cfg : rewrite_all_cfg := {}): tactic (list (expr × expr)) :=
+meta def all_rewrites (r : expr × bool) (e : expr) (cfg : rewrite_all_cfg := {}) : tactic (list (expr × expr)) :=
 do
    results ← rewrite_fold (rewrite_F cfg r) e [],
   --  tactic.trace results,
    return (remove_adjacent_duplicates (λ p, p.1) results)
 
+meta def all_rewrites_lazy (r : expr × bool) (e : expr) (cfg : rewrite_all_cfg := {}) : tactic (mllist tactic (expr × tactic expr)) :=
+do L ← all_rewrites r e cfg,
+   let L : list (expr × tactic expr) := L.map (λ p, (p.1, do pure p.2)),
+   return (mllist.of_list L)
