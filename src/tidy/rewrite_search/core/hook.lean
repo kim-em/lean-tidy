@@ -8,8 +8,8 @@ namespace tidy.rewrite_search
 meta def rewrite_progress := mllist tactic rewrite
 
 meta def progress_init (rs : list (expr × bool)) (exp : expr) (cfg : rewrite_all_cfg) (s : side) : tactic rewrite_progress := do
-  l ← all_rewrites_list rs exp cfg,
-  l.map (λ t, ⟨t.1, t.2.1, how.rewrite t.2.2.1 s t.2.2.2⟩)
+  l ← all_rewrites_mllist rs exp cfg,
+  l.map $ λ t, ⟨t.1, t.2.1, how.rewrite t.2.2.1 s t.2.2.2⟩
 
 meta def progress_next : rewrite_progress → tactic (rewrite_progress × option rewrite)
 | mllist.nil        := return (mllist.nil, none)
