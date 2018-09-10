@@ -12,15 +12,15 @@ variables {α β γ δ : Type}
 namespace tidy.rewrite_search
 
 def how.to_tactic (rule_strings : list string) : how → option string
-| (how.defeq) := none
 | (how.rewrite index s location) := some ("nth_rewrite" ++ (match s with | side.L := "_lhs" | side.R := "_rhs" end) ++ " " ++ to_string location ++ " " ++ (rule_strings.nth index).iget)
+| _ := none
 
 meta def explain_proof (rule_strings : list string) (steps : list how) : string :=
 string.intercalate ",\n" (steps.map $ λ s : how, (s.to_tactic rule_strings).to_list).join
 
 def how.concisely (rule_strings : list string) : how → option string
-| (how.defeq) := none
 | (how.rewrite index side location) := some (rule_strings.nth index).iget
+| _ := none
 
 meta def explain_proof_concisely (rule_strings : list string) (steps : list how) (needs_refl : bool) : string :=
 "erw [" ++ (string.intercalate ", " (steps.map $ λ s : how, (s.concisely rule_strings).to_list).join) ++ "]" ++ (if needs_refl then ", refl" else "")
@@ -48,8 +48,8 @@ match result with
     rules_strings ← pp_rules rules,
     explanation ← (do
       let rewrites := (steps.map $ λ s, match s with
-                                   | how.defeq := []
                                    | how.rewrite index _ _ := [(rules.nth index).iget]
+                                   | _ := []
                                    end).join,
       needs_refl ← check_if_simple_rewrite_succeeds rewrites,
       return (explain_proof_concisely rules_strings steps needs_refl)) <|> return (explain_proof rules_strings steps),
