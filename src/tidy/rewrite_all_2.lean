@@ -136,12 +136,10 @@ meta structure rewrite_all_cfg extends rewrite_cfg :=
 meta def all_rewrites_lazy (r : expr × bool) (t : expr) (cfg : rewrite_all_cfg := {}) : tactic (mllist tactic (expr × (tactic expr))) :=
 do
    L ← all_rewrites_core t r.1 r.2,
-   ret ← L.filter_map (λ p, if p.2.2 = [] then some (p.1, p.2.1) else none),
-   return ret
+   L.filter_map (λ p, if p.2.2 = [] then some (p.1, p.2.1) else none)
 
 meta def all_rewrites (r : expr × bool) (t : expr) (cfg : rewrite_all_cfg := {}): tactic (list (expr × expr)) :=
 do L ← all_rewrites_lazy r t cfg,
    L ← L.mmap (λ p, do r ← p.2, return (p.1, r)),
-   r ← L.force,
-   return r
+   L.force
 
