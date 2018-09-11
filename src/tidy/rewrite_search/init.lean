@@ -26,6 +26,7 @@ meta structure rewrite_search_config (α β γ δ : Type) extends rewrite_all_cf
 (metric         : metric_constructor β γ . pick_default_metric)
 (strategy       : strategy_constructor α . pick_default_strategy)
 (view           : tracer_constructor δ   . pick_default_tracer)
+(suggest        : list name := [])
 
 -- TODO coerce {} = ∅ into default_config?
 

@@ -3,6 +3,9 @@
 -- Authors: Keeley Hoek, Scott Morrison
 
 import .init
+import .discovery
+
+import tidy.lib.list
 
 open interactive interactive.types expr tactic
 
@@ -81,7 +84,6 @@ meta def run_rewrite_search (cfg : rewrite_search_config α β γ δ) (rs : list
     end
   end
 
-
 -- TODO If try_search fails due to a failure to init any of the tracer, metric, or strategy we try again
 -- using the "fallback" default versions of all three of these. Instead we could be more thoughtful,
 -- and try again only replacing the failing one of these with its respective fallback module version.
@@ -99,73 +101,56 @@ meta def do_rewrite_search (cfg : rewrite_search_config α β γ δ) (rs : list 
   | _                := fail "target is not an equation or iff"
   end
 
+meta def is_acceptable_rewrite (r : expr) : tactic bool := do
+  t ← infer_type r,
+  return $ is_eq_after_binders t ∨ is_iff_after_binders t
+
+meta def mk_complete_rewrite_list (l : list expr) : list (expr × bool) :=
+  l.map (λ e, (e, ff)) ++ l.map (λ e, (e, tt))
+
+meta def load_attr_list : list name → tactic (list name)
+| [] := return []
+| (a :: rest) := do
+  names ← attribute.get_instances a,
+  l ← load_attr_list rest,
+  return $ names ++ l
+
+meta def load_names (l : list name) : tactic (list expr) :=
+  l.mmap mk_const
+
+meta def check_target : tactic unit := do
+  tgt ← target,
+  if tgt.has_meta_var then
+    fail "rewrite_search is not suitable for goals containing metavariables"
+  else skip
+
 end tidy.rewrite_search
 
 namespace tactic.interactive
 
 open tidy.rewrite_search
 
-meta def rewrite_search (rs : parse rw_rules) (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic string := do
+meta def rewrite_search (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic string := do
+  check_target,
+  sugg_b ← discovery.get_suggestions,
+  conf_b ← cfg.suggest.mmap discovery.get_bundle,
+  rules ← discovery.collect_bundle_members (conf_b ++ sugg_b) >>= load_names,
+  rules ← rules.mfilter is_acceptable_rewrite,
+  do_rewrite_search cfg $ mk_complete_rewrite_list rules
+
+meta def rewrite_search_using (as : list name) (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic string := do
+  check_target,
+  exprs ← load_attr_list as >>= load_names,
+  hyps ← local_context,
+  hyps ← hyps.mfilter (λ h, (do t ← infer_type h, return ¬ t.has_meta_var)),
+  rules ← (exprs ++ hyps).mfilter is_acceptable_rewrite,
+  do_rewrite_search cfg $ mk_complete_rewrite_list rules
+
+meta def rewrite_search_with (rs : parse rw_rules) (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic string := do
+  check_target,
   rs ← rs.rules.mmap (λ r, do e ← to_expr' r.rule, pure (e, r.symm)),
   do_rewrite_search cfg rs
 
-meta def is_eq_after_binders : expr → bool
-  | (expr.pi n bi d b) := is_eq_after_binders b
-  | `(%%a = %%b)       := tt
-  | _                  := ff
-
-meta def is_iff_after_binders : expr → bool
-  | (expr.pi n bi d b) := is_iff_after_binders b
-  | `(%%a ↔ %%b)       := tt
-  | v                  := ff
-
-meta def is_acceptable_rewrite (e : expr ): bool :=
-  is_eq_after_binders e ∨ is_iff_after_binders e
-
-meta def load_exprs : list name → tactic (list expr)
-| [] := return []
-| (a :: rest) := do
-  names ← attribute.get_instances a,
-  u ← names.mmap $ mk_const,
-  l ← load_exprs rest,
-  return (u ++ l)
-
-meta def rewrite_search_using (as : list name) (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic string := do
-  tgt ← target,
-  if tgt.has_meta_var then
-    fail "rewrite_search is not suitable for goals containing metavariables"
-  else skip,
-  exprs ← load_exprs as,
-  hyps ← local_context,
-  hyps ← hyps.mfilter (λ h, (do t ← infer_type h, return ¬ t.has_meta_var)),
-  let exprs := exprs ++ hyps,
-  --  rules ← close_under_apps exprs, -- TODO don't do this for everything, it's too expensive: only for specially marked lemmas
-  let rules := exprs,
-  rules ← rules.mfilter $ λ r, (do t ← infer_type r, return (is_acceptable_rewrite t)),
-  let pairs := rules.map (λ e, (e, ff)) ++ rules.map (λ e, (e, tt)),
-  do_rewrite_search cfg pairs
+  --  exprs ← close_under_apps exprs, -- TODO don't do this for everything, it's too expensive: only for specially marked lemmas
 
 end tactic.interactive
-
-meta def search_attribute : user_attribute := {
-  name := `search,
-  descr := ""
-}
-
-run_cmd attribute.register `search_attribute
-
--- structure cat :=
---   (O : Type)
---   (H : O → O → Type)
---   (i : Π o : O, H o o)
---   (c : Π {X Y Z : O} (f : H X Y) (g : H Y Z), H X Z)
---   (li : Π {X Y : O} (f : H X Y), c (i X) f = f)
---   (ri : Π {X Y : O} (f : H X Y), c f (i Y) = f)
---   (a : Π {W X Y Z : O} (f : H W X) (g : H X Y) (h : H Y Z), c (c f g) h = c f (c g h))
-
--- attribute [search] cat.li cat.a
-
--- private example (C : cat) (X Y Z : C.O) (f : C.H X Y) (g : C.H Y X) (w : C.c g f = C.i Y) (h k : C.H Y Z) (p : C.c f h = C.c f k) : h = k :=
--- begin
--- rewrite_search_using `search {trace := tt, trace_rules:=tt},
--- end

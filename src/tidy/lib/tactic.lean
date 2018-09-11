@@ -1,6 +1,28 @@
 import tidy.lock_tactic_state
 
+universe u
+
 namespace tactic
+
+meta def is_eq_after_binders : expr → bool
+  | (expr.pi n bi d b) := is_eq_after_binders b
+  | `(%%a = %%b)       := tt
+  | _                  := ff
+
+meta def is_iff_after_binders : expr → bool
+  | (expr.pi n bi d b) := is_iff_after_binders b
+  | `(%%a ↔ %%b)       := tt
+  | v                  := ff
+
+-- TODO is there any way to replace `type : expr` with an honest `α : Type`?
+-- Maybe at least a `type : name`? In this case probably just need to read about
+-- name resolution.
+meta def assert_type (type : expr) (n : name) := do
+  t ← infer_type (expr.const n []),
+  guard $ t = type
+
+meta def type_cast (α : Type u) [reflected α] (n : name) :=
+  eval_expr α (expr.const n [])
 
 -- FIXME doesn't `unify` do exactly this??
 meta def attempt_refl (lhs rhs : expr) : tactic expr :=

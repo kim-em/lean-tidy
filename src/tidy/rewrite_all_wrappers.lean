@@ -4,10 +4,7 @@ open tactic
 open lean.parser
 open interactive
 
--- TODO This is currently off. Is it necessary?!
-meta def remove_duplicates {α β} (f : α → β) [decidable_eq β] : list α → list α
-| (x :: t) := x :: (remove_duplicates (t.filter $ λ a, f a ≠ f x))
-| [] := []
+-- TODO We currently don't use `list.erase_duplicates` is currently off. Is it necessary?!
 
 -- return a list of (e', prf, n, k) where
 --   e' is a new expression,
