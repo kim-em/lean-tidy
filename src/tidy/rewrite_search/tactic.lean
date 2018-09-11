@@ -68,6 +68,20 @@ meta def try_search (cfg : rewrite_search_config α β γ δ) (rs : list (expr �
     return str
   end
 
+meta def run_rewrite_search (cfg : rewrite_search_config α β γ δ) (rs : list (expr × bool)) (lhs rhs : expr) := do
+  result ← try_search cfg rs lhs rhs,
+  match result with
+  | some str := return str
+  | none := do
+    trace "\nError initialising rewrite_search instance, falling back to emergency config!",
+    result ← try_search (mk_fallback_config cfg) rs lhs rhs,
+    match result with
+    | some str := return str
+    | none := fail "Could not initialise emergency rewrite_search instance!"
+    end
+  end
+
+
 -- TODO If try_search fails due to a failure to init any of the tracer, metric, or strategy we try again
 -- using the "fallback" default versions of all three of these. Instead we could be more thoughtful,
 -- and try again only replacing the failing one of these with its respective fallback module version.
@@ -80,19 +94,9 @@ meta def do_rewrite_search (cfg : rewrite_search_config α β γ δ) (rs : list 
 
   t ← target,
   match t with
-  | `(%%lhs = %%rhs) := do
-    result ← try_search cfg rs lhs rhs,
-    match result with
-    | some str := return str
-    | none := do
-      trace "\nError initialising rewrite_search instance, falling back to emergency config!",
-      result ← try_search (mk_fallback_config cfg) rs lhs rhs,
-      match result with
-      | some str := return str
-      | none := fail "Could not initialise emergency rewrite_search instance!"
-      end
-    end
-  | _ := fail "target is not an equation"
+  | `(%%lhs = %%rhs) := run_rewrite_search cfg rs lhs rhs
+  | `(%%lhs ↔ %%rhs) := run_rewrite_search cfg rs lhs rhs
+  | _                := fail "target is not an equation or iff"
   end
 
 end tidy.rewrite_search
@@ -109,6 +113,14 @@ meta def is_eq_after_binders : expr → bool
   | (expr.pi n bi d b) := is_eq_after_binders b
   | `(%%a = %%b)       := tt
   | _                  := ff
+
+meta def is_iff_after_binders : expr → bool
+  | (expr.pi n bi d b) := is_iff_after_binders b
+  | `(%%a ↔ %%b)       := tt
+  | v                  := ff
+
+meta def is_acceptable_rewrite (e : expr ): bool :=
+  is_eq_after_binders e ∨ is_iff_after_binders e
 
 meta def load_exprs : list name → tactic (list expr)
 | [] := return []
@@ -129,7 +141,7 @@ meta def rewrite_search_using (as : list name) (cfg : rewrite_search_config α �
   let exprs := exprs ++ hyps,
   --  rules ← close_under_apps exprs, -- TODO don't do this for everything, it's too expensive: only for specially marked lemmas
   let rules := exprs,
-  rules ← rules.mfilter $ λ r, (do t ← infer_type r, return (is_eq_after_binders t)),
+  rules ← rules.mfilter $ λ r, (do t ← infer_type r, return (is_acceptable_rewrite t)),
   let pairs := rules.map (λ e, (e, ff)) ++ rules.map (λ e, (e, tt)),
   do_rewrite_search cfg pairs
 

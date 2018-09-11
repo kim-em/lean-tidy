@@ -13,7 +13,7 @@ def cm_of_side (l : list token) (s : side) : list ℚ :=
   ) (0, []) in
   vec.map (λ n : ℕ, n / tot)
 
-def compare_component (a b : ℚ) : ℚ := (abs (a - b)) * 4 + 1
+def compare_component (a b : ℚ) : ℚ := (abs (a - b)) * 1 + 1
 
 def compare : list ℚ → list ℚ → list ℚ
   | (a :: l1) (b :: l2) := compare_component a b :: compare l1 l2
