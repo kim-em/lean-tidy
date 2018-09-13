@@ -1,4 +1,4 @@
-import tidy.lib
+import tidy.lib.list
 
 open tactic
 

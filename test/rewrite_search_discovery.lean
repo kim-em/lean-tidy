@@ -14,7 +14,7 @@ private axiom bar1 : [1] = [2]
 private axiom bar2 : [3] = [2]
 private axiom bar3 : [3] = [4]
 
-private example (a : unit) : [[0],[0]] = [[4],[4]] :=
+private def my_example (a : unit) : [[0],[0]] = [[4],[4]] :=
 begin
   -- These don't work (because they don't know about the lemmas):
   success_if_fail { rewrite_search },

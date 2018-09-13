@@ -1,4 +1,5 @@
 import tidy.lock_tactic_state
+import tidy.pretty_print
 
 universe u
 
@@ -12,7 +13,11 @@ meta def is_eq_after_binders : expr → bool
 meta def is_iff_after_binders : expr → bool
   | (expr.pi n bi d b) := is_iff_after_binders b
   | `(%%a ↔ %%b)       := tt
-  | v                  := ff
+  | _                  := ff
+
+meta def get_binder_types : expr → list expr
+  | (expr.pi n bi d b) := d :: get_binder_types b
+  | _                  := []
 
 -- TODO is there any way to replace `type : expr` with an honest `α : Type`?
 -- Maybe at least a `type : name`? In this case probably just need to read about

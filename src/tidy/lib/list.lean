@@ -5,6 +5,19 @@ universe u
 
 namespace list
 
+private def min_rel_aux {α : Type u} (r : α → α → Prop) [decidable_rel r] (curr : α) : list α → α
+| [] := curr
+| (a :: rest) := if r a curr then a else curr
+
+def min_rel {α : Type u} (l : list α) (r : α → α → Prop) [decidable_rel r] : option α :=
+  match l with
+  | [] := none
+  | (a :: rest) := some $ min_rel_aux r a rest
+  end
+
+def min {α : Type u} (l : list α) [has_lt α] [@decidable_rel α has_lt.lt] : option α :=
+  min_rel l has_lt.lt
+
 def contains {α : Type u} [decidable_eq α] (a : α) : list α → bool
 | [] := ff
 | (h :: rest) := if a = h then tt else rest.contains

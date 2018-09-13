@@ -4,7 +4,7 @@ open tactic
 open lean.parser
 open interactive
 
--- TODO We currently don't use `list.erase_duplicates` is currently off. Is it necessary?!
+-- TODO We currently don't use `list.erase_duplicates`. Is it necessary?!
 
 -- return a list of (e', prf, n, k) where
 --   e' is a new expression,

@@ -1,6 +1,8 @@
 import tidy.lib.list
 import tidy.lib.tactic
 
+import .screening
+
 namespace tidy.rewrite_search.discovery
 
 open tactic
@@ -22,7 +24,7 @@ meta def pick_bundle_name : tactic unit := do
   end,
   exact `(n)
 
--- Heuriustic preferences can go in here
+-- Heuristic preferences can go in here
 @[derive decidable_eq]
 meta structure bundle :=
 (name : name . pick_bundle_name)
@@ -108,7 +110,7 @@ meta def get_bundle_members (n : name) : tactic (list name) := do
 
 meta def default_bundles : list name := [`default]
 
-meta def for_each_target_bundle (attr : user_attribute unit (list name)) (n : name) (f : bundle_ref → tactic unit) : tactic unit := do
+meta def for_each_annotated_bundle (attr : user_attribute unit (list name)) (n : name) (f : bundle_ref → tactic unit) : tactic unit := do
   targets ← attr.get_param n,
   let targets := if targets.empty then default_bundles else targets,
   bs ← get_bundle_names,
@@ -122,13 +124,14 @@ meta def search_attr : user_attribute unit (list name) := {
   descr := "declare that this definition belongs to some list of bundles",
   parser := opt_single_or_list,
   after_set := some (λ n _ perm, do
-    for_each_target_bundle search_attr n $ λ t, do
+    mk_const n >>= assert_acceptable_lemma,
+    for_each_annotated_bundle search_attr n $ λ t, do
       mems ← t.get_members,
       if mems.contains n then skip
       else t.set_members (n :: mems)
   ),
   before_unset := some (λ n _, do
-    for_each_target_bundle search_attr n $ λ t, do
+    for_each_annotated_bundle search_attr n $ λ t, do
       mems ← t.get_members,
       t.set_members $ mems.erase n
   )

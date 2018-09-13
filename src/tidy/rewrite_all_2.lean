@@ -1,6 +1,6 @@
 import tactic.basic
+import tidy.lib.mllist
 import .lock_tactic_state
-import .mllist
 import .pretty_print
 
 universes u
@@ -121,7 +121,7 @@ do -- We first restore all the "other" metavariables to their original values.
    metas : list expr ← rewrite_mvar.2.mfilter (λ m, do r ← is_assigned m <|> return tt, return ¬ r),
    return (result, proof_tactic, metas)
 
-meta def all_rewrites_core (t eq : expr) (symm : bool): tactic (mllist tactic (expr × tactic expr × list expr)) :=
+meta def all_rewrites_core (t eq : expr) (symm : bool) : tactic (mllist tactic (expr × tactic expr × list expr)) :=
 do ty ← infer_type eq,
   let matcher := get_lhs ty symm [],
   let lhs := replacer ty symm,
