@@ -14,6 +14,20 @@ meta def forward_attribute : user_attribute := {
 
 run_cmd attribute.register `forward_attribute
 
+/- Improvements:
+
+* Store the local_context, and its types, rather than recomputing.
+* Give up earlier if our current expression is obviously still just a hypothesis.
+* Don't use dsimplify; does it still work?
+  * If not, try using whnf
+* In mk_apps, `to_expr` is probably too expensive. Can we get away with just the second option?
+* In the second option, `mk_app_aux`, either delete the instance implicit branch, and hope unify
+  handles typeclass inference for us later, or make do typeclass inference by hand, using `apply_instance`
+
+For testing, we better be able to run against lean-category-theory...  
+-/
+
+
 meta def guard_no_duplicate_hypothesis (t : expr) : tactic unit :=
 do hyps ← local_context,
    types ← hyps.mmap (λ h, infer_type h),

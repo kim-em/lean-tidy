@@ -11,9 +11,6 @@ meta def mk_app_aux : expr → expr → expr → tactic expr
  | f (expr.pi n binder_info.inst_implicit d b) arg := do
    infer_type arg >>= unify d,
    return $ f arg -- TODO use typeclass inference?
-  --  v ← mk_instance d,
-  --  t ← whnf (b.instantiate_var v),
-  --  mk_app_aux (f v) t arg
  | f (expr.pi n _ d b) arg := do
    v ← mk_meta_var d,
    t ← whnf (b.instantiate_var v),
