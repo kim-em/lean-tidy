@@ -15,6 +15,12 @@ meta def is_iff_after_binders : expr → bool
   | `(%%a ↔ %%b)       := tt
   | _                  := ff
 
+meta def is_eq_or_iff_after_binders : expr → bool
+  | (expr.pi n bi d b) := is_eq_or_iff_after_binders b
+  | `(%%a = %%b)       := tt
+  | `(%%a ↔ %%b)       := tt
+  | _                  := ff
+
 meta def get_binder_types : expr → list expr
   | (expr.pi n bi d b) := d :: get_binder_types b
   | _                  := []

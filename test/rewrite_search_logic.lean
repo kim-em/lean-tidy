@@ -8,7 +8,7 @@ local attribute [instance] classical.prop_decidable
 
 @[suggest] private def use_logic := `logic
 
-example {A B C : Prop} : _ = _ :=
+example {A B C : Prop} : ((B → C) → (¬(A → C) ∧ ¬(A ∨ B))) = (B ∧ ¬C) :=
 calc
         ((B → C) → (¬(A → C)     ∧ ¬(A ∨ B)))
       = ((B → C) → (¬(¬A ∨ C)    ∧ ¬(A ∨ B)))         : by rw ← imp_iff_not_or
@@ -37,6 +37,9 @@ example {A B C : Prop} : ((B → C) → (¬(A → C) ∧ ¬(A ∨ B))) = (B ∧ 
 
 example {A B C : Prop} : ((B → C) → (¬(A → C) ∧ ¬(A ∨ B))) = (B ∧ ¬C) :=
   by rewrite_search {suggest := [`logic]}
+
+example {A B C : Prop} : ((B → C) → (¬(A → C) ∧ ¬(A ∨ B))) = (B ∧ ¬C) :=
+  by rewrite_search_using []
 
 -- Vanilla
 example {A B C : Prop} : ((B → C) → (¬(A → C) ∧ ¬(A ∨ B))) = (B ∧ ¬C) :=
@@ -71,7 +74,7 @@ by
 -- libSVM refresh every 1
 example {A B C : Prop} : ((B → C) → (¬(A → C) ∧ ¬(A ∨ B))) = (B ∧ ¬C) :=
 by
-  rewrite_search {view := no visualiser, trace_summary := tt, metric := edit_distance {refresh_freq := 1} weight.svm}
+  rewrite_search {view := no visualiser, strategy := tidy.rewrite_search.strategy.pexplore {pop_size := 1}, trace_summary := tt, metric := edit_distance {refresh_freq := 1} weight.svm}
 
 -- Theorem Proving in Lean
 
@@ -187,7 +190,7 @@ namespace q6
 
   -- theorem log_mul {x y : real} (hx : x > 0) (hy : y > 0) :
   --   log (x * y) = log x + log y :=
-  -- by obviously
+  -- by rewrite_search {discharger := assumption}
 end q6
 
 -- 5.8. Exercises
