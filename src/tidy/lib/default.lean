@@ -1,6 +1,9 @@
-import .list
 import .num
 import .utf8
-import .tactic
-import .table
+import .list
 import .array
+
+import .table
+
+import .env
+import .tactic

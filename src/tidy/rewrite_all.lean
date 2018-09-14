@@ -3,9 +3,9 @@
 -- Authors: Scott Morrison
 
 import data.list
+import tidy.lib.mllist
 import tidy.pretty_print
 import tidy.lock_tactic_state
-import tidy.mllist
 
 open tactic
 

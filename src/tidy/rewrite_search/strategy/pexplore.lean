@@ -28,7 +28,9 @@ def ipair.to_string : ipair → string
 instance has_to_string : has_to_string ipair := ⟨ipair.to_string⟩
 
 structure pexplore_state :=
+(initial           : ipair)
 (interesting_pairs : list ipair)
+(done_pairs        : list pair)
 
 variables {β γ δ : Type} (conf : pexplore_config) (m : metric pexplore_state β γ δ) (g : search_state pexplore_state β γ δ)
 
@@ -43,8 +45,8 @@ meta def from_estimate (de : dist_estimate γ) : tactic (search_state pexplore_s
   (vl, vr) ← g.get_estimate_verts de,
   from_vertices g vl vr
 
-meta instance : has_to_format $ option pair := ⟨λ op, match op with | none := "none" | some p := to_string p end⟩
-meta instance aa : has_to_format pair := ⟨λ p, to_string p⟩
+meta instance has_to_format_pair : has_to_format pair := ⟨λ p, to_string p⟩
+meta instance has_to_format_option_pair : has_to_format (option pair) := ⟨λ op, match op with | none := "none" | some p := to_string p end⟩
 
 meta def read_side (ps : pair_stream) (g : search_state pexplore_state β γ δ) (p : pair) (s : side) : tactic (search_state pexplore_state β γ δ × pair_stream × option pair) := do
   (g, it, nxt) ← (ps.its.get s).next g,
@@ -125,7 +127,7 @@ meta def pop_ipairs_aux : search_state pexplore_state β γ δ → metric pexplo
   (g, ps, nxt) ← ps.read g conf p,
   let ip := ipair.resolved p ref ps,
   match nxt with
-  | none := return (g, ip, [])
+  | none := return (g.mutate_strat {g.strat_state with done_pairs := (p :: g.strat_state.done_pairs)}, ip, [])
   | some nxt := do
     match g.estimates.find (λ de, nxt = de.to_pair ∨ (nxt = de.to_pair.flip)) with
     | none := do
@@ -141,18 +143,43 @@ meta def pop_ipairs (pop_size : ℕ) (ip : ipair) : tactic (search_state pexplor
   (g, ip, new) ← pop_ipairs_aux conf g m pop_size ip,
   return (g, ip, new)
 
-meta def pexplore_init : tactic (init_result pexplore_state) := init_result.pure ⟨[]⟩
+meta def pexplore_init : tactic (init_result pexplore_state) :=
+  init_result.pure ⟨ipair.unresolved pair.null table_ref.null, [], []⟩
 
 meta def pexplore_startup (m : metric pexplore_state β γ δ) (l r : vertex) : tactic (search_state pexplore_state β γ δ) := do
   let p : pair := ⟨l.id, r.id⟩,
   (g, ref) ← g.alloc_estimate m p,
-  return $ g.mutate_strat ⟨ [ipair.unresolved p ref] ⟩
+  let initial := ipair.unresolved p ref,
+  return $ g.mutate_strat ⟨initial, [initial], []⟩
+
+-- TODO find our "best" pairs, corresponding to seen distance estimates within a certain
+-- threshold of the absolute best, and return them.
+meta def get_best_pairs : tactic (list pair) :=
+  return g.strat_state.done_pairs
+
+meta def clear_vertex (v : vertex) : vertex :=
+  {v with rw_prog := none, rws := table.create, rw_front := table_ref.first, adj := table.create}
 
 meta def pexplore_step : search_state pexplore_state β γ δ → metric pexplore_state β γ δ → ℕ → tactic (search_state pexplore_state β γ δ × status)
 | g m itr := do
   (g, best, others) ← find_most_interesting m g,
   match (best, others) with
-  | (none, []) := return (g, status.abort "all interesting pairs exhausted!")
+  | (none, []) := do
+    bests ← get_best_pairs g,
+    (g, success) ← g.be_desperate bests,
+    if ¬success then
+      return (g, status.abort "all interesting pairs exhausted!")
+    else do
+      -- TODO Be smarter. Reset all rewriterators and just roll with the interesting pairs we have?
+      let initial := g.strat_state.initial,
+      -- FIXME this is a real hack: we currently use existance of an entry in the
+      -- distance estimate table to determine if we have seen a given interesting
+      -- pair before. This needs to change, and until then we have to do:
+      vl ← clear_vertex <$> g.vertices.get table_ref.first,
+      vr ← clear_vertex <$> g.vertices.get table_ref.first.next,
+      let g := {g with vertices := table.from_list [vl, vr], estimates := table.create},
+      g ← pexplore_startup g m vl vr,
+      return (g, status.repeat)
   | (none, _) := pexplore_step g m itr
   | (some best, others) := do
     (g, best, new) ← pop_ipairs conf m g conf.pop_size best,

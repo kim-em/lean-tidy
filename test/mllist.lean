@@ -1,4 +1,4 @@
-import tidy.mllist
+import tidy.lib.mllist
 
 open mllist
 

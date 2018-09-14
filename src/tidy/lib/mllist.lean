@@ -6,6 +6,10 @@ meta inductive mllist (m : Type u → Type u) (α : Type u) : Type u
 
 namespace mllist
 
+meta def empty {m} [monad m] {α : Type u} : mllist m α → bool
+| nil := ff
+| (cons _ _) := tt
+
 meta def fix {m : Type u → Type u} [alternative m]
   {α} (f : α → m α) : α → m (mllist m α)
 | x := (λ a, cons a (fix a)) <$> f x <|> pure nil

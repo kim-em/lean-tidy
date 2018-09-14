@@ -1,7 +1,9 @@
 import tidy.lib
 import data.rat
 
-import .primitives
+import tidy.rewrite_search.discovery.shared
+
+import .shared
 import .hook
 
 universe u
@@ -64,6 +66,7 @@ meta instance vertex.keyed : keyed vertex string := ⟨λ v, v.pp⟩
 meta instance vertex.has_to_format : has_to_format vertex := ⟨λ v, v.pp⟩
 
 def pair := sided_pair table_ref
+def pair.null : pair := ⟨table_ref.null, table_ref.null⟩
 instance pair.has_to_string : has_to_string pair := ⟨sided_pair.to_string⟩
 
 structure dist_estimate (state_type : Type u) extends sided_pair table_ref :=
@@ -74,9 +77,9 @@ variables {α : Type} (de : dist_estimate α)
 
 def to_pair : pair := de.to_sided_pair
 def side (s : side) : table_ref := de.to_pair.get s
-def to_string : string := de.to_pair.to_string ++ "Δ" ++ de.bnd.to_string
 def set_bound (de : dist_estimate α) (bnd : bound_progress α) : dist_estimate α :=
 { de with bnd := bnd }
+def to_string : string := de.to_pair.to_string ++ "Δ" ++ de.bnd.to_string
 
 instance {γ : Type} : has_to_string (dist_estimate γ) := ⟨λ v, v.to_string⟩
 instance {γ : Type} : indexed (dist_estimate γ) := ⟨λ v, v.id⟩
@@ -139,14 +142,6 @@ meta def init_result.try {ε η : Type} (name : string) (fn : init_fn ε) (next_
     tactic.trace ("\nWarning: failed to initialise " ++ name ++ "! Reason:\n\n" ++ reason),
     return none
 
-meta structure config extends rewrite_all_cfg :=
-(rs             : list (expr × bool))
-(max_iterations : ℕ)
-(trace          : bool)
-(trace_summary  : bool)
-(trace_result   : bool)
-(exhaustive     : bool)
-
 meta structure tracer (α β γ δ : Type) :=
 (init             : init_fn δ)
 (publish_vertex   : δ → vertex → tactic unit)
@@ -155,6 +150,10 @@ meta structure tracer (α β γ δ : Type) :=
 (publish_finished : δ → list edge → tactic unit)
 (dump             : δ → string → tactic unit)
 (pause            : δ → tactic unit)
+
+structure statistics :=
+(num_discovers : ℕ)
+def statistics.init : statistics := ⟨0⟩
 
 meta structure search_state (α β γ δ : Type) :=
 (tr           : tracer α β γ δ)
@@ -166,6 +165,8 @@ meta structure search_state (α β γ δ : Type) :=
 (estimates    : table (dist_estimate γ))
 (solving_edge : option edge)
 (tr_state     : δ)
+(prog         : discovery.progress)
+(stats        : statistics)
 
 meta def update_fn (α β γ δ : Type) : Type := search_state α β γ δ → ℕ → tactic (search_state α β γ δ)
 meta def init_bound_fn (α β γ δ : Type) := search_state α β γ δ → vertex → vertex → bound_progress γ
@@ -202,6 +203,9 @@ meta def mutate_strat (new_state : α) : search_state α β γ δ :=
 
 meta def mutate_metric (new_state : β) : search_state α β γ δ :=
 { g with metric_state := new_state }
+
+meta def mutate_stats (new_stats : statistics) : search_state α β γ δ :=
+{ g with stats := new_stats}
 
 meta def set_vertex (v : vertex) : (search_state α β γ δ × vertex) :=
 ({ g with vertices := g.vertices.set v.id v }, v)

@@ -1,7 +1,7 @@
 import tidy.lib.tactic
 import tidy.rewrite_all_wrappers
 
-import .primitives
+import .shared
 
 namespace tidy.rewrite_search
 
