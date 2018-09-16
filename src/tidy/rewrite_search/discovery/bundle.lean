@@ -1,5 +1,4 @@
-import tidy.lib.list
-import tidy.lib.tactic
+import tidy.lib.parser
 
 import .screening
 
@@ -8,8 +7,6 @@ namespace tidy.rewrite_search.discovery
 open tactic
 open lean.parser
 open interactive.types
-
-private meta def opt_single_or_list := list_of ident <|> ((λ h, list.cons h []) <$> ident) <|> return []
 
 meta def atrr_fail {α : Type} (attr : string) (reason : format) : tactic α := fail $ "[" ++ attr ++"] error: " ++ to_string reason
 private meta def bundle_fail {α : Type} : format → tactic α := atrr_fail "bundle"
@@ -52,7 +49,9 @@ meta def try_find_bundle_by_name_such_that (p : name → Prop) [decidable_pred p
 | (bn :: rest) := do
   if p bn then do
     b ← cast_to_bundle bn,
-    if b.name = n then return $ some ⟨bn, b⟩
+    -- FIXME the following resolution probably isn't neccessary, attribute.get_instances probably always returns fully-qualified names...
+    full_bn ← resolve_constant bn,
+    if b.name = n then return $ some ⟨full_bn, b⟩
     else try_find_bundle_by_name_such_that rest
 -- How could this double-else be eliminated, withough unneccessarily doing lookups and calling `cast_to_bundle`?
   else try_find_bundle_by_name_such_that rest
@@ -122,7 +121,7 @@ meta def for_each_annotated_bundle (attr : user_attribute unit (list name)) (n :
 meta def search_attr : user_attribute unit (list name) := {
   name := `search,
   descr := "declare that this definition belongs to some list of bundles",
-  parser := opt_single_or_list,
+  parser := opt_single_or_list ident,
   after_set := some (λ n _ perm, do
     mk_const n >>= assert_acceptable_lemma,
     for_each_annotated_bundle search_attr n $ λ t, do

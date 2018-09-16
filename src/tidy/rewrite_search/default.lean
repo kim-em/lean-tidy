@@ -11,3 +11,5 @@ import .metric
 import .tracer
 
 import .bundles
+
+import tidy.command.suggestion
