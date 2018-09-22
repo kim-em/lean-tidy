@@ -1,7 +1,4 @@
-import data.list
-import data.option
-
-import tidy.pretty_print
+import tidy.lib.pretty_print
 import tidy.rewrite_search.discovery.collect
 
 import .types

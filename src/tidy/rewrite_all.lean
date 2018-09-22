@@ -2,10 +2,9 @@
 -- Released under Apache 2.0 license as described in the file LICENSE.
 -- Authors: Scott Morrison
 
-import data.list
 import tidy.lib.mllist
-import tidy.pretty_print
-import tidy.lock_tactic_state
+import tidy.lib.pretty_print
+import tidy.lib.tactic
 
 open tactic
 

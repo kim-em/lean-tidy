@@ -1,6 +1,4 @@
-import data.list
-import data.option
-import .lock_tactic_state
+import tidy.lib.tactic
 
 open tactic
 

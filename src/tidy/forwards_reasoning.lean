@@ -2,8 +2,9 @@
 -- Released under Apache 2.0 license as described in the file LICENSE.
 -- Authors: Scott Morrison
 
+import tidy.lib.pretty_print
+
 import .mk_apps
-import .pretty_print
 
 open tactic
 
@@ -24,7 +25,7 @@ run_cmd attribute.register `forward_attribute
 * In the second option, `mk_app_aux`, either delete the instance implicit branch, and hope unify
   handles typeclass inference for us later, or make do typeclass inference by hand, using `apply_instance`
 
-For testing, we better be able to run against lean-category-theory...  
+For testing, we better be able to run against lean-category-theory...
 -/
 
 

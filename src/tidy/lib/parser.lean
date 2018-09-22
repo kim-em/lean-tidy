@@ -1,3 +1,5 @@
+import .interaction_monad
+
 namespace lean.parser
 
 open lean interactive.types
@@ -12,7 +14,6 @@ meta def emit_command_here (str : string) : lean.parser string := do
   return left
 
 meta def emit_code_here (str : string) : lean.parser unit := do
-  tactic.trace str,
   left ← emit_command_here str,
   if left.length = 0 then return ()
   else tactic.fail "did not parse all of passed code"
@@ -51,5 +52,26 @@ meta def mk_user_fresh_name (pfx : string := "") (sfx : string := "") : tactic n
   let pfx_name := if pfx.length = 0 then anonymous else mk_string pfx anonymous,
   chopped ← chop_reserved_name pfx_name <$> tactic.mk_fresh_name,
   return $ if sfx.length = 0 then chopped else mk_string sfx chopped
+
+meta inductive boxed_result (α : Type)
+| success : α → boxed_result
+| failure : format → boxed_result
+
+meta def of_tactic_safe {α : Type} (t : tactic α) : lean.parser α := do
+  let tac : tactic (boxed_result α) := interaction_monad_orelse_intercept_safe (do
+    r ← t,
+    return $ boxed_result.success r
+  )
+  (λ e ref, return $ boxed_result.failure _ $ match e with
+    | some e := e ()
+    | none   := "tactic failed"
+    end
+  )
+  (boxed_result.failure _ "tactic failed while handling tactic failed!"),
+  ret ← of_tactic tac,
+  match ret with
+  | boxed_result.success ret := return ret
+  | boxed_result.failure _ reason := interaction_monad.fail reason
+  end
 
 end lean.parser

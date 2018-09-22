@@ -1,10 +1,16 @@
-import tidy.lib.list
+import .options
+import .string
 
 open tactic
 
-meta def pretty_print (e : expr) (implicits : bool := ff): tactic string :=
+meta def pretty_print (e : expr) (implicits : bool := ff) (full_cnsts := ff) : tactic string :=
 do options ← get_options,
-   set_options (((options.set_bool `pp.notation true).set_bool `pp.universes false).set_bool `pp.implicit implicits),
+   set_options $ options.set_list [
+     (`pp.notation, true),
+     (`pp.universes, false),
+     (`pp.implicit, implicits),
+     (`pp.structure_instances, ¬full_cnsts)
+   ],
    t ← pp e,
    set_options options,
    pure t.to_string

@@ -1,7 +1,6 @@
-import tidy.lib.tactic
 import tidy.lib.env
-
-import tidy.pretty_print
+import tidy.lib.tactic
+import tidy.lib.pretty_print
 
 open tactic tactic.interactive
 open interactive

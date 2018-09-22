@@ -1,7 +1,6 @@
-import tactic.basic
 import tidy.lib.mllist
-import .lock_tactic_state
-import .pretty_print
+import tidy.lib.pretty_print
+import tidy.lib.tactic
 
 universes u
 

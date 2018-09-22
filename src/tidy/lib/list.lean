@@ -66,8 +66,3 @@ end list
 
 def list.at {α : Type u} [inhabited α] (l : list α) (n : ℕ) : α :=
 list.head $ option.to_list $ list.nth l n
-
-def char_buffer.from_list (l : list char) : char_buffer := buffer.nil.append_list l
-
-def string.split_on (c : char) (s : string) := (s.to_list.split_on c).map (λ l, l.as_string)
-
