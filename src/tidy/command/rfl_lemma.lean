@@ -21,8 +21,8 @@ structure config :=
 open tactic
 
 meta def handle_defn (lemma_name : string) (conf : config) (e : environment) (fn_name : name) (fn_us : list name) (fn_type : expr) (fn_val : expr) (field : name) : tactic string := do
-  (obj_name, obj_name_levels, fn_type_app_vars) ← app.chop $ prod.snd fn_type.unroll_pi_params,
-  (fn_val_params, fn_val_core) ← pure fn_val.unroll_lam_params,
+  (obj_name, obj_name_levels, fn_type_app_vars) ← app.chop $ prod.snd fn_type.unroll_pi_binders,
+  (fn_val_params, fn_val_core) ← pure fn_val.unroll_lam_binders,
 
   let proj_name := obj_name ++ field,
   let proj_prime_name := obj_name ++ field.append_suffix "'",
@@ -30,16 +30,16 @@ meta def handle_defn (lemma_name : string) (conf : config) (e : environment) (fn
   pi ← e.is_projection proj_prime_name
     <|> e.is_projection proj_name
     <|> fail format!"There are no projections: {proj_prime_name}', nor {proj_prime_name}",
-  (field_params, field_val) ← expr.unroll_lam_params <$> structure_instance.extract_field fn_val_core pi,
+  (field_params, field_val) ← expr.unroll_lam_binders <$> structure_instance.extract_field fn_val_core pi,
 
   field_proj ← mk_const proj_name >>= infer_type
     <|> fail format!"There is no identifier: {proj_name}",
-  let field_proj_params := (prod.fst field_proj.unroll_pi_params).drop (pi.nparams + 1),
-  let field_params := field_params.zip_with param.set_binder_info (field_proj_params.map param.to_binder_info),
+  let field_proj_params := (prod.fst field_proj.unroll_pi_binders).drop (pi.nparams + 1),
+  let field_params := field_params.zip_with binder.set_binder_info (field_proj_params.map binder.binder_info),
 
   let lemma_params := fn_val_params ++ field_params,
-  args ← param.list_to_args lemma_params,
-  st_value ← pretty_print (param.instantiate field_val lemma_params) ff tt,
+  args ← binder.list_to_args lemma_params,
+  st_value ← pretty_print (binder.instantiate field_val lemma_params) ff tt,
 
   attrs ← if ¬(conf.attrs.length = 0) then
             pp format!"@[{string.lconcat (conf.attrs.intersperse \", \")}] "
@@ -47,7 +47,7 @@ meta def handle_defn (lemma_name : string) (conf : config) (e : environment) (fn
             return "",
   let mods := if conf.priv then "private " else "",
 
-  code ← pp format!"{attrs}{mods}lemma {lemma_name} {args} : ({fn_name} {param.list_to_invocation fn_val_params}).{field} {param.list_to_invocation field_params} = {st_value} := rfl",
+  code ← pp format!"{attrs}{mods}lemma {lemma_name} {args} : ({fn_name} {binder.list_to_invocation fn_val_params}).{field} {binder.list_to_invocation field_params} = {st_value} := rfl",
 
   if conf.trace then
     tactic.trace code

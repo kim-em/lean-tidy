@@ -9,76 +9,72 @@ meta def binder_info.brackets : binder_info → string × string
 | binder_info.inst_implicit := ("[", "]")
 | bi := ("?", "?" ++ repr bi)
 
-namespace expr
+meta structure binder :=
+(name : name)
+(type : expr)
+(binder_info : binder_info)
 
-private meta def unroll_pi_params_aux : list (name × expr × binder_info) → expr → list (name × expr × binder_info) × expr
-| curr (expr.pi var_n bi var_type rest) :=
-  unroll_pi_params_aux (curr.concat (var_n, var_type, bi)) rest
-| curr ex := (curr, ex)
+namespace binder
 
-meta def unroll_pi_params : expr → list (name × expr × binder_info) × expr :=
-  unroll_pi_params_aux []
+meta def set_name : binder → _root_.name → binder
+| ⟨_, e, bi⟩ n := ⟨n, e, bi⟩
 
-private meta def unroll_lam_params_aux : list (name × expr × binder_info) → expr → list (name × expr × binder_info) × expr
-| curr (expr.lam var_n bi var_type rest) :=
-  unroll_lam_params_aux (curr.concat (var_n, var_type, bi)) rest
-| curr ex := (curr, ex)
+meta def set_type : binder → expr → binder
+| ⟨n, _, bi⟩ e := ⟨n, e, bi⟩
 
-meta def unroll_lam_params : expr → list (name × expr × binder_info) × expr :=
-  unroll_lam_params_aux []
+meta def set_binder_info : binder → _root_.binder_info → binder
+| ⟨n, e, _⟩ bi := ⟨n, e, bi⟩
 
-end expr
-
-namespace param
-
-meta def to_name : name × expr × binder_info → name
-| (n, _, _) := n
-
-meta def to_type : name × expr × binder_info → expr
-| (_, e, _) := e
-
-meta def to_binder_info : name × expr × binder_info → binder_info
-| (_, _, bi) := bi
-
-meta def set_name : name × expr × binder_info → name → name × expr × binder_info
-| (_, e, bi) n := (n, e, bi)
-
-meta def set_type : name × expr × binder_info → expr → name × expr × binder_info
-| (n, _, bi) e := (n, e, bi)
-
-meta def set_binder_info : name × expr × binder_info → binder_info → name × expr × binder_info
-| (n, e, _) bi := (n, e, bi)
-
-meta def pretty_print : name × expr × binder_info → tactic string
-| (n, e, bi) := let brackets := bi.brackets in do
+meta def pretty_print : binder → tactic string
+| ⟨n, e, bi⟩ := let brackets := bi.brackets in do
   ppe ← _root_.pretty_print e,
   return $ brackets.1 ++ n.to_string ++ " : " ++ ppe ++ brackets.2
 
-private meta def instantiate_list_aux : list (name × expr × binder_info) → list (name × expr × binder_info) → list (name × expr × binder_info)
+private meta def instantiate_list_aux : list binder → list binder → list binder
 | seen [] := seen
-| seen ((n, e, bi) :: rest) :=
+| seen (⟨n, e, bi⟩ :: rest) :=
   let e := e.instantiate_vars $ seen.reverse.map $ λ v, expr.const v.1 [] in
-  instantiate_list_aux (seen.concat (n, e, bi)) rest
+  instantiate_list_aux (seen.concat ⟨n, e, bi⟩) rest
 
-meta def instantiate_list : list (name × expr × binder_info) → list (name × expr × binder_info) :=
+meta def instantiate_list : list binder → list binder :=
   instantiate_list_aux []
 
-meta def instantiate (e : expr) (l : list (name × expr × binder_info)) : expr :=
-  e.instantiate_vars $ l.reverse.map $ λ v : (name × expr × binder_info), expr.const v.1 []
+meta def instantiate (e : expr) (l : list binder) : expr :=
+  e.instantiate_vars $ l.reverse.map $ λ v : binder, expr.const v.1 []
 
-meta def drop_implicit : name × expr × binder_info → option (name × expr × binder_info)
-| (n, e, binder_info.default) := some (n, e, binder_info.default)
-| (_, _, _) := none
+meta def drop_implicit : binder → option binder
+| ⟨n, e, binder_info.default⟩ := some ⟨n, e, binder_info.default⟩
+| _ := none
 
-meta def list_to_args (l : list (name × expr × binder_info)) (drop_impl : bool := tt) : tactic string := do
-  l ← (instantiate_list l).mmap param.pretty_print,
+meta def list_to_args (l : list binder) (drop_impl : bool := tt) : tactic string := do
+  l ← (instantiate_list l).mmap binder.pretty_print,
   return $ string.lconcat $ l.intersperse " "
 
-meta def list_to_invocation (l : list (name × expr × binder_info)) (drop_impl : bool := tt) : string :=
+meta def list_to_invocation (l : list binder) (drop_impl : bool := tt) : string :=
   let l := if drop_impl then l.filter_map drop_implicit else l in
-  string.lconcat $ ((instantiate_list l).map $ to_string ∘ to_name).intersperse " "
+  string.lconcat $ ((instantiate_list l).map $ to_string ∘ name).intersperse " "
 
-end param
+end binder
+
+namespace expr
+
+private meta def unroll_pi_binders_aux : list binder → expr → list binder × expr
+| curr (expr.pi var_n bi var_type rest) :=
+  unroll_pi_binders_aux (curr.concat ⟨var_n, var_type, bi⟩) rest
+| curr ex := (curr, ex)
+
+meta def unroll_pi_binders : expr → list binder × expr :=
+  unroll_pi_binders_aux []
+
+private meta def unroll_lam_binders_aux : list binder → expr → list binder × expr
+| curr (expr.lam var_n bi var_type rest) :=
+  unroll_lam_binders_aux (curr.concat ⟨var_n, var_type, bi⟩) rest
+| curr ex := (curr, ex)
+
+meta def unroll_lam_binders : expr → list binder × expr :=
+  unroll_lam_binders_aux []
+
+end expr
 
 namespace app
 
