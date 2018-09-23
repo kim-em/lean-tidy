@@ -24,12 +24,14 @@ meta def handle_defn (lemma_name : string) (conf : config) (e : environment) (fn
   (obj_name, obj_name_levels, fn_type_app_vars) ← app.chop $ prod.snd fn_type.unroll_pi_params,
   (fn_val_params, fn_val_core) ← pure fn_val.unroll_lam_params,
 
+  let proj_name := obj_name ++ field,
   let proj_prime_name := obj_name ++ field.append_suffix "'",
+
   pi ← e.is_projection proj_prime_name
-    <|> fail format!"There is no projection: {proj_prime_name}",
+    <|> e.is_projection proj_name
+    <|> fail format!"There are no projections: {proj_prime_name}', nor {proj_prime_name}",
   (field_params, field_val) ← expr.unroll_lam_params <$> structure_instance.extract_field fn_val_core pi,
 
-  let proj_name := obj_name ++ field,
   field_proj ← mk_const proj_name >>= infer_type
     <|> fail format!"There is no identifier: {proj_name}",
   let field_proj_params := (prod.fst field_proj.unroll_pi_params).drop (pi.nparams + 1),
