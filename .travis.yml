@@ -9,17 +9,17 @@ cache:
     - $HOME/.elan
     
 before_install:
+  - wget -nc https://launchpad.net/ubuntu/+source/dpkg/1.17.5ubuntu5.8/+build/14426995/+files/dpkg_1.17.5ubuntu5.8_amd64.deb
   - wget -nc http://launchpadlibrarian.net/353523729/libc6_2.23-0ubuntu10_amd64.deb
-  - wget -nc http://launchpadlibrarian.net/253728424/libasan1_4.9.3-13ubuntu2_amd64.deb
-  - wget -nc http://launchpadlibrarian.net/253728426/libgcc-4.9-dev_4.9.3-13ubuntu2_amd64.deb
-  - wget -nc http://launchpadlibrarian.net/253728314/gcc-4.9-base_4.9.3-13ubuntu2_amd64.deb
-  - wget -nc http://launchpadlibrarian.net/205680212/libstdc++6_5.1.1-5ubuntu1_amd64.deb
-  - wget -nc http://launchpadlibrarian.net/253728432/libstdc++-4.9-dev_4.9.3-13ubuntu2_amd64.deb
+  - wget -nc http://launchpadlibrarian.net/388656986/gcc-7-base_7.3.0-27ubuntu1~18.04_amd64.deb
+  - wget -nc http://launchpadlibrarian.net/388657037/libgcc-7-dev_7.3.0-27ubuntu1~18.04_amd64.deb
+  - wget -nc http://launchpadlibrarian.net/388610965/libstdc++6_8.2.0-1ubuntu2~18.04_amd64.deb
+  - wget -nc http://launchpadlibrarian.net/388657059/libstdc++-7-dev_7.3.0-27ubuntu1~18.04_amd64.deb
+  - sudo dpkg --force-all -i dpkg_1.17.5ubuntu5.8_amd64.deb
   - sudo dpkg --force-breaks -i libc6_2.23-0ubuntu10_amd64.deb
-  - sudo dpkg -i gcc-4.9-base_4.9.3-13ubuntu2_amd64.deb
-  - sudo dpkg -i libasan1_4.9.3-13ubuntu2_amd64.deb
-  - sudo dpkg --force-all -i libgcc-4.9-dev_4.9.3-13ubuntu2_amd64.deb
-  - sudo dpkg --force-all -i libstdc++6_5.1.1-5ubuntu1_amd64.deb libstdc++-4.9-dev_4.9.3-13ubuntu2_amd64.deb
+  - sudo dpkg -i gcc-7-base_7.3.0-27ubuntu1~18.04_amd64.deb
+  - sudo dpkg --force-all -i libgcc-7-dev_7.3.0-27ubuntu1~18.04_amd64.deb
+  - sudo dpkg --force-all -i libstdc++6_8.2.0-1ubuntu2~18.04_amd64.deb libstdc++-7-dev_7.3.0-27ubuntu1~18.04_amd64.deb
 
 install:
   - |
