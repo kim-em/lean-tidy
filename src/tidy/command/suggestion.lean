@@ -1,5 +1,8 @@
 import tidy.lib.parser
 
+-- Import the `@[suggest]` attribute definition, since we emit code which uses it.
+import tidy.rewrite_search.discovery.suggest
+
 open lean.parser
 open interactive
 
