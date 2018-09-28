@@ -6,4 +6,4 @@ path = "src"
 
 [dependencies]
 mathlib = {git = "https://github.com/leanprover/mathlib", rev = "120635628368ec261e031cefc6d30e0304088b03"}
-libk = {git = "https://github.com/khoek/libk", rev = "f4272b393e47c23d1f97d07a339411ab2cf03f88"}
+libk = {git = "https://github.com/khoek/libk", rev = "461caf0b2915dd612a5e9f4ad7f6b627506d4ec0"}
