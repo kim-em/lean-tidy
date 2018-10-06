@@ -102,6 +102,12 @@ meta def chop : expr → option (name × list level × list expr)
   end
 | _ := none
 
+meta def name (e : expr) : option name :=
+  match chop e with
+  | none := none
+  | some (n, _, _) := n
+  end
+
 end app
 
 namespace structure_instance

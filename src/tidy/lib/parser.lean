@@ -74,4 +74,10 @@ meta def of_tactic_safe {α : Type} (t : tactic α) : lean.parser α := do
   | boxed_result.failure _ reason := interaction_monad.fail reason
   end
 
+meta def get_current_namespace : lean.parser name := do
+  n ← mk_user_fresh_name "secret" "ns___",
+  mk_definition_here_raw n [] `(unit) "()",
+  n ← tactic.resolve_constant n,
+  return $ (list.range 5).foldl (λ nn : name, λ _, nn.get_prefix) n
+
 end lean.parser

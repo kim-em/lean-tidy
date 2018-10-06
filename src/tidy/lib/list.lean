@@ -1,7 +1,7 @@
 import data.option
 import data.buffer
 
-universe u
+universes u v w
 
 namespace list
 
