@@ -5,10 +5,11 @@
 import tactic.basic
 import tactic.tidy
 import tactic.back
+import tactic.chain
 import .forwards_reasoning
 import .rewrite_search
 import .rewrite_search.tracer
-import .luxembourg_chain
+-- import .luxembourg_chain
 import category_theory.category
 import .recover
 
