@@ -4,12 +4,13 @@
 
 import tactic.basic
 import tactic.tidy
-import .backwards_reasoning
+import tactic.back
 import .forwards_reasoning
 import .rewrite_search
 import .rewrite_search.tracer
 import .luxembourg_chain
 import category_theory.category
+import .recover
 
 open tactic
 
@@ -17,7 +18,7 @@ meta def extended_tidy_tactics : list (tactic string) :=
 [ reflexivity                                 >> pure "refl",
   `[exact dec_trivial]                        >> pure "exact dec_trivial",
   propositional_goal >> assumption            >> pure "assumption",
-  backwards_reasoning,
+  `[back]                                     >> pure "back",
   `[ext1]                                     >> pure "ext1",
   intros1                                     >>= λ ns, pure ("intros " ++ (" ".intercalate (ns.map (λ e, e.to_string)))),
   auto_cases,

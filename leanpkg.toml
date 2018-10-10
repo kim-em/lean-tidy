@@ -5,5 +5,5 @@ lean_version = "khoek/klean:3.4.4"
 path = "src"
 
 [dependencies]
-mathlib = {git = "https://github.com/leanprover/mathlib", rev = "120635628368ec261e031cefc6d30e0304088b03"}
+mathlib = {git = "https://github.com/leanprover-community/mathlib", rev = "14e61725c5f7902cb3ade9e9f6d24b9dfecee0c4"}
 libk = {git = "https://github.com/khoek/libk", rev = "461caf0b2915dd612a5e9f4ad7f6b627506d4ec0"}
