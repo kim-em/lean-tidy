@@ -129,6 +129,7 @@ do ty ← infer_type eq,
   L.mfilter_map (λ p, do_substitutions eq symm t lhs rhs p.1 p.2.head p.2.tail)
 
 meta structure rewrite_all_cfg extends rewrite_cfg :=
+(try_simp   : bool := ff) -- TODO move the handling logic for me into rewrite_all_wrappers
 (discharger : tactic unit := skip) -- FIXME this is ignored for now
 (simplifier : expr → tactic (expr × expr) := λ e, failed) -- FIXME get rid of this?
 

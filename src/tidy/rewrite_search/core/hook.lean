@@ -31,8 +31,8 @@ meta def discover_more_rewrites (rs : list (expr × bool)) (exp : expr) (cfg : r
          | some prog := pure (prog, [])
          | none := do
           prog ← progress_init rs exp cfg s,
-          sl ← try_simp_rewrite exp,
-          pure (prog, sl.to_list)
+          sl ← if cfg.try_simp then option.to_list <$> try_simp_rewrite exp else pure [],
+          pure (prog, sl)
          end,
   (prog, rw) ← progress_next prog,
   return (some prog, head.append rw.to_list)

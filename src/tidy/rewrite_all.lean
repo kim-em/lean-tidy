@@ -9,6 +9,7 @@ import tidy.lib.tactic
 open tactic
 
 meta structure rewrite_all_cfg extends rewrite_cfg :=
+(try_simp   : bool := ff) -- TODO move the handling logic for me into rewrite_all_wrappers
 (discharger : tactic unit := skip)
 (simplifier : expr → tactic (expr × expr) := λ e, failed)
 
