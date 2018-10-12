@@ -34,8 +34,7 @@ def args (dir : string) (app : string) : io.process.spawn_args := {
 structure visualiser :=
   (proc : io.proc.child)
 meta def visualiser.publish (v : visualiser) (s : string) : tactic unit :=
-  let chrs : list char := (s.to_list.stripl ['\n', '\x0D']).append ['\n'] in
-  tactic.unsafe_run_io (io.fs.write v.proc.stdin (char_buffer.from_list (utf8.decode chrs)) >> io.fs.flush v.proc.stdin)
+  tactic.unsafe_run_io (io.fs.write v.proc.stdin s.to_char_buffer >> io.fs.flush v.proc.stdin)
 meta def visualiser.pause (v : visualiser) : tactic unit :=
   tactic.unsafe_run_io (do io.fs.read v.proc.stdout 1, return ())
 
@@ -106,7 +105,7 @@ meta def graph_tracer_init : tactic (init_result visualiser) := do
   end
 
 meta def graph_tracer_publish_vertex (vs : visualiser) (v : vertex) : tactic unit := do
-  vs.publish (to_string (format!"V|{v.id.to_string}|{v.s.to_string}|{v.pp}"))
+  vs.publish (to_string (format!"V|{v.id.to_string}|{v.s.to_string}| "))
 
 meta def graph_tracer_publish_edge (vs : visualiser) (e : edge) : tactic unit :=
   vs.publish (to_string (format!"E|{e.f.to_string}|{e.t.to_string}"))
