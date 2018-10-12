@@ -21,8 +21,8 @@ def decode_char (c : char) : list char :=
       code
     ]
     else if code < MAX_TWO_B then [
-      lor (land (shiftr code 6) 0x1F) TAG_TWO_B,
-      lor (land (shiftr code 0) 0x3F) TAG_CONT
+      lor (land (shiftr code  6) 0x1F) TAG_TWO_B,
+      lor (land (shiftr code  0) 0x3F) TAG_CONT
     ]
     else if code < MAX_THREE_B then [
       lor (land (shiftr code 12) 0x0F) TAG_THREE_B,
