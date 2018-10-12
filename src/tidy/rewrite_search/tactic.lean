@@ -52,8 +52,8 @@ meta def collect_rw_lemmas (cfg : rewrite_search_config α β γ δ) (use_sugges
   let rws := rws ++ extra_rws ++ hyp_rws,
 
   locs ← local_context,
-  rws ← rws.mmap $ discovery.inflate_rw locs,
-  return (prog, rws.join)
+  rws ← if cfg.inflate_rws then list.join <$> (rws.mmap $ discovery.inflate_rw locs) else pure rws,
+  return (prog, rws)
 
 meta def rewrite_search_target (cfg : rewrite_search_config α β γ δ) (use_suggest_annotations : bool) (per : discovery.persistence) (extra_names : list name) (extra_rws : list (expr × bool)) : tactic string := do
   t ← target,

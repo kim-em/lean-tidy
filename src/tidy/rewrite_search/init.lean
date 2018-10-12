@@ -25,6 +25,7 @@ meta structure rewrite_search_config (α β γ δ : Type) extends rewrite_all_cf
 (trace_result    : bool := ff)
 (trace_rules     : bool := ff)
 (trace_discovery : bool := tt)
+(inflate_rws     : bool := ff)
 (exhaustive      : bool := ff)
 (help_me         : bool := ff)
 (metric          : metric_constructor β γ . pick_default_metric)
