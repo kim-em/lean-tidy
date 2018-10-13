@@ -22,12 +22,12 @@ focus1 $ do
   r ← apply t,
   try (any_goals (terminal_goal >> solve_by_elim))
 
-meta def back'_attribute : user_attribute := {
-  name := `back',
-  descr := "A lemma that should be applied to a goal whenever possible, as long as all arguments to the lemma by be fulfilled from existing hypotheses; use `backwards_reasoning` to automatically apply all lemmas tagged `[back']`."
+meta def elim_attribute : user_attribute := {
+  name := `elim,
+  descr := "A lemma that should be applied to a goal whenever possible, as long as all arguments to the lemma by be fulfilled from existing hypotheses; use `backwards_reasoning` to automatically apply all lemmas tagged `[elim]`."
 }
 
-run_cmd attribute.register ``back'_attribute
+run_cmd attribute.register ``elim_attribute
 
 /-- Try to apply the given lemma, fulfilling all new goals using existing hypotheses. -/
 meta def apply_no_new_goals (c : name) : tactic unit :=
@@ -43,9 +43,9 @@ meta def any_apply_with (f : name → tactic unit) : list name → tactic name
 | []      := failed
 | (c::cs) := (f c >> pure c) <|> any_apply_with cs
 
-/-- Try to apply any lemma marked with the attributes `@[back]` or `@[back']`. -/
+/-- Try to apply any lemma marked with the attributes `@[back]` or `@[elim]`. -/
 meta def backwards_reasoning : tactic string :=
-(attribute.get_instances `back' >>= any_apply_with apply_no_new_goals >>=
+(attribute.get_instances `elim >>= any_apply_with apply_no_new_goals >>=
   λ n, return ("apply " ++ n.to_string ++ " ; solve_by_elim")) <|>
 (attribute.get_instances `back >>= any_apply_with apply_using_solve_by_elim >>=
   λ n, return ("apply " ++ n.to_string)) <|>
@@ -60,4 +60,4 @@ attribute [extensionality] subtype.eq
 attribute [back] quotient.mk quotient.sound
 
 attribute [back] eqv_gen.rel
-attribute [back'] Exists.intro
+attribute [elim] Exists.intro
