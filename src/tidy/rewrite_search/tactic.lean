@@ -131,6 +131,9 @@ meta def rewrite_search_using (as : list name) (cfg : rewrite_search_config α �
 -- @Scott should we still do this?
 --  exprs ← close_under_apps exprs, -- TODO don't do this for everything, it's too expensive: only for specially marked lemmas
 
+-- @Keeley, the ideal thing would be to look for lemmas that have a metavariable for their LHS,
+-- and try substituting in hypotheses to these.
+
 meta def simp_search (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic unit := do
   simp_search_target cfg tt try_everything [] []
 
