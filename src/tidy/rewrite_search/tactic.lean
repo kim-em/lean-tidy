@@ -28,7 +28,7 @@ meta def try_search (cfg : rewrite_search_config α β γ δ) (prog : discovery.
     end
   end
 
-meta def rewrite_search_pair (cfg : rewrite_search_config α β γ δ) (prog : discovery.progress) (rs : list (expr × bool)) (eqn : sided_pair expr) := do
+meta def rewrite_search_pair (cfg : rewrite_search_config α β γ δ) (prog : discovery.progress) (rs : list (expr × bool)) (eqn : sided_pair expr) : tactic string := do
   result ← try_search cfg prog rs eqn,
   match result with
   | some str := return str
