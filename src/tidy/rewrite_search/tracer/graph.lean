@@ -34,7 +34,7 @@ def args (dir : string) (app : string) : io.process.spawn_args := {
 structure visualiser :=
   (proc : io.proc.child)
 meta def visualiser.publish (v : visualiser) (s : string) : tactic unit :=
-  tactic.unsafe_run_io (io.fs.write v.proc.stdin s.to_char_buffer >> io.fs.flush v.proc.stdin)
+  tactic.unsafe_run_io (io.fs.write v.proc.stdin (s.to_char_buffer.push_back '\n') >> io.fs.flush v.proc.stdin)
 meta def visualiser.pause (v : visualiser) : tactic unit :=
   tactic.unsafe_run_io (do io.fs.read v.proc.stdout 1, return ())
 
