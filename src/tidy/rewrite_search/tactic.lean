@@ -55,7 +55,10 @@ meta def collect_rw_lemmas (cfg : rewrite_search_config α β γ δ) (use_sugges
   rws ← if cfg.inflate_rws then list.join <$> (rws.mmap $ discovery.inflate_rw locs) else pure rws,
   return (prog, rws)
 
-meta def rewrite_search_target (cfg : rewrite_search_config α β γ δ) (use_suggest_annotations : bool) (per : discovery.persistence) (extra_names : list name) (extra_rws : list (expr × bool)) : tactic string := do
+meta def rewrite_search_target (cfg : rewrite_search_config α β γ δ) (try_harder : bool) (use_suggest_annotations : bool) (per : discovery.persistence) (extra_names : list name) (extra_rws : list (expr × bool)) : tactic string := do
+  let cfg := if ¬try_harder then cfg else
+    {cfg with max_discovers := max cfg.max_discovers 3, try_simp := tt},
+
   t ← target,
   if t.has_meta_var then
     fail "rewrite_search is not suitable for goals containing metavariables"
@@ -110,23 +113,41 @@ meta def simp_search_target (cfg : rewrite_search_config α β γ δ) (use_sugge
   (n, pf) ← simplify s to_unfold t {contextual := tt} `eq failed,
   replace_target n pf >> try tactic.triv >> try (tactic.reflexivity reducible)
 
+open tidy.rewrite_search.discovery.persistence
+
+meta def rewrite_search (try_harder : bool := ff) (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic string :=
+  rewrite_search_target cfg try_harder tt try_everything [] []
+
+meta def rewrite_search_with (try_harder : bool := ff) (rs : list interactive.rw_rule) (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic string := do
+  extra_rws ← discovery.rewrite_list_from_rw_rules rs,
+  rewrite_search_target cfg try_harder tt speedy [] extra_rws
+
+meta def rewrite_search_using (try_harder : bool := ff) (as : list name) (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic string := do
+  extra_names ← discovery.load_attr_list as,
+  rewrite_search_target cfg try_harder ff try_bundles extra_names []
+
+meta def simp_search (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic unit := do
+  simp_search_target cfg tt try_everything [] []
+
+meta def simp_search_with (rs : list interactive.rw_rule) (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic unit := do
+  extra_rws ← discovery.rewrite_list_from_rw_rules rs,
+  simp_search_target cfg tt try_everything [] extra_rws
+
 end tidy.rewrite_search
 
 namespace tactic.interactive
 
-open interactive
-open tidy.rewrite_search tidy.rewrite_search.discovery.persistence
+open lean.parser interactive
+open tidy.rewrite_search
 
-meta def rewrite_search (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic string :=
-  rewrite_search_target cfg tt try_everything [] []
+meta def rewrite_search (try_harder : parse $ optional (tk "!")) (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic string :=
+  tidy.rewrite_search.rewrite_search (¬try_harder.is_none) cfg
 
-meta def rewrite_search_with (rs : parse rw_rules) (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic string := do
-  extra_rws ← discovery.rewrite_list_from_rw_rules rs.rules,
-  rewrite_search_target cfg tt speedy [] extra_rws
+meta def rewrite_search_with (try_harder : parse $ optional (tk "!")) (rs : parse rw_rules) (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic string :=
+  tidy.rewrite_search.rewrite_search_with (¬try_harder.is_none) rs.rules cfg
 
-meta def rewrite_search_using (as : list name) (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic string := do
-  extra_names ← discovery.load_attr_list as,
-  rewrite_search_target cfg ff try_bundles extra_names []
+meta def rewrite_search_using (try_harder : parse $ optional (tk "!")) (as : list name) (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic string :=
+  tidy.rewrite_search.rewrite_search_using (¬try_harder.is_none) as cfg
 
 -- @Scott should we still do this?
 --  exprs ← close_under_apps exprs, -- TODO don't do this for everything, it's too expensive: only for specially marked lemmas
@@ -134,11 +155,10 @@ meta def rewrite_search_using (as : list name) (cfg : rewrite_search_config α �
 -- @Keeley, the ideal thing would be to look for lemmas that have a metavariable for their LHS,
 -- and try substituting in hypotheses to these.
 
-meta def simp_search (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic unit := do
-  simp_search_target cfg tt try_everything [] []
+meta def simp_search (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic unit :=
+  tidy.rewrite_search.simp_search cfg
 
-meta def simp_search_with (rs : parse rw_rules) (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic unit := do
-  extra_rws ← discovery.rewrite_list_from_rw_rules rs.rules,
-  simp_search_target cfg tt try_everything [] extra_rws
+meta def simp_search_with (rs : parse rw_rules) (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic unit :=
+  tidy.rewrite_search.simp_search_with rs.rules cfg
 
 end tactic.interactive

@@ -18,7 +18,7 @@ meta def pick_default_strategy : tactic unit := `[exact tidy.rewrite_search.stra
 -- of the settings and modules by `try_mk_search_instance`.
 meta structure rewrite_search_config (α β γ δ : Type) extends rewrite_all_cfg :=
 (max_iterations  : ℕ := 500)
-(max_discovers   : ℕ := 3)
+(max_discovers   : ℕ := 0)
 (suggest         : list name := [])
 (trace           : bool := ff)
 (trace_summary   : bool := ff)
@@ -79,7 +79,8 @@ do
     trace_discovery := cfg.trace_discovery,
     exhaustive := cfg.exhaustive,
     discharger := cfg.discharger,
-    simplifier := cfg.simplifier
+    simplifier := cfg.simplifier,
+    try_simp := cfg.try_simp,
   },
   i ← setup_instance conf strat m tr strat_state metric_state tracer_state prog eqn,
   return i
