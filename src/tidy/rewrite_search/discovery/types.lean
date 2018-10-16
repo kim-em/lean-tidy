@@ -12,7 +12,8 @@ namespace tidy.rewrite_search.discovery
 meta def discovery_trace {α : Type u} [has_to_tactic_format α] (a : α) (nl : bool := tt) : tactic unit := do
   str ← tactic.pp a,
   let nlc := if nl then "\n" else "",
-  tactic.trace format!"(discovery): {str}{nlc}"
+  cur ← tactic.decl_name,
+  tactic.trace format!"(discovery@{cur}): {str}{nlc}"
 
 meta def collector := config → progress → list expr → tactic (progress × list (expr × bool))
 
