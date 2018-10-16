@@ -163,7 +163,7 @@ meta def try_unify (p : pair) : tactic (search_state α β γ δ × bool) := do
 -- here since it is (currently) guaranteed that each element of `discovery.more_candidates`
 -- has an application *somewhere*.
 meta def be_desperate (goals : list pair) : tactic (search_state α β γ δ × bool) :=
-  if g.stats.num_discovers > g.conf.max_discovers then
+  if g.stats.num_discovers ≥ g.conf.max_discovers then
     return (g, ff)
   else do
     let g := g.mutate_stats {g.stats with num_discovers := g.stats.num_discovers + 1},
