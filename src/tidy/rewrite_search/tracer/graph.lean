@@ -96,7 +96,7 @@ meta def diagnose_launch_failure : io string := do
 meta def graph_tracer_init : tactic (init_result visualiser) := do
   c ← tactic.unsafe_run_io (try_launch_with_paths SEARCH_PATHS),
   match c with
-  | spawn_result.success c    := let vs : visualiser := ⟨ c ⟩ in do vs.publish "S\n", init_result.pure vs
+  | spawn_result.success c    := let vs : visualiser := ⟨ c ⟩ in do vs.publish "S", init_result.pure vs
   | spawn_result.abort reason := init_result.fail ("Error! " ++ reason)
   | spawn_result.failure      := do
     reason ← tactic.unsafe_run_io diagnose_launch_failure,
