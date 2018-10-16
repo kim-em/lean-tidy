@@ -1,6 +1,3 @@
--- "init.lean" provides setup wrappers for the rewrite_search core,
--- and the fallback strategy/metric/tracer for the engine.
-import .init
 
 -- "tactic.lean" provides the tactics
 import .tactic
