@@ -1,4 +1,5 @@
 import .interaction_monad
+import .name
 
 namespace lean.parser
 
@@ -16,7 +17,7 @@ meta def emit_command_here (str : string) : lean.parser string := do
 meta def emit_code_here (str : string) : lean.parser unit := do
   left ← emit_command_here str,
   if left.length = 0 then return ()
-  else tactic.fail "did not parse all of passed code"
+  else interaction_monad.fail "did not parse all of passed code"
 
 -- TODO polish up the `mk_*` family to be more robust, to the point where we take
 -- the same arguments as environment.add
@@ -39,24 +40,15 @@ meta def mk_definition_here (n : name) (vars : list (name × expr)) (type : opti
 
 -- TODO implement `mk_attribute_here`/`mk_attribute_here_raw`
 
-open name
-
-meta def chop_reserved_name (new_top_level : name := anonymous) : name → name
-| anonymous                := anonymous
-| (mk_numeral n anonymous) := mk_string ("n" ++ to_string n)     new_top_level
-| (mk_string  s anonymous) := mk_string s.to_list.tail.as_string new_top_level
-| (mk_numeral n pfx)       := mk_string ("n" ++ to_string n) $ chop_reserved_name pfx
-| (mk_string  s pfx)       := mk_string s                    $ chop_reserved_name pfx
-
-meta def mk_user_fresh_name (pfx : string := "") (sfx : string := "") : tactic name := do
-  let pfx_name := if pfx.length = 0 then anonymous else mk_string pfx anonymous,
-  chopped ← chop_reserved_name pfx_name <$> tactic.mk_fresh_name,
-  return $ if sfx.length = 0 then chopped else mk_string sfx chopped
-
 meta inductive boxed_result (α : Type)
 | success : α → boxed_result
 | failure : format → boxed_result
 
+-- The "lean.parser.of_tactic" function in core lean is broken:
+-- when the underlying tactic returns `fail msg` instead of a success,
+-- the result is not turned into a lean.parser monad fail, and instead
+-- a vm bad cast bugcheck (`is_closure`) is tripped. We provided a fixed
+-- alternative here.
 meta def of_tactic_safe {α : Type} (t : tactic α) : lean.parser α := do
   let tac : tactic (boxed_result α) := interaction_monad_orelse_intercept_safe (do
     r ← t,
@@ -75,7 +67,7 @@ meta def of_tactic_safe {α : Type} (t : tactic α) : lean.parser α := do
   end
 
 meta def get_current_namespace : lean.parser name := do
-  n ← mk_user_fresh_name "secret" "ns___",
+  n ← name.mk_user_fresh_name "secret" "ns___",
   mk_definition_here_raw n [] `(unit) "()",
   n ← tactic.resolve_constant n,
   return $ (list.range 5).foldl (λ nn : name, λ _, nn.get_prefix) n

@@ -1,3 +1,4 @@
+import tidy.lib.name
 import tidy.lib.parser
 
 -- Import the `@[suggest]` attribute definition, since we emit code which uses it.
@@ -14,7 +15,8 @@ meta def suggestion_cmd (d : decl_meta_info) (_ : parse $ tk "suggestion") : lea
   -- Implement option parsing here, e.g:
   -- tgt ← optional (tk "at" *> ident),
   pfx ← get_current_namespace,
-  sfx ← mk_user_fresh_name "suggestion" "s___",
-  let n := pfx ++ sfx,
-  tactic.add_meta_definition n [] `(list name) (reflect bn).to_expr,
-  user_attribute.set suggest_attr n [] tt
+  of_tactic_safe $ do
+    sfx ← name.mk_user_fresh_name "suggestion" "s___",
+    let n := pfx ++ sfx,
+    tactic.add_meta_definition n [] `(list name) (reflect bn).to_expr,
+    user_attribute.set suggest_attr n [] tt
