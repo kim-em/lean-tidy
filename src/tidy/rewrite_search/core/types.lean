@@ -1,4 +1,4 @@
-import tidy.lib
+import tidy.lib.table
 import data.rat
 
 import tidy.rewrite_search.discovery.shared

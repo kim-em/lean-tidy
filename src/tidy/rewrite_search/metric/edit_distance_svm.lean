@@ -1,7 +1,8 @@
+import libk
+import tidy.lib.num
+
 import tidy.rewrite_search.core
 import tidy.rewrite_search.metric.edit_distance
-
-import libk
 
 open tidy.rewrite_search
 open tidy.rewrite_search.edit_distance
