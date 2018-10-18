@@ -263,24 +263,22 @@ match i.g.solving_edge with
 end
 
 meta def backtrack : vertex → option edge → tactic (option expr × list edge)
-| v e := match e with
-       | none := return (none, [])
-       | (some e) := do
-                      proof ← e.proof,
-                      w ← i.g.vertices.get e.f,
-                      (prf_o, edges) ← backtrack w w.parent,
-                      match prf_o with
-                      | none := return (some proof, [e])
-                      | (some prf) := do new_prf ← tactic.mk_eq_trans prf proof,
-                                          return (some new_prf, e :: edges)
-                      end
-       end
+| v none := return (none, [])
+| v (some e) := do
+                 proof ← e.proof,
+                 w ← i.g.vertices.get e.f,
+                 (prf_o, edges) ← backtrack w w.parent,
+                 match prf_o with
+                 | none := return (some proof, [e])
+                 | (some prf) := do new_prf ← tactic.mk_eq_trans prf proof,
+                                  return (some new_prf, e :: edges)
+              end
 
 meta def combine_proofs : option expr → option expr → tactic expr
 | none     none     := fail "unreachable code!"
 | (some a) none     := return a
 | none     (some b) := mk_eq_symm b
-| (some a) (some b) := do b' ← mk_eq_symm b, mk_eq_trans a b'
+| (some a) (some b) := mk_eq_symm b >>= mk_eq_trans a
 
 meta def build_proof (e : edge) : tactic (expr × list edge) :=
 do
