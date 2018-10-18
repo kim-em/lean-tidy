@@ -26,7 +26,6 @@ meta def check_if_simple_rewrite_succeeds (rewrites : list (expr × bool)) : tac
 lock_tactic_state $
 focus1 $
 do
-  t ← target,
   rewrites.mmap' (λ q : expr × bool, rewrite_target q.1 {symm := q.2, md := semireducible}),
   (reflexivity reducible >> return ff) <|> (reflexivity >> return tt)
 
