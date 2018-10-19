@@ -217,7 +217,7 @@ meta def mutate_metric (new_state : β) : search_state α β γ δ :=
 meta def mutate_stats (new_stats : statistics) : search_state α β γ δ :=
 { g with stats := new_stats}
 
-meta def set_vertex (v : vertex) : (search_state α β γ δ × vertex) :=
+meta def set_vertex (v : vertex) : search_state α β γ δ × vertex :=
 ({ g with vertices := g.vertices.set v.id v }, v)
 
 meta def lookup_pair (p : pair) : tactic (vertex × vertex) := do
@@ -229,7 +229,5 @@ vf ← g.vertices.get e.f, vt ← g.vertices.get e.t, return (vf, vt)
 meta def get_estimate_verts (de : dist_estimate γ) : tactic (vertex × vertex) := g.lookup_pair de.to_pair
 
 end search_state
-
-meta structure siterator (α : Type)
 
 end tidy.rewrite_search
