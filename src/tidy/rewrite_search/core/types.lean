@@ -131,26 +131,27 @@ inductive init_result (ε : Type)
 
 meta def init_fn (ε : Type) := tactic (init_result ε)
 
-meta def init_result.pure {ε : Type} (v : ε) : tactic (init_result ε) := pure $ init_result.success v
+namespace init_result
+meta def pure {ε : Type} (v : ε) : tactic (init_result ε) := return $ success v
+meta def fail {ε : Type} (reason : string) : tactic (init_result ε) := return $ init_result.failure ε reason
 
-meta def init_result.fail {ε : Type} (reason : string) : tactic (init_result ε) := pure $ init_result.failure ε reason
-
-meta def init_result.cases {ε η : Type} (name : string) (fn : init_fn ε) (next_step : ε → tactic η) (fallback : string → tactic η) : tactic η := do
+meta def cases {ε η : Type} (name : string) (fn : init_fn ε) (next_step : ε → tactic η) (fallback : string → tactic η) : tactic η := do
   val ← fn,
   match val with
-  | init_result.failure _ reason := do
+  | failure _ reason := do
     fallback reason
-  | init_result.success val := do
+  | success val := do
     next_step val
   end
 
-meta def init_result.chain {ε η : Type} (name : string) (fn : init_fn ε) (next_step : ε → init_fn η) : tactic (init_result η) :=
-  init_result.cases name fn next_step $ λ reason, return $ init_result.failure _ ("An error occurred while initialising " ++ name ++ ": " ++ reason)
+meta def chain {ε η : Type} (name : string) (fn : init_fn ε) (next_step : ε → init_fn η) : tactic (init_result η) :=
+  cases name fn next_step $ λ reason, return $ failure _ ("An error occurred while initialising " ++ name ++ ": " ++ reason)
 
-meta def init_result.try {ε η : Type} (name : string) (fn : init_fn ε) (next_step : ε → tactic (option η)) : tactic (option η) :=
-  init_result.cases name fn next_step $ λ reason, do
+meta def try {ε η : Type} (name : string) (fn : init_fn ε) (next_step : ε → tactic (option η)) : tactic (option η) :=
+  cases name fn next_step $ λ reason, do
     tactic.trace ("\nWarning: failed to initialise " ++ name ++ "! Reason:\n\n" ++ reason),
     return none
+end init_result
 
 meta structure tracer (α β γ δ : Type) :=
 (init             : init_fn δ)
