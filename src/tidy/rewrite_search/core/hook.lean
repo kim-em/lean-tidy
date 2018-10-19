@@ -15,23 +15,21 @@ meta def progress_next : rewrite_progress → tactic (rewrite_progress × option
 | mllist.nil        := return (mllist.nil, none)
 | (mllist.cons a l) := do r ← l, return (r, some a)
 
-meta def try_simp_rewrite (exp : expr) : tactic (option rewrite) := do
-  (do (simp_exp, simp_prf) ← tactic.simp_expr exp,
-      return $ some ⟨simp_exp, pure simp_prf, how.simp⟩)
-  <|> return none
+meta def simp_rewrite (exp : expr) : tactic rewrite := do
+  (simp_exp, simp_prf) ← tactic.simp_expr exp,
+  return ⟨simp_exp, pure simp_prf, how.simp⟩
 
 -- FIXME I don't know how to extract a proof of equality from `simp_lemmas.dsimplify`
--- meta def try_dsimp_rewrite (exp : expr) : tactic (option rewrite) := do
---   (do dsimp_exp ← tactic.dsimp_expr exp,
---       return $ some ⟨dsimp_exp, ???, how.defeq⟩)
---   <|> return none
+-- meta def dsimp_rewrite (exp : expr) : tactic rewrite := do
+--   dsimp_exp ← tactic.dsimp_expr exp,
+--   return $ some ⟨dsimp_exp, ???, how.defeq⟩
 
 meta def discover_more_rewrites (rs : list (expr × bool)) (exp : expr) (cfg : rewrite_all_cfg) (s : side) (prog : option rewrite_progress) : tactic (option rewrite_progress × list rewrite) := do
   (prog, head) ← match prog with
          | some prog := pure (prog, [])
          | none := do
           prog ← progress_init rs exp cfg s,
-          sl ← if cfg.try_simp then option.to_list <$> try_simp_rewrite exp else pure [],
+          sl ← if cfg.try_simp then option.to_list <$> tactic.try_core (simp_rewrite exp) else pure [],
           pure (prog, sl)
          end,
   (prog, rw) ← progress_next prog,
