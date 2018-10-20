@@ -31,10 +31,10 @@ do
 
 meta def pp_rules (rs : list (expr × bool)) : tactic (list string) := rs.mmap (λ p, (do pp ← pretty_print p.1, return (if p.2 then ("←" ++ pp) else pp)))
 
-meta def explain_search_result (cfg : config) (proof : expr) (steps : list how) : tactic string := do
+meta def explain_search_result' (cfg : config) (proof : expr) (steps : list how) : tactic string := do
   if cfg.trace then do
-    pp ← pretty_print proof,
-    trace format!"rewrite_search found proof:\n{pp}"
+  pp ← pretty_print proof,
+  trace format!"rewrite_search found proof:\n{pp}"
   else skip,
   rules_strings ← pp_rules cfg.rs,
   let rewrites := (steps.map $ λ s, match s with
@@ -48,5 +48,15 @@ meta def explain_search_result (cfg : config) (proof : expr) (steps : list how) 
   if cfg.trace_result then trace explanation
   else skip,
   return explanation
+
+meta def explain_search_result (cfg : config) (proof : expr) (steps : list proof_unit) : tactic string := do
+  -- FIXME introduce suppose for general `proof_unit` structures
+  match steps with
+  | [u] := if u.trans_start.is_none then explain_search_result' cfg proof u.hows
+    else explain_search_result' cfg proof u.hows.reverse
+  | [u1, u2] := if ¬(u1.trans_start.is_none ∧ u2.trans_start.is_some) then return "<???>"
+    else explain_search_result' cfg proof (u1.hows ++ u2.hows.reverse)
+  | _ := return "<???>"
+  end
 
 end tidy.rewrite_search

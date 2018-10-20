@@ -3,9 +3,8 @@ import tidy.rewrite_search.discovery.collect
 
 import .types
 import .debug
+import .backtrack
 import .explain
-
-open tactic
 
 universe u
 
@@ -150,7 +149,7 @@ meta def alloc_estimate (p : pair) : tactic (search_state α β γ δ × table_r
 /-- Check if `eq.refl _` suffices to prove the two sides are equal. -/
 meta def try_unify (p : pair) : tactic (search_state α β γ δ × bool) := do
   (lhs, rhs) ← g.lookup_pair p,
-  prf ← try_core $ attempt_refl lhs.exp rhs.exp,
+  prf ← tactic.try_core $ tactic.attempt_refl lhs.exp rhs.exp,
   match prf with
   | none := return (g, ff)
   | some prf := do
@@ -262,62 +261,16 @@ match i.g.solving_edge with
     return (i.mutate g, s)
 end
 
-meta def backtrack : vertex → option edge → tactic (option expr × list edge)
-| v none := return (none, [])
-| v (some e) := do
-                 proof ← e.proof,
-                 w ← i.g.vertices.get e.f,
-                 (prf_o, edges) ← backtrack w w.parent,
-                 match prf_o with
-                 | none := return (some proof, [e])
-                 | (some prf) := do new_prf ← tactic.mk_eq_trans prf proof,
-                                  return (some new_prf, e :: edges)
-              end
-
-meta def combine_proofs : option expr → option expr → tactic expr
-| none     none     := fail "unreachable code!"
-| (some a) none     := return a
-| none     (some b) := mk_eq_symm b
-| (some a) (some b) := mk_eq_symm b >>= mk_eq_trans a
-
-meta def build_proof (e : edge) : tactic (expr × list edge) :=
-do
-  (from_vertex, to_vertex) ← i.g.get_endpoints e,
-
-  (from_prf, from_edges) ← i.backtrack to_vertex e,
-  (to_prf, to_edges) ← i.backtrack to_vertex to_vertex.parent,
-
-  proof ← match from_vertex.s with
-           | side.L := combine_proofs from_prf to_prf
-           | side.R := combine_proofs to_prf from_prf
-           end,
-
-  let edges := match from_vertex.s with
-               | side.L := (to_edges ++ from_edges).reverse
-               | side.R := (from_edges ++ to_edges).reverse
-               end,
-
-  -- This must be called before i.exhaust_all
-  i.g.tracer_search_finished edges,
-
-  i.g.trace from_vertex.to_string,
-  i.g.trace to_vertex.to_string,
-
-  if i.g.conf.trace_summary then do
-    let vl := i.g.vertices.to_list,
-    let saw := vl.length,
-    let visited := (vl.filter (λ v : vertex, v.visited)).length,
-    name ← decl_name,
-    tactic.trace format!"rewrite_search (saw/visited/used) {saw}/{visited}/{edges.length} expressions during proof of {name}"
-  else skip,
+meta def finish_search (e : edge) : tactic (inst α β γ δ × search_result) := do
+  -- This must be called before i.g.exhaust_all
+  (proof, units) ← backtrack.build_proof i e,
 
   i ← if i.g.conf.exhaustive then do
-        g ← i.g.exhaust_all,
-        pure $ i.mutate g
-      else
-        pure i,
-
-  return (proof, edges)
+      g ← i.g.exhaust_all,
+      pure $ i.mutate g
+    else
+      pure i,
+  return (i, search_result.success proof units)
 
 meta def search_until_solved_aux : inst α β γ δ → ℕ → tactic (inst α β γ δ × search_result)
 | i itr := do
@@ -326,15 +279,13 @@ meta def search_until_solved_aux : inst α β γ δ → ℕ → tactic (inst α 
   | status.continue := search_until_solved_aux i (itr + 1)
   | status.repeat   := search_until_solved_aux i itr
   | status.abort r  := return (i, search_result.failure ("aborted: " ++ r))
-  | status.done e   := do
-    (proof, edges) ← i.build_proof e,
-    return (i, search_result.success proof (edges.map edge.how))
+  | status.done e   := i.finish_search e
   end
 
 meta def search_until_solved : tactic (inst α β γ δ × search_result) :=
   i.search_until_solved_aux 0
 
-meta def explain (proof : expr) (steps : list how) : tactic string :=
+meta def explain (proof : expr) (steps : list proof_unit) : tactic string :=
   explain_search_result i.g.conf proof steps
 
 end inst

@@ -3,20 +3,12 @@ import tidy.lib.env
 import tidy.lib.tactic
 import tidy.lib.pretty_print
 
+import tidy.rewrite_search.core.common
+
+open tidy.rewrite_search
 open tactic tactic.interactive
-open interactive
 
 namespace tidy.rewrite_search.discovery
-
--- TODO make sure this didn't break anything
-meta def is_acceptable_rewrite (t : expr) : bool :=
-  is_eq_or_iff_after_binders t
-
-meta def is_acceptable_lemma (r : expr) : tactic bool :=
-  is_acceptable_rewrite <$> infer_type r
-
-meta def is_acceptable_hyp (r : expr) : tactic bool :=
-  do t ← infer_type r, return $ is_acceptable_rewrite t ∧ ¬t.has_meta_var
 
 meta def assert_acceptable_lemma (r : expr) : tactic unit := do
   ret ← is_acceptable_lemma r,

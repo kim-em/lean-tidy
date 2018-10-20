@@ -1,5 +1,5 @@
 import tidy.lib.env
-import tidy.rewrite_search.core.shared
+import tidy.rewrite_search.core.common
 
 import .types
 import .screening

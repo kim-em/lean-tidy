@@ -1,18 +1,14 @@
 import tidy.lib.table
 import data.rat
 
-import tidy.rewrite_search.discovery.shared
+import tidy.rewrite_search.discovery.common
 
-import .shared
+import .common
 import .hook
 
 universe u
 
 namespace tidy.rewrite_search
-
-meta inductive search_result
-| success (proof : expr) (steps : list how) : search_result
-| failure (message : string) : search_result
 
 inductive bound_progress (β : Type u)
 | exactly : ℚ → β → bound_progress
@@ -39,10 +35,12 @@ namespace edge
 
   --TODO what to do about the how? Using this currently breaks backtracking
   meta def flip : edge := ⟨e.t, e.f, e.proof >>= tactic.mk_eq_symm, e.how⟩
-  meta def orient (r : table_ref) : option edge :=
-    if e.f = r then e else
-    if e.t = r then e.flip else
+  meta def other (r : table_ref) : option table_ref :=
+    if e.f = r then e.t else
+    if e.t = r then e.f else
     none
+
+  meta instance has_to_format : has_to_format edge := ⟨λ e, format!"{e.f}->{e.t}"⟩
 end edge
 
 structure rewriterator :=
@@ -179,6 +177,9 @@ meta structure search_state (α β γ δ : Type) :=
 (prog         : discovery.progress)
 (stats        : statistics)
 
+def LHS_VERTEX_ID : table_ref := table_ref.from_nat 0
+def RHS_VERTEX_ID : table_ref := table_ref.from_nat 1
+
 meta def update_fn (α β γ δ : Type) : Type := search_state α β γ δ → ℕ → tactic (search_state α β γ δ)
 meta def init_bound_fn (α β γ δ : Type) := search_state α β γ δ → vertex → vertex → bound_progress γ
 meta def improve_estimate_fn (α β γ δ : Type) := search_state α β γ δ → ℚ → vertex → vertex → bound_progress γ → bound_progress γ
@@ -230,5 +231,37 @@ vf ← g.vertices.get e.f, vt ← g.vertices.get e.t, return (vf, vt)
 meta def get_estimate_verts (de : dist_estimate γ) : tactic (vertex × vertex) := g.lookup_pair de.to_pair
 
 end search_state
+
+meta structure proof_unit :=
+(proof : expr)
+(trans_start : option string)
+(hows : list how)
+meta def proof_unit.orient : proof_unit → tactic expr
+| ⟨proof, none, _⟩   := return proof
+| ⟨proof, some _, _⟩ := tactic.mk_eq_symm proof
+meta def proof_unit.add (u : proof_unit) (e : edge) : tactic proof_unit := do
+  e_proof ← e.proof,
+  match u with
+  | ⟨proof, none, hows⟩ := do
+    do pp ← tactic.infer_type proof >>= pretty_print,
+    do pp2 ← tactic.infer_type e_proof >>= pretty_print,
+    tactic.trace format!"trans {pp2} {pp}",
+    new_proof ← tactic.mk_eq_trans e_proof proof,
+    do pp3 ← tactic.infer_type new_proof >>= pretty_print,
+    tactic.trace format!"={pp3}",
+    return ⟨new_proof, none, e.how :: hows⟩
+  | ⟨proof, some s, hows⟩ := do
+    do pp ← tactic.infer_type proof >>= pretty_print,
+    do pp2 ← tactic.infer_type e_proof >>= pretty_print,
+    tactic.trace format!"transflip {pp} {pp2}",
+    new_proof ← tactic.mk_eq_trans proof e_proof,
+    do pp3 ← tactic.infer_type new_proof >>= pretty_print,
+    tactic.trace format!"={pp3}",
+    return ⟨new_proof, none, hows.concat e.how⟩
+  end
+
+meta inductive search_result
+| success (proof : expr) (units : list proof_unit) : search_result
+| failure (message : string) : search_result
 
 end tidy.rewrite_search

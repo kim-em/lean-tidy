@@ -1,6 +1,6 @@
-import tidy.rewrite_search.core.shared
+import tidy.rewrite_search.core.common
 
-import .shared
+import .common
 import .bundle
 
 universe u

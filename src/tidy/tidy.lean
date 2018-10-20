@@ -7,7 +7,6 @@ import tactic.tidy
 import .backwards_reasoning
 import .forwards_reasoning
 import .rewrite_search
-import .rewrite_search.tracer
 import .luxembourg_chain
 import category_theory.category
 

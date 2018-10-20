@@ -11,6 +11,7 @@ def table_ref.next (r : table_ref) : table_ref := table_ref.from_nat (r + 1)
 def table_ref.null  : table_ref := table_ref.from_nat 0x8FFFFFFF
 def table_ref.first : table_ref := table_ref.from_nat 0
 instance : has_to_string table_ref := ⟨λ t, t.to_string⟩
+meta instance : has_to_format table_ref := ⟨λ t, t.to_string⟩
 
 class indexed (α : Type u) :=
 (index : α → table_ref)
@@ -66,6 +67,8 @@ def at_ref (r : table_ref) : option α :=
   | none := none
   | some r := t.entries.read r
   end
+
+def present (r : table_ref) : bool := (t.at_ref r).is_some
 
 meta def get (r : table_ref) : tactic α := t.at_ref r
 

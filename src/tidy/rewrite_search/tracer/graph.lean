@@ -105,7 +105,7 @@ meta def graph_tracer_init : tactic (init_result visualiser) := do
   end
 
 meta def graph_tracer_publish_vertex (vs : visualiser) (v : vertex) : tactic unit := do
-  vs.publish (to_string (format!"V|{v.id.to_string}|{v.s.to_string}| "))
+  vs.publish (to_string (format!"V|{v.id.to_string}|{v.s.to_string}|{v.id}"))
 
 meta def graph_tracer_publish_edge (vs : visualiser) (e : edge) : tactic unit :=
   vs.publish (to_string (format!"E|{e.f.to_string}|{e.t.to_string}"))

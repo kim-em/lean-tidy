@@ -1,18 +1,99 @@
--- Copyright (c) 2018 Scott Morrison. All rights reserved.
--- Released under Apache 2.0 license as described in the file LICENSE.
--- Authors: Keeley Hoek, Scott Morrison
-
-import .init
-import .discovery
-
 import tidy.lib.list
 import tidy.lib.expr
 
+-- This file almost qualifies for inclusion in the `core` dir, but
+-- the hooks into non-core pieces, i.e. providing defaults, and also
+-- the external interface it exports is enough to keep it out here.
+import .core
+
+-- Default strategy, metric, and tracer used as a fallback by the engine
+-- (so must be present)
+import .strategy.pexplore
+import .metric.edit_distance
+import .tracer.unit
+
 open tactic
+
+namespace tidy.rewrite_search
+
+meta def pick_default_tracer   : tactic unit := `[exact tidy.rewrite_search.tracer.unit_tracer]
+meta def pick_default_metric   : tactic unit := `[exact tidy.rewrite_search.metric.edit_distance]
+meta def pick_default_strategy : tactic unit := `[exact tidy.rewrite_search.strategy.pexplore]
+
+-- This is the "public" config structure which has convenient tactic-mode
+-- invocation synatx. The data in this structure is extracted and transformed
+-- into the internal representation of the settings and modules by
+-- `try_mk_search_instance`.
+meta structure rewrite_search_config (α β γ δ : Type) extends rewrite_all_cfg :=
+(max_iterations  : ℕ := 500)
+(max_discovers   : ℕ := 0)
+(suggest         : list name := [])
+(optimal         : bool := tt)
+(exhaustive      : bool := ff)
+(inflate_rws     : bool := ff)
+(trace           : bool := ff)
+(trace_summary   : bool := ff)
+(trace_result    : bool := ff)
+(trace_rules     : bool := ff)
+(trace_discovery : bool := tt)
+(help_me         : bool := ff)
+(metric          : metric_constructor β γ . pick_default_metric)
+(strategy        : strategy_constructor α . pick_default_strategy)
+(view            : tracer_constructor δ   . pick_default_tracer)
+
+-- TODO coerce {} = ∅ into default_config?
+
+open tidy.rewrite_search.edit_distance
+open tidy.rewrite_search.metric.edit_distance
+open tidy.rewrite_search.strategy.pexplore
+open discovery.persistence
+
+meta def default_config : rewrite_search_config pexplore_state ed_state ed_partial unit := {}
+meta def pick_default_config : tactic unit := `[exact tidy.rewrite_search.default_config]
 
 variables {α β γ δ : Type}
 
-namespace tidy.rewrite_search
+meta def mk_fallback_config (orig : rewrite_search_config α β γ δ) : rewrite_search_config pexplore_state ed_state ed_partial unit :=
+  {orig with view := begin pick_default_tracer end,
+             metric := begin pick_default_metric end,
+             strategy := begin pick_default_strategy end}
+
+meta def mk_initial_search_state (conf : config) (s : strategy α β γ δ) (m : metric α β γ δ) (tr : tracer α β γ δ) (strat_state : α) (metric_state : β) (tr_state : δ) (prog : discovery.progress) : search_state α β γ δ :=
+⟨tr, conf, strat_state, metric_state, table.create, table.create, table.create, none, tr_state, prog, statistics.init⟩
+
+meta def setup_instance (conf : config) (s : strategy α β γ δ) (m : metric α β γ δ) (tr : tracer α β γ δ) (s_state : α) (m_state : β) (tr_state : δ) (prog : discovery.progress) (eqn : sided_pair expr) : tactic (inst α β γ δ) := do
+  let g := mk_initial_search_state conf s m tr s_state m_state tr_state prog,
+  (g, vl) ← g.add_root_vertex eqn.l side.L,
+  (g, vr) ← g.add_root_vertex eqn.r side.R,
+  g ← s.startup g m vl vr,
+  return ⟨m, s, g⟩
+
+meta def instantiate_modules (cfg : rewrite_search_config α β γ δ) : strategy α β γ δ × metric α β γ δ × tracer α β γ δ :=
+(cfg.strategy β γ δ, cfg.metric α δ, cfg.view α β γ)
+
+meta def try_mk_search_instance (cfg : rewrite_search_config α β γ δ) (prog : discovery.progress) (rs : list (expr × bool)) (eqn : sided_pair expr) : tactic (option (inst α β γ δ)) :=
+do
+  let (strat, m, tr) := instantiate_modules cfg,
+  init_result.try "tracer"   tr.init    $ λ tracer_state,
+  init_result.try "metric"   m.init     $ λ metric_state,
+  init_result.try "strategy" strat.init $ λ strat_state,
+  do
+  let conf : config := {
+    rs := rs,
+    max_iterations := cfg.max_iterations,
+    max_discovers := cfg.max_discovers,
+    optimal := cfg.optimal,
+    exhaustive := cfg.exhaustive,
+    trace := cfg.trace,
+    trace_summary := cfg.trace_summary,
+    trace_result := cfg.trace_result,
+    trace_discovery := cfg.trace_discovery,
+    discharger := cfg.discharger,
+    simplifier := cfg.simplifier,
+    try_simp := cfg.try_simp,
+  },
+  i ← setup_instance conf strat m tr strat_state metric_state tracer_state prog eqn,
+  return i
 
 meta def try_search (cfg : rewrite_search_config α β γ δ) (prog : discovery.progress) (rs : list (expr × bool)) (eqn : sided_pair expr) : tactic (option string) := do
   i ← try_mk_search_instance cfg prog rs eqn,
@@ -41,9 +122,10 @@ meta def rewrite_search_pair (cfg : rewrite_search_config α β γ δ) (prog : d
     end
   end
 
--- TODO If try_search fails due to a failure to init any of the tracer, metric, or strategy we try again
--- using the "fallback" default versions of all three of these. Instead we could be more thoughtful,
--- and try again only replacing the failing one of these with its respective fallback module version.
+-- TODO If try_search fails due to a failure to init any of the tracer, metric,
+-- or strategy we try again using the "fallback" default versions of all three
+-- of these. Instead we could be more thoughtful, and try again only replacing
+-- the failing one of these with its respective fallback module version.
 
 meta def collect_rw_lemmas (cfg : rewrite_search_config α β γ δ) (use_suggest_annotations : bool) (per : discovery.persistence) (extra_names : list name) (extra_rws : list (expr × bool)) : tactic (discovery.progress × list (expr × bool)) := do
   let per := if cfg.help_me then discovery.persistence.try_everything else per,
@@ -71,11 +153,8 @@ meta def rewrite_search_target (cfg : rewrite_search_config α β γ δ) (try_ha
       trace ("rewrite_search using:\n---\n" ++ (string.intercalate "\n" rs_strings) ++ "\n---")
   else skip,
 
-  match t with
-  | `(%%lhs = %%rhs) := rewrite_search_pair cfg prog rws ⟨lhs, rhs⟩
-  | `(%%lhs ↔ %%rhs) := rewrite_search_pair cfg prog rws ⟨lhs, rhs⟩
-  | _                := fail "target is not an equation or iff"
-  end
+  (lhs, rhs) ← rw_equation.split t,
+  rewrite_search_pair cfg prog rws ⟨lhs, rhs⟩
 
 private meta def add_simps : simp_lemmas → list name → tactic simp_lemmas
 | s []      := return s
@@ -134,31 +213,3 @@ meta def simp_search_with (rs : list interactive.rw_rule) (cfg : rewrite_search_
   simp_search_target cfg tt try_everything [] extra_rws
 
 end tidy.rewrite_search
-
-namespace tactic.interactive
-
-open lean.parser interactive
-open tidy.rewrite_search
-
-meta def rewrite_search (try_harder : parse $ optional (tk "!")) (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic string :=
-  tidy.rewrite_search.rewrite_search (¬try_harder.is_none) cfg
-
-meta def rewrite_search_with (try_harder : parse $ optional (tk "!")) (rs : parse rw_rules) (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic string :=
-  tidy.rewrite_search.rewrite_search_with (¬try_harder.is_none) rs.rules cfg
-
-meta def rewrite_search_using (try_harder : parse $ optional (tk "!")) (as : list name) (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic string :=
-  tidy.rewrite_search.rewrite_search_using (¬try_harder.is_none) as cfg
-
--- @Scott should we still do this?
---  exprs ← close_under_apps exprs, -- TODO don't do this for everything, it's too expensive: only for specially marked lemmas
-
--- @Keeley, the ideal thing would be to look for lemmas that have a metavariable for their LHS,
--- and try substituting in hypotheses to these.
-
-meta def simp_search (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic unit :=
-  tidy.rewrite_search.simp_search cfg
-
-meta def simp_search_with (rs : parse rw_rules) (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic unit :=
-  tidy.rewrite_search.simp_search_with rs.rules cfg
-
-end tactic.interactive

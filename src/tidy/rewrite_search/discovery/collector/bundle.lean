@@ -2,7 +2,7 @@ import data.rat
 import data.list
 
 import tidy.lib.list
-import tidy.rewrite_search.core.shared
+import tidy.rewrite_search.core.common
 
 import ..types
 import .common
