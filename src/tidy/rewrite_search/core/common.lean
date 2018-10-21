@@ -42,7 +42,7 @@ instance has_to_string [has_to_string α] : has_to_string (sided_pair α) := ⟨
 end sided_pair
 
 inductive how
-| rewrite (rule_index : ℕ) (side : side) (location : ℕ)
+| rewrite (rule_index : ℕ) (location : ℕ)
 | defeq
 | simp  -- TODO handle "explaining" me
 
@@ -60,6 +60,7 @@ meta structure config extends rewrite_all_cfg :=
 (trace           : bool)
 (trace_summary   : bool)
 (trace_result    : bool)
+(trace_rules     : bool)
 (trace_discovery : bool)
 
 open tactic

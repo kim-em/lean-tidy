@@ -86,6 +86,7 @@ do
     exhaustive := cfg.exhaustive,
     trace := cfg.trace,
     trace_summary := cfg.trace_summary,
+    trace_rules := cfg.trace_rules,
     trace_result := cfg.trace_result,
     trace_discovery := cfg.trace_discovery,
     discharger := cfg.discharger,
@@ -148,11 +149,6 @@ meta def rewrite_search_target (cfg : rewrite_search_config α β γ δ) (try_ha
 
   (prog, rws) ← collect_rw_lemmas cfg use_suggest_annotations per extra_names extra_rws,
 
-  if cfg.trace_rules then
-    do rs_strings ← pp_rules rws,
-      trace ("rewrite_search using:\n---\n" ++ (string.intercalate "\n" rs_strings) ++ "\n---")
-  else skip,
-
   (lhs, rhs) ← rw_equation.split t,
   rewrite_search_pair cfg prog rws ⟨lhs, rhs⟩
 
@@ -183,9 +179,9 @@ meta def simp_search_target (cfg : rewrite_search_config α β γ δ) (use_sugge
 
   (prog, rws) ← collect_rw_lemmas cfg use_suggest_annotations per extra_names extra_rws,
 
-  if cfg.trace_rules then
-    do rs_strings ← pp_rules rws,
-      trace ("simp_search using:\n---\n" ++ (string.intercalate "\n" rs_strings) ++ "\n---")
+  if cfg.trace_rules then do
+    rs_strings ← rws.mmap pp_rule,
+    trace ("simp_search using:\n---\n" ++ (string.intercalate "\n" rs_strings) ++ "\n---")
   else skip,
 
   (s, to_unfold) ← mk_simp_set ff [] [] >>= λ sset, rws.mfoldl (λ c e, add_expr c.1 c.2 e.1 <|> return c) sset,

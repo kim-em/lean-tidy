@@ -234,31 +234,8 @@ end search_state
 
 meta structure proof_unit :=
 (proof : expr)
-(trans_start : option string)
-(hows : list how)
-meta def proof_unit.orient : proof_unit → tactic expr
-| ⟨proof, none, _⟩   := return proof
-| ⟨proof, some _, _⟩ := tactic.mk_eq_symm proof
-meta def proof_unit.add (u : proof_unit) (e : edge) : tactic proof_unit := do
-  e_proof ← e.proof,
-  match u with
-  | ⟨proof, none, hows⟩ := do
-    do pp ← tactic.infer_type proof >>= pretty_print,
-    do pp2 ← tactic.infer_type e_proof >>= pretty_print,
-    tactic.trace format!"trans {pp2} {pp}",
-    new_proof ← tactic.mk_eq_trans e_proof proof,
-    do pp3 ← tactic.infer_type new_proof >>= pretty_print,
-    tactic.trace format!"={pp3}",
-    return ⟨new_proof, none, e.how :: hows⟩
-  | ⟨proof, some s, hows⟩ := do
-    do pp ← tactic.infer_type proof >>= pretty_print,
-    do pp2 ← tactic.infer_type e_proof >>= pretty_print,
-    tactic.trace format!"transflip {pp} {pp2}",
-    new_proof ← tactic.mk_eq_trans proof e_proof,
-    do pp3 ← tactic.infer_type new_proof >>= pretty_print,
-    tactic.trace format!"={pp3}",
-    return ⟨new_proof, none, hows.concat e.how⟩
-  end
+(side : side)
+(steps : list how)
 
 meta inductive search_result
 | success (proof : expr) (units : list proof_unit) : search_result

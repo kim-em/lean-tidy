@@ -48,11 +48,11 @@ meta def drop_implicit : binder → option binder
 
 meta def list_to_args (l : list binder) (drop_impl : bool := tt) : tactic string := do
   l ← (instantiate_list l).mmap binder.pretty_print,
-  return $ string.lconcat $ l.intersperse " "
+  return $ string.intercalate " " l
 
 meta def list_to_invocation (l : list binder) (drop_impl : bool := tt) : string :=
   let l := if drop_impl then l.filter_map drop_implicit else l in
-  string.lconcat $ ((instantiate_list l).map $ to_string ∘ name).intersperse " "
+  string.intercalate " " $ (instantiate_list l).map $ to_string ∘ name
 
 end binder
 

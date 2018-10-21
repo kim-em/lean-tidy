@@ -42,7 +42,7 @@ meta def handle_defn (lemma_name : string) (conf : config) (e : environment) (fn
   st_value ← pretty_print (binder.instantiate field_val lemma_params) ff tt,
 
   attrs ← if ¬(conf.attrs.length = 0) then
-            pp format!"@[{string.lconcat (conf.attrs.intersperse \", \")}] "
+            pp format!"@[{string.intercalate \", \" conf.attrs}] "
           else
             return "",
   let mods := if conf.priv then "private " else "",

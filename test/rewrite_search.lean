@@ -32,15 +32,16 @@ end
 
 private example (a : unit) : [[0],[0]] = [[4],[4]] :=
 begin
+/- `rewrite_search` says -/
 -- nth_rewrite_lhs 0 foo,
 -- nth_rewrite_lhs 0 bar1,
--- nth_rewrite_lhs 0 ←bar2,
 -- nth_rewrite_lhs 0 foo,
 -- nth_rewrite_lhs 0 bar1,
--- nth_rewrite_rhs 1 ←bar3,
+-- nth_rewrite_rhs 0 ←bar3,
 -- nth_rewrite_rhs 0 ←bar3,
 -- nth_rewrite_rhs 1 bar2,
-  rewrite_search_with [foo, bar1, ← bar2, bar2, ← bar3],
+-- nth_rewrite_rhs 0 bar2,
+  rewrite_search_with [foo, bar1, ← bar2, bar2, ← bar3] {trace_result := tt},
 end
 
 private example (a : unit) : [[0],[0]] = [[4],[4]] :=
@@ -58,7 +59,7 @@ begin
 -- nth_rewrite_rhs 0 ←bar3,
 -- nth_rewrite_rhs 1 bar2,
 -- nth_rewrite_rhs 0 ←bar1
-  rewrite_search,
+  rewrite_search {trace_result := tt},
 end
 
 @[search] private axiom qux' : [[1], [2]] = [[6], [7]]

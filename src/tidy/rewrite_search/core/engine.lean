@@ -282,7 +282,11 @@ meta def search_until_solved_aux : inst α β γ δ → ℕ → tactic (inst α 
   | status.done e   := i.finish_search e
   end
 
-meta def search_until_solved : tactic (inst α β γ δ × search_result) :=
+meta def search_until_solved : tactic (inst α β γ δ × search_result) := do
+  if i.g.conf.trace_rules then (do
+    rs ← i.g.conf.rs.mmap pp_rule,
+    tactic.trace $ "rewrite_search using:\n---\n" ++ (string.intercalate "\n" rs) ++ "\n---"
+  ) else tactic.skip,
   i.search_until_solved_aux 0
 
 meta def explain (proof : expr) (steps : list proof_unit) : tactic string :=

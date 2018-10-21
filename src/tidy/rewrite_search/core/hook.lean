@@ -7,9 +7,9 @@ namespace tidy.rewrite_search
 
 meta def rewrite_progress := mllist tactic rewrite
 
-meta def progress_init (rs : list (expr × bool)) (exp : expr) (cfg : rewrite_all_cfg) (s : side) : tactic rewrite_progress := do
+meta def progress_init (rs : list (expr × bool)) (exp : expr) (cfg : rewrite_all_cfg) : tactic rewrite_progress := do
   l ← all_rewrites_mllist rs exp cfg,
-  l.map $ λ t, ⟨t.1, t.2.1, how.rewrite t.2.2.1 s t.2.2.2⟩
+  l.map $ λ t, ⟨t.1, t.2.1, how.rewrite t.2.2.1 t.2.2.2⟩
 
 meta def progress_next : rewrite_progress → tactic (rewrite_progress × option rewrite)
 | mllist.nil        := return (mllist.nil, none)
@@ -24,11 +24,11 @@ meta def simp_rewrite (exp : expr) : tactic rewrite := do
 --   dsimp_exp ← tactic.dsimp_expr exp,
 --   return $ some ⟨dsimp_exp, ???, how.defeq⟩
 
-meta def discover_more_rewrites (rs : list (expr × bool)) (exp : expr) (cfg : rewrite_all_cfg) (s : side) (prog : option rewrite_progress) : tactic (option rewrite_progress × list rewrite) := do
+meta def discover_more_rewrites (rs : list (expr × bool)) (exp : expr) (cfg : rewrite_all_cfg) (_ : side) (prog : option rewrite_progress) : tactic (option rewrite_progress × list rewrite) := do
   (prog, head) ← match prog with
          | some prog := pure (prog, [])
          | none := do
-          prog ← progress_init rs exp cfg s,
+          prog ← progress_init rs exp cfg,
           sl ← if cfg.try_simp then option.to_list <$> tactic.try_core (simp_rewrite exp) else pure [],
           pure (prog, sl)
          end,

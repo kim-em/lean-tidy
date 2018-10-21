@@ -83,45 +83,33 @@ meta def backtrack : backtrack_fn := λ (i : inst α β γ δ) (_ : edge), do
 
 end bfs
 
-meta def make_unit (backward : bool) (e : edge) : tactic proof_unit := do
-  proof ← e.proof,
-  proof ← if backward then tactic.mk_eq_symm proof else pure proof,
-  trans_start ← if backward then do
-    v ← i.g.vertices.get e.f,
-    pure (some v.pp)
-  else pure none,
-  return ⟨proof, trans_start, [e.how]⟩
-
-meta def chop_into_units : list edge → list (bool × list edge)
+meta def chop_into_units : list edge → list (side × list edge)
 | [] := []
-| [e] := [(if e.f = RHS_VERTEX_ID then tt else ff, [e])]
+| [e] := [(if e.f = RHS_VERTEX_ID then side.R else side.L, [e])]
 | (e₁ :: (e₂ :: rest)) :=
   match chop_into_units (e₂ :: rest) with
-  | ((bwd, u) :: us) := if e₁.t = e₂.f ∨ e₁.f = e₂.t then
-                               ((bwd, e₁ :: u) :: us)
-                             else
-                               ((¬bwd, [e₁]) :: ((bwd, u) :: us))
+  | ((s, u) :: us) := if e₁.t = e₂.f ∨ e₁.f = e₂.t then
+                        ((s, e₁ :: u) :: us)
+                      else
+                        ((s.other, [e₁]) :: ((s, u) :: us))
   | _ := [] -- Unreachable
   end
 
-private meta def orient_proof : bool → tactic expr → tactic expr
-| ff proof := proof
-| tt proof := proof >>= mk_eq_symm
+private meta def orient_proof : side → tactic expr → tactic expr
+| side.L proof := proof
+| side.R proof := proof >>= mk_eq_symm
 
-private meta def edges_to_unit_aux (bwd : bool) : expr → list how → list edge → tactic proof_unit
-| proof hows [] := do
-  trans_start ← if ¬bwd then pure none
-                else some <$> (infer_type proof >>= rw_equation.rhs >>= pretty_print),
-  return ⟨proof, trans_start, hows⟩
+private meta def edges_to_unit_aux (s : side) : expr → list how → list edge → tactic proof_unit
+| proof hows [] := return ⟨proof, s, hows⟩
 | proof hows (e :: rest) := do
-  new_proof ← orient_proof bwd e.proof >>= mk_eq_trans proof,
-  edges_to_unit_aux new_proof (hows.concat e.how) rest
+  new_proof ← orient_proof s e.proof >>= mk_eq_trans proof,
+  edges_to_unit_aux new_proof (if s = side.L then hows ++ [e.how] else [e.how] ++ hows) rest
 
-meta def edges_to_unit : bool × list edge → tactic proof_unit
+meta def edges_to_unit : side × list edge → tactic proof_unit
 | (_, []) := fail "empty edge list for unit!"
-| (bwd, (e :: rest)) := do
-  proof ← orient_proof bwd e.proof,
-  edges_to_unit_aux bwd proof [e.how] rest
+| (s, (e :: rest)) := do
+  proof ← orient_proof s e.proof,
+  edges_to_unit_aux s proof [e.how] rest
 
 meta def build_units (l : list edge) : tactic (list proof_unit) :=
   (chop_into_units l).mmap edges_to_unit
@@ -131,10 +119,8 @@ meta def combine_units : list proof_unit → tactic (option expr)
 | (u :: rest) := do
   rest_proof ← combine_units rest,
   match rest_proof with
-  | none := return u.proof
-  | some rest_proof := do
-  pp2 ← infer_type rest_proof >>= pretty_print,
-  some <$> mk_eq_trans u.proof rest_proof
+  | none            := return u.proof
+  | some rest_proof := some <$> mk_eq_trans u.proof rest_proof
   end
 
 meta def build_proof (e : edge) : tactic (expr × list proof_unit) := do
