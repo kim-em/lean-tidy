@@ -22,7 +22,7 @@ example : [[7],[6]] = [[5],[5]] :=
 begin
  success_if_fail { rewrite_search_with [] },
 -- rw [←foo', bar']
- rewrite_search_with [←foo', bar'],
+ rewrite_search_with [←foo', bar'] {trace_result := tt},
 end
 
 @[search] private axiom foo : [0] = [1]
@@ -41,6 +41,17 @@ begin
 -- nth_rewrite_rhs 0 ←bar3,
 -- nth_rewrite_rhs 1 bar2,
 -- nth_rewrite_rhs 0 bar2,
+
+/- `rewrite_search` says -/
+conv { to_lhs, congr, skip, rw foo, },
+conv { to_lhs, congr, skip, rw bar1, },
+conv { to_lhs, congr, },
+-- conv { to_lhs, (*→func→arg→func) congr, congr, skip, congr, rw bar1, },
+-- conv { to_rhs, (*→arg→func) congr, skip, congr, rw ←bar3, },
+-- conv { to_rhs, (*→func→arg→func) congr, congr, skip, congr, rw ←bar3, },
+-- conv { to_rhs, (*→func→arg→func) congr, congr, skip, congr, rw bar2, },
+-- conv { to_rhs, (*→arg→func) congr, skip, congr, rw bar2, }
+
   rewrite_search_with [foo, bar1, ← bar2, bar2, ← bar3] {trace_result := tt},
 end
 
@@ -51,14 +62,10 @@ end
 
 private example : [[0],[0]] = [[4],[4]] :=
 begin
--- nth_rewrite_lhs 0 foo,
--- nth_rewrite_lhs 0 bar1,
--- nth_rewrite_lhs 0 ←bar2,
--- nth_rewrite_lhs 0 foo,
--- nth_rewrite_rhs 0 ←bar3,
--- nth_rewrite_rhs 0 ←bar3,
--- nth_rewrite_rhs 1 bar2,
--- nth_rewrite_rhs 0 ←bar1
+/- `rewrite_search` says -/
+-- conv { to_lhs, congr, rw [foo, bar1], skip, rw [foo, bar1] },
+-- conv { to_rhs, congr, rw [←bar3, bar2], skip, rw [←bar3, bar2] },
+
   rewrite_search {trace_result := tt},
 end
 

@@ -6,9 +6,9 @@ import .screening
 import .bundle
 import .suggest
 import .collector
+import .common
 
 open tactic
-open tidy.rewrite_search
 
 universe u
 
@@ -45,7 +45,7 @@ meta def collect_more_using : list collector → config → progress → list ex
     return (p, rws)
 
 meta def collect_more (conf : config) (prog : progress) (sample : list expr) : tactic (progress × list (expr × bool)) := do
-  if conf.trace_discovery ∧ ¬(prog.persistence = discovery.persistence.speedy) then
+  if conf.trace_discovery ∧ ¬(prog.persistence = persistence.speedy) then
     tactic.trace "rewrite_search is getting desperate...\n"
   else skip,
   collect_more_using default_collectors conf prog sample

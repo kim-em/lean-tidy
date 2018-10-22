@@ -36,6 +36,7 @@ meta structure rewrite_search_config (α β γ δ : Type) extends rewrite_all_cf
 (trace_result    : bool := ff)
 (trace_rules     : bool := ff)
 (trace_discovery : bool := tt)
+(explain_using_conv : bool := tt)
 (help_me         : bool := ff)
 (metric          : metric_constructor β γ . pick_default_metric)
 (strategy        : strategy_constructor α . pick_default_strategy)
@@ -89,6 +90,7 @@ do
     trace_rules := cfg.trace_rules,
     trace_result := cfg.trace_result,
     trace_discovery := cfg.trace_discovery,
+    explain_using_conv := cfg.explain_using_conv,
     discharger := cfg.discharger,
     simplifier := cfg.simplifier,
     try_simp := cfg.try_simp,

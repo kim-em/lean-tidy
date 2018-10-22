@@ -1,9 +1,13 @@
 import data.option
 import data.buffer
 
+import .interaction_monad
+
 universes u v w
 
 namespace list
+
+def singleton {α : Type u} (a : α) : list α := [a]
 
 private def min_rel_aux {α : Type u} (r : α → α → Prop) [decidable_rel r] (curr : α) : list α → α
 | [] := curr
@@ -61,6 +65,17 @@ def strip {α : Type u} [decidable_eq α] (l : list α) (v : α) : list α :=
 
 def stripl {α : Type u} [decidable_eq α] (l : list α) (vs : list α) : list α :=
   l.erase_such_that (λ c, c ∈ vs)
+
+meta def factor {m : Type u → Type u} [monad m] {α : Type u} : list (m α) → m (list α)
+| []          := return []
+| (a :: rest) := do a ← a, rest ← factor rest, return $ (a :: rest)
+
+meta def ffactor {m : Type u → Type v} [monad m] [alternative m] {α : Type u} : list (m α) → m (list α)
+| []          := return []
+| (a :: rest) := do
+  a ← (some <$> a) <|> pure none,
+  rest ← ffactor rest,
+  return $ a.to_list ++ rest
 
 end list
 

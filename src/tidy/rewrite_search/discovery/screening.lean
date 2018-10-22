@@ -5,7 +5,6 @@ import tidy.lib.pretty_print
 
 import tidy.rewrite_search.core.common
 
-open tidy.rewrite_search
 open tactic tactic.interactive
 
 namespace tidy.rewrite_search.discovery

@@ -8,7 +8,6 @@ import ..types
 import .common
 
 open tactic
-open tidy.rewrite_search
 
 namespace tidy.rewrite_search.discovery
 

@@ -1,50 +1,19 @@
 import tidy.lib.tactic
 import tidy.rewrite_all_wrappers
 
-namespace tidy.rewrite_search
+import .data
 
 universe u
 
-@[derive decidable_eq]
-inductive side
-| L
-| R
-def side.other : side → side
-| side.L := side.R
-| side.R := side.L
-def side.to_string : side → string
-| side.L := "L"
-| side.R := "R"
-instance : has_to_string side := ⟨side.to_string⟩
-
-@[derive decidable_eq]
-structure sided_pair (α : Type u) :=
-  (l r : α)
-namespace sided_pair
-variables {α : Type} (p : sided_pair α)
-
-def get : side → α
-| side.L := p.l
-| side.R := p.r
-
-def set : side → α → sided_pair α
-| side.L v := ⟨v, p.r⟩
-| side.R v := ⟨p.l, v⟩
-
-def flip : sided_pair α := ⟨p.r, p.l⟩
-
-def to_list : list α := [p.l, p.r]
-
-def to_string [has_to_string α] (p : sided_pair α) : string :=
-  to_string p.l ++ "-" ++ to_string p.r
-instance has_to_string [has_to_string α] : has_to_string (sided_pair α) := ⟨to_string⟩
-
-end sided_pair
-
-inductive how
-| rewrite (rule_index : ℕ) (location : ℕ)
+meta inductive how
+| rewrite (rule_index : ℕ) (location : ℕ) (addr : list side)
 | defeq
 | simp  -- TODO handle "explaining" me
+meta def how.to_string : how → format
+| (how.rewrite idx loc addr) := format!"rewrite {idx} {loc} {addr.to_string}"
+| how.defeq := "(defeq)"
+| how.simp := "simp"
+meta instance how.has_to_format : has_to_format how := ⟨how.to_string⟩
 
 meta structure rewrite :=
 (e   : expr)
@@ -62,6 +31,7 @@ meta structure config extends rewrite_all_cfg :=
 (trace_result    : bool)
 (trace_rules     : bool)
 (trace_discovery : bool)
+(explain_using_conv : bool)
 
 open tactic
 
@@ -86,5 +56,3 @@ meta def is_acceptable_lemma (r : expr) : tactic bool :=
 
 meta def is_acceptable_hyp (r : expr) : tactic bool :=
   do t ← infer_type r, return $ is_acceptable_rewrite t ∧ ¬t.has_meta_var
-
-end tidy.rewrite_search
