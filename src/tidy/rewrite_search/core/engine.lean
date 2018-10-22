@@ -157,10 +157,10 @@ meta def try_unify (p : pair) : tactic (search_state α β γ δ × bool) := do
     return (g, tt)
   end
 
--- Currently, we guarentee that if the boolean we return is true, then there is at least
--- one new rewrite possible in the environment which was not accessible before. This follows
--- here since it is (currently) guaranteed that each element of `discovery.more_candidates`
--- has an application *somewhere*.
+-- Currently, we guarentee that if the boolean we return is true, then there
+-- is at least new rewrite possible in the environment which was not accessible
+-- before. This follows here since it is (currently) guaranteed that each
+-- element of `discovery.more_candidates` has an application *somewhere*.
 meta def be_desperate (goals : list pair) : tactic (search_state α β γ δ × bool) :=
   if g.stats.num_discovers ≥ g.conf.max_discovers then
     return (g, ff)

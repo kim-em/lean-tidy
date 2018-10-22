@@ -1,4 +1,4 @@
-import .rewrite_all
+import .rewrite_all_congr
 
 open tactic
 open lean.parser
@@ -11,24 +11,24 @@ open interactive
 --   prf : e = e',
 --   n is the index of the rule r used from rs, and
 --   k is the index of (e', prf) in all_rewrites r e.
-meta def all_rewrites_mllist (rs : list (expr × bool)) (e : expr) (cfg : rewrite_all_cfg := {md := semireducible}) : tactic (mllist tactic (expr × (tactic expr) × ℕ × ℕ)) := do
+meta def all_rewrites_mllist (rs : list (expr × bool)) (e : expr) (cfg : rewrite_all_cfg := {md := semireducible}) : tactic (mllist tactic (tracked_rewrite × ℕ × ℕ)) := do
   l ← rs.mmap $ λ r, all_rewrites_lazy r e cfg,
   l ← l.enum.mmap (λ p, do
     pe ← p.2.enum,
-    pe.map (λ q, (q.2.1, q.2.2, p.1, q.1))
+    pe.map (λ q, (q.2, p.1, q.1))
   ),
   (mllist.of_list l).join
 
-meta def all_rewrites_list (rs : list (expr × bool)) (e : expr) (cfg : rewrite_all_cfg := {md := semireducible}) : tactic (list (expr × (tactic expr) × ℕ × ℕ)) :=
+meta def all_rewrites_list (rs : list (expr × bool)) (e : expr) (cfg : rewrite_all_cfg := {md := semireducible}) : tactic (list (tracked_rewrite × ℕ × ℕ)) :=
   all_rewrites_mllist rs e cfg >>= mllist.force
 
 meta def perform_nth_rewrite (r : expr × bool) (n : ℕ) : tactic unit :=
 do e ← target,
    rewrites ← all_rewrites r e,
-   (new_t, prf) ← rewrites.nth n,
-   replace_target new_t prf
+   lrw ← rewrites.nth n,
+   lrw.proof >>= replace_target lrw.exp
 
-meta def all_rewrites_using (a : name) (e : expr) : tactic (list (expr × expr)) :=
+meta def all_rewrites_using (a : name) (e : expr) : tactic (list tracked_rewrite) :=
 do names ← attribute.get_instances a,
    rules ← names.mmap $ mk_const,
    let pairs := rules.map (λ e, (e, ff)) ++ rules.map (λ e, (e, tt)),
@@ -41,7 +41,9 @@ private meta def perform_nth_rewrite' (n : parse small_nat) (q : parse rw_rules)
 do rewrites ← q.rules.mmap $ λ p : rw_rule, to_expr p.rule tt ff >>= λ r, all_rewrites (r, p.symm) e,
    let rewrites := rewrites.join,
    guard (n < rewrites.length) <|> fail format!"failed: not enough rewrites found",
-   rewrites.nth n
+   lrw ← rewrites.nth n,
+   pf ← lrw.proof,
+   return (lrw.exp, pf)
 
 meta def perform_nth_rewrite (n : parse small_nat) (q : parse rw_rules) : tactic unit :=
 do e ← target,

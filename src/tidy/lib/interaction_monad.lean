@@ -8,9 +8,9 @@ let t₃ : m α := do return fallback in
 λ s, interaction_monad.result.cases_on (t₁ s)
   interaction_monad.result.success
   (λ e₁ ref₁ s', interaction_monad.result.cases_on (t₂ e₁ ref₁ s)
-     interaction_monad.result.success
-     (λ e₂ ref₂ s'', interaction_monad.result.cases_on (t₃ s)
+    interaction_monad.result.success
+    (λ e₂ ref₂ s'', interaction_monad.result.cases_on (t₃ s)
       interaction_monad.result.success
       interaction_monad.result.exception
-     )
+    )
   )

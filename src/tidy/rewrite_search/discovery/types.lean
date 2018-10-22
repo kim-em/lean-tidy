@@ -5,8 +5,6 @@ import .bundle
 
 universe u
 
-open tidy.rewrite_search
-
 namespace tidy.rewrite_search.discovery
 
 meta def discovery_trace {α : Type u} [has_to_tactic_format α] (a : α) (nl : bool := tt) : tactic unit := do
