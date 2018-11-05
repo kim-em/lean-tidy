@@ -1,4 +1,4 @@
--- This data, required my `rewrite_all` must be present to avoid some
+-- This data required by `rewrite_all` must be present to avoid some
 -- monad universe related issues.
 
 universe u
