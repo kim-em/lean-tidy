@@ -149,6 +149,7 @@ lock_tactic_state $ do
 meta def proof_unit.rewrites (u : proof_unit) (cfg : config) : list (expr × bool) :=
   u.steps.filter_map $ how.to_rewrite cfg
 
+-- TODO rewrite this to use conv!
 meta def proof_unit.explain (u : proof_unit) (cfg : config) : tactic string := do
   -- TODO We could try to merge adjacent proof units or something more complicated.
 

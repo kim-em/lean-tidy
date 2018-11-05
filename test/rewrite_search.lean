@@ -62,6 +62,7 @@ end
 
 private example : [[0],[0]] = [[4],[4]] :=
 begin
+/- `rewrite_search` says -/
 -- nth_rewrite_lhs 0 foo,
 -- nth_rewrite_lhs 0 bar1,
 -- nth_rewrite_lhs 0 ←bar2,
@@ -70,15 +71,10 @@ begin
 -- nth_rewrite_rhs 0 ←bar3,
 -- nth_rewrite_rhs 1 bar2,
 -- nth_rewrite_rhs 0 ←bar1
-/- `rewrite_search` says -/
--- conv { to_lhs, congr, rw foo, rw bar1, skip, congr, rw foo, rw bar1, },
--- conv { to_rhs, congr, rw ←bar3, rw bar2, skip, congr, rw ←bar3, rw bar2,},
 
-
--- The dream:
 /- `rewrite_search` says -/
-conv { to_lhs, congr, rw [foo, bar1], skip, rw [foo, bar1] },
-conv { to_rhs, congr, rw [←bar3, bar2], skip, rw [←bar3, bar2] },
+-- conv { to_lhs, congr, rw [foo, bar1], skip, rw [foo, bar1] },
+-- conv { to_rhs, congr, rw [←bar3, bar2], skip, rw [←bar3, bar2] },
 
   rewrite_search {trace_result := tt},
 end
