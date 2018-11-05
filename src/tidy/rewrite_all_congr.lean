@@ -13,14 +13,6 @@ import .rewrite_all_common
 
 open tactic
 
-def remove_adjacent_duplicates {α β} (f : α → β) [decidable_eq β] : list α → list α
-| (x :: y :: t) := if f x = f y then
-                     remove_adjacent_duplicates (y :: t)
-                   else
-                     x :: (remove_adjacent_duplicates (y :: t))
-| [x] := [x]
-| [] := []
-
 -- Sometimes `mk_congr_arg` fails, when the function is 'superficially dependent'.
 -- This hack dsimp's the function before building the `congr_arg` expression.
 -- Unfortunately it creates some dummy hypotheses that I can't work out how to dispose of cleanly.
@@ -29,7 +21,7 @@ do
   s ← simp_lemmas.mk_default,
   t ← infer_type G,
   t' ← s.dsimplify u t {fail_if_unchanged := ff},
-  tactic.definev `_mk_congr_arg_aux t' G,
+  definev `_mk_congr_arg_aux t' G,
   to_expr ```(congr_arg _mk_congr_arg_aux %%W)
 
 meta inductive expr_lens
@@ -73,12 +65,10 @@ meta def expr_lens.to_tactic_string : expr_lens → tactic string
 | (app_fun l f) := do
   pp ← pretty_print f,
   rest ← l.to_tactic_string,
-  -- return $ to_string format!"(fun \"{f}\" {rest})"
   return $ to_string format!"(fun \"{pp}\" {rest})"
 | (app_arg l x) := do
   pp ← pretty_print x,
   rest ← l.to_tactic_string,
-  -- return $ to_string format!"(arg \"{x}\" {rest})"
   return $ to_string format!"(arg \"{pp}\" {rest})"
 
 private meta def expr.app_map_aux {α} (F : expr_lens → expr → tactic (list α)) : expr_lens → expr → tactic (list α)
@@ -124,8 +114,6 @@ meta def rewrite_at_lens (cfg : rewrite_all_cfg) (r : expr × bool) (l : expr_le
   else do
     let w := l.replace v,
     qr ← l.congr pr,
-    -- pp ← infer_type qr >>= pretty_print,
-    -- l.to_tactic_string >>= λ s, trace $ pp ++ " " ++ s,
     s ← try_core (cfg.simplifier w),
     (w, qr) ← match s with
               | none           := pure (w, qr)
@@ -136,7 +124,7 @@ meta def rewrite_at_lens (cfg : rewrite_all_cfg) (r : expr × bool) (l : expr_le
     return [⟨w, pure qr, l.to_sides⟩]
 
 meta def all_rewrites (r : expr × bool) (e : expr) (cfg : rewrite_all_cfg := {}) : tactic (list tracked_rewrite) :=
-  remove_adjacent_duplicates tracked_rewrite.exp <$> e.app_map (rewrite_at_lens cfg r)
+  e.app_map $ rewrite_at_lens cfg r
 
 meta def all_rewrites_lazy (r : expr × bool) (e : expr) (cfg : rewrite_all_cfg := {}) : tactic (mllist tactic tracked_rewrite) :=
-   mllist.of_list <$> all_rewrites r e cfg
+  mllist.of_list <$> all_rewrites r e cfg
