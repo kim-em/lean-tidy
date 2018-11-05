@@ -29,7 +29,7 @@ meta def extended_tidy_tactics : list (tactic string) :=
   forwards_reasoning,
   propositional_goal >> forwards_library_reasoning,
   `[unfold_aux]                               >> pure "unfold_aux",
-  tidy.rewrite_search.rewrite_search,
+  rewrite_search {trace_summary := tt},
   tidy.run_tactics ]
 
 @[obviously] meta def obviously_1 := tidy { tactics := extended_tidy_tactics }

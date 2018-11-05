@@ -14,6 +14,8 @@ import .tracer.unit
 
 open tactic
 
+variables {α β γ δ : Type}
+
 namespace tidy.rewrite_search
 
 meta def pick_default_tracer   : tactic unit := `[exact tidy.rewrite_search.tracer.unit_tracer]
@@ -51,8 +53,6 @@ open discovery.persistence
 
 meta def default_config : rewrite_search_config pexplore_state ed_state ed_partial unit := {}
 meta def pick_default_config : tactic unit := `[exact tidy.rewrite_search.default_config]
-
-variables {α β γ δ : Type}
 
 meta def mk_fallback_config (orig : rewrite_search_config α β γ δ) : rewrite_search_config pexplore_state ed_state ed_partial unit :=
   {orig with view := begin pick_default_tracer end,
@@ -112,6 +112,11 @@ meta def try_search (cfg : rewrite_search_config α β γ δ) (prog : discovery.
     end
   end
 
+-- TODO If try_search fails due to a failure to init any of the tracer, metric,
+-- or strategy we try again using the "fallback" default versions of all three
+-- of these. Instead we could be more thoughtful, and try again only replacing
+-- the failing one of these with its respective fallback module version.
+
 meta def rewrite_search_pair (cfg : rewrite_search_config α β γ δ) (prog : discovery.progress) (rs : list (expr × bool)) (eqn : sided_pair expr) : tactic string := do
   result ← try_search cfg prog rs eqn,
   match result with
@@ -125,10 +130,10 @@ meta def rewrite_search_pair (cfg : rewrite_search_config α β γ δ) (prog : d
     end
   end
 
--- TODO If try_search fails due to a failure to init any of the tracer, metric,
--- or strategy we try again using the "fallback" default versions of all three
--- of these. Instead we could be more thoughtful, and try again only replacing
--- the failing one of these with its respective fallback module version.
+-- TODO: @Keeley: instead of something like
+--     `exprs ← close_under_apps exprs`
+-- the ideal thing would be to look for lemmas that have a metavariable
+-- for their LHS, and try substituting in hypotheses to these.
 
 meta def collect_rw_lemmas (cfg : rewrite_search_config α β γ δ) (use_suggest_annotations : bool) (per : discovery.persistence) (extra_names : list name) (extra_rws : list (expr × bool)) : tactic (discovery.progress × list (expr × bool)) := do
   let per := if cfg.help_me then discovery.persistence.try_everything else per,
@@ -190,16 +195,21 @@ meta def simp_search_target (cfg : rewrite_search_config α β γ δ) (use_sugge
   (n, pf) ← simplify s to_unfold t {contextual := tt} `eq failed,
   replace_target n pf >> try tactic.triv >> try (tactic.reflexivity reducible)
 
+end tidy.rewrite_search
+
+namespace tactic
+
+open tidy.rewrite_search
 open tidy.rewrite_search.discovery.persistence
 
-meta def rewrite_search (try_harder : bool := ff) (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic string :=
+meta def rewrite_search (cfg : rewrite_search_config α β γ δ . pick_default_config) (try_harder : bool := ff) : tactic string :=
   rewrite_search_target cfg try_harder tt try_everything [] []
 
-meta def rewrite_search_with (try_harder : bool := ff) (rs : list interactive.rw_rule) (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic string := do
+meta def rewrite_search_with (rs : list interactive.rw_rule) (cfg : rewrite_search_config α β γ δ . pick_default_config) (try_harder : bool := ff) : tactic string := do
   extra_rws ← discovery.rewrite_list_from_rw_rules rs,
   rewrite_search_target cfg try_harder tt speedy [] extra_rws
 
-meta def rewrite_search_using (try_harder : bool := ff) (as : list name) (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic string := do
+meta def rewrite_search_using (as : list name) (cfg : rewrite_search_config α β γ δ . pick_default_config) (try_harder : bool := ff) : tactic string := do
   extra_names ← discovery.load_attr_list as,
   rewrite_search_target cfg try_harder ff try_bundles extra_names []
 
@@ -210,4 +220,4 @@ meta def simp_search_with (rs : list interactive.rw_rule) (cfg : rewrite_search_
   extra_rws ← discovery.rewrite_list_from_rw_rules rs,
   simp_search_target cfg tt try_everything [] extra_rws
 
-end tidy.rewrite_search
+end tactic
