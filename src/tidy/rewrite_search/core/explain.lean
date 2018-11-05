@@ -1,6 +1,9 @@
 import tidy.lib.list
 import .types
 
+-- Required for us to emit more compact `conv` invocations
+import tactic.converter.interactive
+
 open interactive interactive.types expr tactic
 
 variables {α β γ δ : Type}
@@ -79,7 +82,7 @@ meta def splice_in (a : option app_addr) (rws : list ℕ) (s : list side) : tact
 
 meta def build_rw_tactic (cfg : config) (hs : list ℕ) : tactic string := do
   rws ← (hs.map $ nth_rule cfg).mmap pp_rule,
-  return $ "rw [" ++ (string.intercalate ", " rws) ++ "]"
+  return $ "erw [" ++ (string.intercalate ", " rws) ++ "]"
 
 meta def explain_tree_aux (cfg : config) : app_addr → tactic (option (list string))
 | (app_addr.rw rws) := some <$> list.singleton <$> build_rw_tactic cfg rws
@@ -102,7 +105,7 @@ meta def compile_rewrites_aux (cfg : config) (s : side) : option app_addr → li
 | (some tree) [] := do
   tacs ← explain_tree cfg tree,
   return $ if tacs.length = 0 then []
-  else ["conv { " ++ string.intercalate ", " (("to_" ++ hand.get s) :: tacs) ++ " }"]
+  else ["conv_" ++ hand.get s ++ " { " ++ string.intercalate ", " tacs ++ " }"]
 | tree (h :: rest) := do
 -- TODO handle other how.* values here, e.g. how.simp
 -- At the moment we just silently drop these.
