@@ -5,7 +5,7 @@ open tactic
 
 meta def pretty_print (e : expr) (implicits : bool := ff) (full_cnsts := ff) : tactic string :=
 do options ← get_options,
-   set_options $ options.set_list [
+   set_options $ options.set_list_bool [
      (`pp.notation, true),
      (`pp.universes, false),
      (`pp.implicit, implicits),
