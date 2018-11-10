@@ -34,15 +34,6 @@ meta def assert_type (type : expr) (n : name) : tactic unit := do
 meta def type_cast (α : Type u) [reflected α] (n : name) : tactic α :=
   eval_expr α (expr.const n [])
 
-/-- This makes sure that the execution of the tactic does not change the tactic state.
-    This can be helpful while using rewrite, apply, or expr munging.
-    Remember to instantiate your metavariables before you're done! -/
-meta def lock_tactic_state {α} (t : tactic α) : tactic α
-| s := match t s with
-       | result.success a s' := result.success a s
-       | result.exception msg pos s' := result.exception msg pos s
-end
-
 -- FIXME doesn't `unify` do exactly this??
 meta def attempt_refl (lhs rhs : expr) : tactic expr :=
 lock_tactic_state $
