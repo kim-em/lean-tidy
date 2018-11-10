@@ -95,7 +95,7 @@ open tactic
 
 def f : F :=
 begin
-tidy --{trace_result:=tt},
+tidy --{explain:=tt},
 -- fsplit, fsplit, fsplit, fsplit, rotate_left 1,
 --  refl, tactic.result >>= tactic.trace,
 --   fsplit, fsplit, rotate_left 1,

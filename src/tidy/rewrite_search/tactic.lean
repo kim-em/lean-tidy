@@ -18,9 +18,9 @@ variables {α β γ δ : Type}
 
 namespace tidy.rewrite_search
 
-meta def pick_default_tracer   : tactic unit := `[exact tidy.rewrite_search.tracer.unit_tracer]
-meta def pick_default_metric   : tactic unit := `[exact tidy.rewrite_search.metric.edit_distance]
 meta def pick_default_strategy : tactic unit := `[exact tidy.rewrite_search.strategy.pexplore]
+meta def pick_default_metric   : tactic unit := `[exact tidy.rewrite_search.metric.edit_distance]
+meta def pick_default_tracer   : tactic unit := `[exact tidy.rewrite_search.tracer.unit_tracer]
 
 -- This is the "public" config structure which has convenient tactic-mode
 -- invocation synatx. The data in this structure is extracted and transformed
@@ -35,7 +35,7 @@ meta structure rewrite_search_config (α β γ δ : Type) extends rewrite_all_cf
 (inflate_rws     : bool := ff)
 (trace           : bool := ff)
 (trace_summary   : bool := ff)
-(trace_result    : bool := ff)
+(explain    : bool := ff)
 (trace_rules     : bool := ff)
 (trace_discovery : bool := tt)
 (explain_using_conv : bool := tt)
@@ -43,8 +43,6 @@ meta structure rewrite_search_config (α β γ δ : Type) extends rewrite_all_cf
 (metric          : metric_constructor β γ . pick_default_metric)
 (strategy        : strategy_constructor α . pick_default_strategy)
 (view            : tracer_constructor δ   . pick_default_tracer)
-
--- TODO coerce {} = ∅ into default_config?
 
 open tidy.rewrite_search.edit_distance
 open tidy.rewrite_search.metric.edit_distance
@@ -88,15 +86,15 @@ do
     trace := cfg.trace,
     trace_summary := cfg.trace_summary,
     trace_rules := cfg.trace_rules,
-    trace_result := cfg.trace_result,
     trace_discovery := cfg.trace_discovery,
+    explain := cfg.explain,
     explain_using_conv := cfg.explain_using_conv,
     discharger := cfg.discharger,
     simplifier := cfg.simplifier,
     try_simp := cfg.try_simp,
   },
-  i ← setup_instance conf strat m tr strat_state metric_state tracer_state prog eqn,
-  return i
+  option.some <$>
+    setup_instance conf strat m tr strat_state metric_state tracer_state prog eqn
 
 meta def try_search (cfg : rewrite_search_config α β γ δ) (prog : discovery.progress) (rs : list (expr × bool)) (eqn : sided_pair expr) : tactic (option string) := do
   i ← try_mk_search_instance cfg prog rs eqn,

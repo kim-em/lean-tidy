@@ -15,7 +15,7 @@ example : [0] = [7] :=
 begin
   -- erw [foo, bar1, bar2, bar3, bar4, bar5, bar6],
   rewrite_search_with [foo, bar1, bar2, bar3, bar4, bar5, bar6, baz]
-    { optimal := ff, view := no visualiser, trace_result := tt },
+    { optimal := ff, view := no visualiser, explain := tt },
 end
 
 example : [0] = [7] :=
@@ -28,7 +28,7 @@ end
 example : [0] = [7] :=
 begin
   rewrite_search_with [foo, bar1, bar2, bar3, bar4, bar5, bar6, baz]
-    { optimal := tt, view := no visualiser, trace_result := tt },
+    { optimal := tt, view := no visualiser, explain := tt },
 end
 
 example : [0] = [7] :=

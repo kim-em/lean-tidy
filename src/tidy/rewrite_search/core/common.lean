@@ -28,9 +28,9 @@ meta structure config extends rewrite_all_cfg :=
 (exhaustive      : bool)
 (trace           : bool)
 (trace_summary   : bool)
-(trace_result    : bool)
 (trace_rules     : bool)
 (trace_discovery : bool)
+(explain         : bool)
 (explain_using_conv : bool)
 
 open tactic

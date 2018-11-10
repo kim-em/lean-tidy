@@ -22,7 +22,7 @@ example : [[7],[6]] = [[5],[5]] :=
 begin
  success_if_fail { rewrite_search_with [] },
 -- rw [←foo', bar']
- rewrite_search_with [←foo', bar'] {trace_result := tt},
+ rewrite_search_with [←foo', bar'] {explain := tt},
 end
 
 @[search] private axiom foo : [0] = [1]
@@ -52,7 +52,7 @@ conv { to_lhs, congr, },
 -- conv { to_rhs, (*→func→arg→func) congr, congr, skip, congr, rw bar2, },
 -- conv { to_rhs, (*→arg→func) congr, skip, congr, rw bar2, }
 
-  rewrite_search_with [foo, bar1, ← bar2, bar2, ← bar3] {trace_result := tt},
+  rewrite_search_with [foo, bar1, ← bar2, bar2, ← bar3] {explain := tt},
 end
 
 private example (a : unit) : [[0],[0]] = [[4],[4]] :=
@@ -76,7 +76,7 @@ begin
 -- conv { to_lhs, congr, rw [foo, bar1], skip, rw [foo, bar1] },
 -- conv { to_rhs, congr, rw [←bar3, bar2], skip, rw [←bar3, bar2] },
 
-  rewrite_search {trace_result := tt},
+  rewrite_search {},
 end
 
 @[search] private axiom qux' : [[1], [2]] = [[6], [7]]
@@ -99,7 +99,7 @@ begin
 -- nth_rewrite_lhs 0 bar1,
 -- nth_rewrite_rhs 1 ←bar3,
 -- nth_rewrite_rhs 0 bar2,
-  rewrite_search { trace_result := ff },
+  rewrite_search { explain := ff },
 end
 
 private structure cat :=
@@ -164,7 +164,7 @@ run_cmd do all_rewrites_lazy (`(g_0_0), tt) `(g 0 0 0)
 
 lemma test : f 0 0 0 = g 0 0 0 :=
 -- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
-by rewrite_search {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := tt, view := no visualiser, strategy := pexplore {pop_size := 1}, metric := edit_distance {refresh_freq := 5} weight.cm}
+by rewrite_search {trace := ff, explain := tt, trace_summary := tt, exhaustive := tt, view := no visualiser, strategy := pexplore {pop_size := 1}, metric := edit_distance {refresh_freq := 5} weight.cm}
 -- begin
 -- perform_nth_rewrite [f_2_2] 0,
 -- perform_nth_rewrite [f_1_1] 0,
@@ -176,22 +176,22 @@ by rewrite_search {trace := ff, trace_result := tt, trace_summary := tt, exhaust
 
 lemma test_bfs : f 0 0 0 = g 0 0 0 :=
 -- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
-by rewrite_search {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := tt, view := no visualiser, strategy := pexplore {pop_size:=5}, metric := edit_distance {} weight.svm }
+by rewrite_search {trace := ff, explain := tt, trace_summary := tt, exhaustive := tt, view := no visualiser, strategy := pexplore {pop_size:=5}, metric := edit_distance {} weight.svm }
 
 -- Compare: in these next two we just change pop_size 1 -> 5, and we find a much much
 -- better proof, but we see a little more stuff.
 
 lemma test_svm : f 0 0 0 = g 0 0 0 :=
 -- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
-by rewrite_search {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := tt, view := no visualiser, strategy := pexplore {pop_size := 1}, metric := edit_distance {refresh_freq := 1} weight.svm}
+by rewrite_search {trace := ff, explain := tt, trace_summary := tt, exhaustive := tt, view := no visualiser, strategy := pexplore {pop_size := 1}, metric := edit_distance {refresh_freq := 1} weight.svm}
 
 lemma test_svm2 : f 0 0 0 = g 0 0 0 :=
 -- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
-by rewrite_search {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := tt, view := no visualiser, strategy := pexplore {pop_size := 5}, metric := edit_distance {refresh_freq := 1} weight.svm}
+by rewrite_search {trace := ff, explain := tt, trace_summary := tt, exhaustive := tt, view := no visualiser, strategy := pexplore {pop_size := 5}, metric := edit_distance {refresh_freq := 1} weight.svm}
 
 lemma test_cm2 : f 0 0 0 = g 0 0 0 :=
 -- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
-by rewrite_search {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := tt, view := no visualiser, strategy := pexplore {pop_size := 5}, metric := edit_distance {refresh_freq := 1} weight.cm}
+by rewrite_search {trace := ff, explain := tt, trace_summary := tt, exhaustive := tt, view := no visualiser, strategy := pexplore {pop_size := 5}, metric := edit_distance {refresh_freq := 1} weight.cm}
 
 constant h : ℕ → ℕ
 @[search,simp] axiom a1 : h 0 = h 1
@@ -206,10 +206,10 @@ by rewrite_search
 constants a b c d e : ℚ
 
 lemma test3 : (a * (b + c)) * d = a * (b * d) + a * (c * d) :=
-by rewrite_search_with [add_comm, add_assoc, mul_assoc, mul_comm, left_distrib, right_distrib] {trace_result := tt, trace_summary := tt, view := no visualiser, metric := edit_distance}
+by rewrite_search_with [add_comm, add_assoc, mul_assoc, mul_comm, left_distrib, right_distrib] {explain := tt, trace_summary := tt, view := no visualiser, metric := edit_distance}
 
 lemma test4 : (a * (b + c + 1)) * d = a * (b * d) + a * (1 * d) + a * (c * d) :=
-by rewrite_search_with [add_comm, add_assoc, mul_one, mul_assoc, mul_comm, left_distrib, right_distrib] {trace_result := tt, trace_summary := tt, view := no visualiser, metric := edit_distance {refresh_freq := 10} weight.cm, strategy := pexplore, max_iterations := 100}
+by rewrite_search_with [add_comm, add_assoc, mul_one, mul_assoc, mul_comm, left_distrib, right_distrib] {explain := tt, trace_summary := tt, view := no visualiser, metric := edit_distance {refresh_freq := 10} weight.cm, strategy := pexplore, max_iterations := 100}
 
 namespace tidy.rewrite_search.tesseract
 
@@ -270,7 +270,7 @@ namespace v1
 -- rewrite_search_with (saw/visited/used) 114/112/13 expressions during proof of tidy.rewrite_search.examples.tidy.rewrite_search.tesseract.v1.test
 lemma test : f_1 0 0 0 = f_5 0 0 0 :=
 -- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
-by rewrite_search {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := ff, view := no visualiser, strategy := pexplore {pop_size := 1, pop_alternate := ff}, metric := edit_distance, max_iterations := 1000}
+by rewrite_search {trace := ff, explain := tt, trace_summary := tt, exhaustive := ff, view := no visualiser, strategy := pexplore {pop_size := 1, pop_alternate := ff}, metric := edit_distance, max_iterations := 1000}
 end v1
 
 namespace v2
@@ -282,7 +282,7 @@ namespace v2
 
 -- lemma test : f_1 0 0 0 = f_5 0 0 0 :=
 -- -- by erw [f_2_2, f_1_1, g_0_2, g_2_1, ←f_g]
--- by rewrite_search {trace := ff, trace_result := tt, trace_summary := tt, exhaustive := ff, view := no visualiser, strategy := pexplore { pop_size := 100 }, metric := edit_distance {refresh_freq := 5} weight.cm}
+-- by rewrite_search {trace := ff, explain := tt, trace_summary := tt, exhaustive := ff, view := no visualiser, strategy := pexplore { pop_size := 100 }, metric := edit_distance {refresh_freq := 5} weight.cm}
 end v2
 
 end tidy.rewrite_search.tesseract

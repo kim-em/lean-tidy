@@ -216,7 +216,7 @@ meta def explain_search_result (cfg : config) (proof : expr) (units : list proof
   else skip,
 
   explanation ← explain_proof_concisely cfg proof units <|> explain_proof_full cfg units,
-  if cfg.trace_result then trace $ "/- `rewrite_search` says -/\n" ++ explanation
+  if cfg.explain then trace $ "/- `rewrite_search` says -/\n" ++ explanation
   else skip,
   return explanation
 
