@@ -52,7 +52,7 @@ meta def is_acceptable_rewrite (t : expr) : bool :=
   is_eq_or_iff_after_binders t
 
 meta def is_acceptable_lemma (r : expr) : tactic bool :=
-  is_acceptable_rewrite <$> infer_type r
+  is_acceptable_rewrite <$> (infer_type r >>= whnf)
 
 meta def is_acceptable_hyp (r : expr) : tactic bool :=
-  do t ← infer_type r, return $ is_acceptable_rewrite t ∧ ¬t.has_meta_var
+  do t ← infer_type r >>= whnf, return $ is_acceptable_rewrite t ∧ ¬t.has_meta_var
