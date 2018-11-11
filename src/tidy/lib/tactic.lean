@@ -42,7 +42,7 @@ do
   m ← to_expr ``(%%lhs = %%rhs) >>= mk_meta_var,
   set_goals [m],
   refl ← mk_const `eq.refl,
-  tactic.apply_core refl {new_goals := new_goals.non_dep_only},
+  apply_core refl {new_goals := new_goals.non_dep_only},
   instantiate_mvars m
 
 -- TODO Am I even good? Do I work? Do I slow us down too much?
