@@ -45,12 +45,11 @@ do
   apply_core refl {new_goals := new_goals.non_dep_only},
   instantiate_mvars m
 
--- TODO Am I even good? Do I work? Do I slow us down too much?
-meta def simp_expr (t : expr) (no_defaults := ff) (attr_names : list name := []) (hs : list simp_arg_type := []) (cfg : simp_config := {}) (discharger : tactic unit := failed) : tactic (expr × expr) := do
+meta def simp_expr (t : expr) (cfg : simp_config := {}) (discharger : tactic unit := failed) (no_defaults := ff) (attr_names : list name := []) (hs : list simp_arg_type := []) : tactic (expr × expr) := do
   (s, to_unfold) ← mk_simp_set no_defaults attr_names hs,
   simplify s to_unfold t cfg `eq discharger
 
-meta def dsimp_expr (t : expr) (no_defaults := ff) (attr_names : list name := []) (hs : list simp_arg_type := []) (cfg : dsimp_config := {}) (discharger : tactic unit := failed) : tactic expr := do
+meta def dsimp_expr (t : expr) (cfg : dsimp_config := {}) (discharger : tactic unit := failed) (no_defaults := ff) (attr_names : list name := []) (hs : list simp_arg_type := []) : tactic expr := do
   (s, to_unfold) ← mk_simp_set no_defaults attr_names hs,
   s.dsimplify to_unfold t cfg
 

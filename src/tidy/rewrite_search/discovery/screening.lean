@@ -10,7 +10,8 @@ open tactic tactic.interactive
 namespace tidy.rewrite_search.discovery
 
 meta def assert_acceptable_lemma (r : expr) : tactic unit := do
-  ret ← is_acceptable_lemma r,
+  -- FIXME: unfold definitions to see if there is an eq or iff
+  ret ← pure tt, -- is_acceptable_lemma r,
   if ret then return ()
   else do
     pp ← pretty_print r,
