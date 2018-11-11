@@ -84,7 +84,7 @@ end rfl_lemma
 meta def rfl_lemma_core (conf : rfl_lemma.config) : lean.parser unit := do
   obj_def ← ident,
   field ← ident,
-  lean.parser.of_tactic_safe (rfl_lemma.handle conf obj_def field) >>= emit_code_here
+  lean.parser.of_tactic' (rfl_lemma.handle conf obj_def field) >>= emit_code_here
 
 @[user_command]
 meta def rfl_lemma_cmd (d : decl_meta_info) (_ : parse $ tk "rfl_lemma") : lean.parser unit :=
