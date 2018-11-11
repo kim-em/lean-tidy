@@ -76,7 +76,7 @@ begin
 -- conv { to_lhs, congr, rw [foo, bar1], skip, rw [foo, bar1] },
 -- conv { to_rhs, congr, rw [←bar3, bar2], skip, rw [←bar3, bar2] },
 
-  rewrite_search {},
+  rewrite_search,
 end
 
 @[search] private axiom qux' : [[1], [2]] = [[6], [7]]
