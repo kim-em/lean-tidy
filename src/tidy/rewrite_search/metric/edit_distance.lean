@@ -12,7 +12,7 @@ variables {α : Type} [decidable_eq α]
 @[derive decidable_eq]
 structure ed_partial :=
   (prefix_length : dnum)
-  (suffix    : list table_ref)
+  (suffix    : list (table_ref × dnum))
   (distances : list dnum) -- distances from the prefix of l₁ to each non-empty prefix of l₂
 
 @[inline] def get_weight (weights : table dnum) (r : table_ref) : dnum := weights.iget r
@@ -27,7 +27,7 @@ def compute_initial_distances_aux (weights : table dnum) : dnum → list table_r
   compute_initial_distances_aux weights 0 l
 
 @[inline] def empty_partial_edit_distance_data (weights : table dnum) (l₁ l₂ : list table_ref) : ed_partial :=
-  ⟨ 0, l₁, compute_initial_distances weights l₂ ⟩
+  ⟨ 0, l₁.map (λ r, (r, weights.iget r)), compute_initial_distances weights l₂ ⟩
 
 @[inline] def triples {α : Type} (p : ed_partial) (l₂ : list α): list (dnum × dnum × α) :=
 p.distances.zip ((list.cons p.prefix_length p.distances).zip l₂)
@@ -35,22 +35,22 @@ p.distances.zip ((list.cons p.prefix_length p.distances).zip l₂)
 universe u
 
 --TODO explain me
-@[inline] meta def fold_fn (weights : table dnum) (h : table_ref) (n : dnum × list dnum) : dnum × dnum × table_ref → dnum × list dnum
+@[inline] meta def fold_fn (weights : table dnum) (h : table_ref) (wh : dnum) (n : dnum × list dnum) : dnum × dnum × table_ref → dnum × list dnum
 | (a, b, r) :=
   let m := if h = r then b else dnum.minl [
-    /- deletion     -/ a + (weights.iget r),
-    /- substitution -/ b + dnum.max (weights.iget r) (weights.iget h),
-    /- insertion    -/ n.2.head + (weights.iget h)
+    /- deletion     -/ a + wh,
+    /- substitution -/ b + dnum.max (weights.iget r) wh,
+    /- insertion    -/ n.2.head + wh
   ] in (dnum.min m n.1, list.cons m n.2)
 
 --TODO explain me
 @[inline] meta def improve_bound_once (weights : table dnum) (l r : list table_ref) (cur : dnum) (p : ed_partial) : bound_progress ed_partial :=
   match p.suffix with
     | [] := exactly p.distances.ilast p
-    | (h :: t) :=
-      let new_prefix_length := p.prefix_length + (weights.iget h) in
+    | ((h, wh) :: t) :=
+      let new_prefix_length := p.prefix_length + wh in
       let initial : dnum × list dnum := (new_prefix_length, [new_prefix_length]) in
-      let new_distances : dnum × list dnum := (triples p r).foldl (fold_fn weights h) initial in
+      let new_distances : dnum × list dnum := (triples p r).foldl (fold_fn weights h wh) initial in
       at_least new_distances.1 ⟨ new_prefix_length, t, new_distances.2.reverse.drop 1 ⟩
   end
 
