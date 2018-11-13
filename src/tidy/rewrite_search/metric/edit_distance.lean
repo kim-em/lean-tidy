@@ -15,7 +15,7 @@ structure ed_partial :=
   (suffix    : list table_ref)
   (distances : list dnum) -- distances from the prefix of l₁ to each non-empty prefix of l₂
 
-def get_weight (weights : table dnum) (r : table_ref) : dnum := max (weights.iget r) 1
+def get_weight (weights : table dnum) (r : table_ref) : dnum := weights.iget r
 
 def compute_initial_distances_aux (weights : table dnum) : dnum → list table_ref → list dnum
 | _ [] := []
