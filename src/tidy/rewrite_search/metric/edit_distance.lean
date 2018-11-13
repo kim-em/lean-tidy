@@ -13,6 +13,7 @@ variables {α : Type} [decidable_eq α]
 structure ed_partial :=
   (prefix_length : dnum)
   (suffix    : list (table_ref × dnum))
+  (l₂_cache  : list (table_ref × dnum))
   (distances : list dnum) -- distances from the prefix of l₁ to each non-empty prefix of l₂
 
 @[inline] def get_weight (weights : table dnum) (r : table_ref) : dnum := weights.iget r
@@ -27,40 +28,40 @@ def compute_initial_distances_aux (weights : table dnum) : dnum → list table_r
   compute_initial_distances_aux weights 0 l
 
 @[inline] def empty_partial_edit_distance_data (weights : table dnum) (l₁ l₂ : list table_ref) : ed_partial :=
-  ⟨ 0, l₁.map (λ r, (r, weights.iget r)), compute_initial_distances weights l₂ ⟩
+  ⟨ 0, l₁.map (λ r, (r, weights.iget r)), l₂.map (λ r, (r, weights.iget r)), compute_initial_distances weights l₂ ⟩
 
-@[inline] def triples {α : Type} (p : ed_partial) (l₂ : list α): list (dnum × dnum × α) :=
+@[inline] def triples {α : Type} (p : ed_partial) (l₂ : list (α × dnum)): list (dnum × dnum × α × dnum) :=
 p.distances.zip ((list.cons p.prefix_length p.distances).zip l₂)
 
 universe u
 
 --TODO explain me
-@[inline] meta def fold_fn (weights : table dnum) (h : table_ref) (wh : dnum) (n : dnum × list dnum) : dnum × dnum × table_ref → dnum × list dnum
-| (a, b, r) :=
+@[inline] meta def fold_fn (h : table_ref) (wh : dnum) (n : dnum × list dnum) : dnum × dnum × table_ref × dnum → dnum × list dnum
+| (a, b, r, wr) :=
   let m := if h = r then b else dnum.minl [
     /- deletion     -/ a + wh,
-    /- substitution -/ b + dnum.max (weights.iget r) wh,
+    /- substitution -/ b + dnum.max wr wh,
     /- insertion    -/ n.2.head + wh
   ] in (dnum.min m n.1, list.cons m n.2)
 
 --TODO explain me
-@[inline] meta def improve_bound_once (weights : table dnum) (l r : list table_ref) (cur : dnum) (p : ed_partial) : bound_progress ed_partial :=
+@[inline] meta def improve_bound_once (cur : dnum) (p : ed_partial) : bound_progress ed_partial :=
   match p.suffix with
     | [] := exactly p.distances.ilast p
     | ((h, wh) :: t) :=
       let new_prefix_length := p.prefix_length + wh in
       let initial : dnum × list dnum := (new_prefix_length, [new_prefix_length]) in
-      let new_distances : dnum × list dnum := (triples p r).foldl (fold_fn weights h wh) initial in
-      at_least new_distances.1 ⟨ new_prefix_length, t, new_distances.2.reverse.drop 1 ⟩
+      let new_distances : dnum × list dnum := (triples p p.l₂_cache).foldl (fold_fn h wh) initial in
+      at_least new_distances.1 ⟨ new_prefix_length, t, p.l₂_cache, new_distances.2.reverse.drop 1 ⟩
   end
 
-meta def improve_bound_over (weights : table dnum) (l r : list table_ref) (m : dnum) : bound_progress ed_partial → bound_progress ed_partial
+meta def improve_bound_over (m : dnum) : bound_progress ed_partial → bound_progress ed_partial
 | (exactly n p) := exactly n p
 | (at_least n p) :=
   if n > m then
     at_least n p
   else
-    improve_bound_over (improve_bound_once weights l r n p)
+    improve_bound_over (improve_bound_once n p)
 
 end tidy.rewrite_search.edit_distance
 
@@ -116,8 +117,8 @@ meta def ed_update (fn : search_state α ed_state ed_partial δ → tactic (tabl
   else
     return g
 
-meta def ed_improve_estimate_over (m : dnum) (l r : vertex) (bnd : bound_progress ed_partial) : bound_progress ed_partial :=
-  improve_bound_over g.metric_state.weights l.tokens r.tokens m bnd
+meta def ed_improve_estimate_over (g : search_state α ed_state ed_partial δ) (m : dnum) (l r : vertex) (bnd : bound_progress ed_partial) : bound_progress ed_partial :=
+  improve_bound_over m bnd
 
 end tidy.rewrite_search.metric.edit_distance
 
