@@ -13,10 +13,8 @@ variables {α : Type} [decidable_eq α]
 structure ed_partial :=
   (prefix_length : dnum)
   (suffix    : list (table_ref × dnum))
-  (l₂_cache  : list (table_ref × dnum))
+  (l₂_toks   : list (table_ref × dnum))
   (distances : list dnum) -- distances from the prefix of l₁ to each non-empty prefix of l₂
-
-@[inline] def get_weight (weights : table dnum) (r : table_ref) : dnum := weights.iget r
 
 def compute_initial_distances_aux (weights : table dnum) : dnum → list table_ref → list dnum
 | _ [] := []
@@ -51,8 +49,8 @@ universe u
     | ((h, wh) :: t) :=
       let new_prefix_length := p.prefix_length + wh in
       let initial : dnum × list dnum := (new_prefix_length, [new_prefix_length]) in
-      let new_distances : dnum × list dnum := (triples p p.l₂_cache).foldl (fold_fn h wh) initial in
-      at_least new_distances.1 ⟨ new_prefix_length, t, p.l₂_cache, new_distances.2.reverse.drop 1 ⟩
+      let new_distances : dnum × list dnum := (triples p p.l₂_toks).foldl (fold_fn h wh) initial in
+      at_least new_distances.1 ⟨ new_prefix_length, t, p.l₂_toks, new_distances.2.reverse.drop 1 ⟩
   end
 
 meta def improve_bound_over (m : dnum) : bound_progress ed_partial → bound_progress ed_partial
