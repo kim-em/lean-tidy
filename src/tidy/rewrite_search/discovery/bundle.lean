@@ -8,7 +8,8 @@ open tactic
 open lean.parser
 open interactive.types
 
-meta def atrr_fail {α : Type} (attr : string) (reason : format) : tactic α := fail $ "[" ++ attr ++"] error: " ++ to_string reason
+meta def atrr_fail {α : Type} (attr : string) (reason : format) : tactic α :=
+  fail $ "[" ++ attr ++ "] error: " ++ to_string reason
 private meta def bundle_fail {α : Type} : format → tactic α := atrr_fail "bundle"
 private meta def search_fail {α : Type} : format → tactic α := atrr_fail "search"
 

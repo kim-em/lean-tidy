@@ -15,7 +15,7 @@ meta def suggestion_cmd (d : decl_meta_info) (_ : parse $ tk "suggestion") : lea
   -- Implement option parsing here, e.g:
   -- tgt ← optional (tk "at" *> ident),
   pfx ← get_current_namespace,
-  of_tactic_safe $ do
+  of_tactic' $ do
     sfx ← name.mk_user_fresh_name "suggestion" "s___",
     let n := pfx ++ sfx,
     tactic.add_meta_definition n [] `(list name) (reflect bn).to_expr,

@@ -1,4 +1,3 @@
-import .interaction_monad
 import .name
 
 namespace lean.parser
@@ -39,32 +38,6 @@ meta def mk_definition_here (n : name) (vars : list (name × expr)) (type : opti
   mk_definition_here_raw n vars type (to_string value) is_meta (annotations.map to_string)
 
 -- TODO implement `mk_attribute_here`/`mk_attribute_here_raw`
-
-meta inductive boxed_result (α : Type)
-| success : α → boxed_result
-| failure : format → boxed_result
-
--- The "lean.parser.of_tactic" function in core lean is broken:
--- when the underlying tactic returns `fail msg` instead of a success,
--- the result is not turned into a lean.parser monad fail, and instead
--- a vm bad cast bugcheck (`is_closure`) is tripped. We provided a fixed
--- alternative here.
-meta def of_tactic_safe {α : Type} (t : tactic α) : lean.parser α := do
-  let tac : tactic (boxed_result α) := interaction_monad_orelse_intercept_safe (do
-    r ← t,
-    return $ boxed_result.success r
-  )
-  (λ e ref, return $ boxed_result.failure _ $ match e with
-    | some e := e ()
-    | none   := "tactic failed"
-    end
-  )
-  (boxed_result.failure _ "tactic failed while handling tactic failed!"),
-  ret ← of_tactic tac,
-  match ret with
-  | boxed_result.success ret := return ret
-  | boxed_result.failure _ reason := interaction_monad.fail reason
-  end
 
 meta def get_current_namespace : lean.parser name := do
   n ← name.mk_user_fresh_name "secret" "ns___",
