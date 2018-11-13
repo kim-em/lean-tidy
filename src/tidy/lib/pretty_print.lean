@@ -15,10 +15,6 @@ do options ← get_options,
    set_options options,
    pure t.to_string
 
-meta def tokenise_expr (e : expr) : tactic (string × list string) := do
-  pp ← pretty_print e,
-  pure (pp, pp.split_on ' ')
-
 /-
 
   pp.coercions (Bool) (pretty printer) display coercionss (default: true)
