@@ -3,7 +3,7 @@ import .array
 
 universes u v w z
 
-attribute [inline] bool.decidable_eq option.is_some
+attribute [inline] bool.decidable_eq option.is_some option.is_none list.head
 attribute [inline] array.read array.write
 
 def table_ref : Type := ℕ
