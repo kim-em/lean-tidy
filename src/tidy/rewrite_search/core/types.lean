@@ -10,20 +10,20 @@ universe u
 
 namespace tidy.rewrite_search
 
-def dnum : Type := ℚ
+def dnum : Type := ℤ
 namespace dnum
 
-instance : decidable_linear_ordered_comm_group dnum := by dunfold dnum; apply_instance
-instance : has_zero dnum := by dunfold dnum; apply_instance
-instance : has_one dnum := by dunfold dnum; apply_instance
-instance : has_add dnum := by dunfold dnum; apply_instance
-instance : has_sub dnum := by dunfold dnum; apply_instance
-instance : has_mul dnum := by dunfold dnum; apply_instance
-instance : has_div dnum := by dunfold dnum; apply_instance
-instance : inhabited dnum := by dunfold dnum; apply_instance
+def of_nat (n : ℕ) : dnum := int.of_nat n
 
-instance : has_to_string dnum := by dunfold dnum; apply_instance
-meta instance : has_to_format dnum := by dunfold dnum; apply_instance
+instance : decidable_linear_ordered_comm_group dnum := by dunfold dnum; apply_instance
+instance : has_zero dnum := int.has_zero
+instance : has_one dnum := int.has_one
+instance : has_add dnum := int.has_add
+instance : has_mul dnum := int.has_mul
+instance : inhabited dnum := int.inhabited
+
+instance : has_to_string dnum := int.has_to_string
+meta instance : has_to_format dnum := int.has_to_format
 
 end dnum
 
