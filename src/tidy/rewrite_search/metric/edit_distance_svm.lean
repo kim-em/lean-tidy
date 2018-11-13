@@ -44,7 +44,7 @@ meta def build_vector_lists_aux {dim : ℕ} (vertices : table vertex) : table_re
 meta def build_vector_lists (dim : ℕ) (vertices : table vertex) : sided_pair (list (array dim ℕ)) :=
   build_vector_lists_aux vertices table_ref.first
 
-meta def calculate_weights : tactic (table ℚ) := do
+meta def calculate_weights : tactic (table dnum) := do
   let dim := g.tokens.length,
   let ⟨lvs, rvs⟩ := build_vector_lists dim g.vertices,
   let (n, b) := k.find_separating_hyperplane lvs rvs,

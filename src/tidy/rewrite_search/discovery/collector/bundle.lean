@@ -14,7 +14,7 @@ namespace tidy.rewrite_search.discovery
 def BUNDLE_CHUNK_SIZE := 1
 
 -- TODO Be smarter about calculating this.
-meta def score_bundle (b : bundle_ref) (sample : list expr) : tactic ℚ := do
+meta def score_bundle (b : bundle_ref) (sample : list expr) : tactic ℕ := do
   mems ← b.get_members,
   mems.mfoldl (λ sum n, do
     e ← mk_const n,

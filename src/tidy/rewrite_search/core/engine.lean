@@ -142,7 +142,7 @@ do
         pure (g, v),
   return ⟨g, ⟨v.id, table_ref.first⟩⟩
 
-meta def improve_estimate_over (threshold : ℚ) (de : dist_estimate γ) : tactic (search_state α β γ δ × dist_estimate γ) := do
+meta def improve_estimate_over (threshold : dnum) (de : dist_estimate γ) : tactic (search_state α β γ δ × dist_estimate γ) := do
   (vl, vr) ← g.get_estimate_verts de,
   let new_bnd := m.improve_estimate_over g threshold vl vr de.bnd,
   let new_de := {de with bnd := new_bnd},

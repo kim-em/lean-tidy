@@ -10,13 +10,30 @@ universe u
 
 namespace tidy.rewrite_search
 
+def dnum : Type := ℚ
+namespace dnum
+
+instance : decidable_linear_ordered_comm_group dnum := by dunfold dnum; apply_instance
+instance : has_zero dnum := by dunfold dnum; apply_instance
+instance : has_one dnum := by dunfold dnum; apply_instance
+instance : has_add dnum := by dunfold dnum; apply_instance
+instance : has_sub dnum := by dunfold dnum; apply_instance
+instance : has_mul dnum := by dunfold dnum; apply_instance
+instance : has_div dnum := by dunfold dnum; apply_instance
+instance : inhabited dnum := by dunfold dnum; apply_instance
+
+instance : has_to_string dnum := by dunfold dnum; apply_instance
+meta instance : has_to_format dnum := by dunfold dnum; apply_instance
+
+end dnum
+
 inductive bound_progress (β : Type u)
-| exactly : ℚ → β → bound_progress
-| at_least : ℚ → β → bound_progress
+| exactly : dnum → β → bound_progress
+| at_least : dnum → β → bound_progress
 
 open bound_progress
 
-def bound_progress.bound {β : Type u} : bound_progress β → ℚ
+def bound_progress.bound {β : Type u} : bound_progress β → dnum
 | (exactly n _)  := n
 | (at_least n _) := n
 def bound_progress.sure {β : Type u} : bound_progress β → bool
@@ -182,7 +199,7 @@ def RHS_VERTEX_ID : table_ref := table_ref.from_nat 1
 
 meta def update_fn (α β γ δ : Type) : Type := search_state α β γ δ → ℕ → tactic (search_state α β γ δ)
 meta def init_bound_fn (α β γ δ : Type) := search_state α β γ δ → vertex → vertex → bound_progress γ
-meta def improve_estimate_fn (α β γ δ : Type) := search_state α β γ δ → ℚ → vertex → vertex → bound_progress γ → bound_progress γ
+meta def improve_estimate_fn (α β γ δ : Type) := search_state α β γ δ → dnum → vertex → vertex → bound_progress γ → bound_progress γ
 
 meta structure metric (α β γ δ : Type) :=
 (init : init_fn β)
