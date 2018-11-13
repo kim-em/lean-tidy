@@ -11,9 +11,9 @@ def cm_of_side (l : list token) (s : side) : list dnum :=
   let (tot, vec) := l.foldl (
     λ n : ℕ × list ℕ, λ t : token, let v := t.freq.get s in (n.1 + v, n.2.concat v)
   ) (0, []) in
-  vec.map (λ n : ℕ, dnum.of_nat $ n * 1000 / tot)
+  vec.map (λ n : ℕ, dnum.of_nat (n * 1000 / tot))
 
-def compare_component (a b : dnum) : dnum := (abs (a - b)) * 1 + 1000
+def compare_component (a b : dnum) : dnum := 1000 + dnum.diff a b
 
 def compare : list dnum → list dnum → list dnum
   | (a :: l1) (b :: l2) := compare_component a b :: compare l1 l2

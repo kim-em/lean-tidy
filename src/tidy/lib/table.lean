@@ -3,6 +3,9 @@ import .array
 
 universes u v w z
 
+attribute [inline] bool.decidable_eq option.is_some
+attribute [inline] array.read array.write
+
 def table_ref : Type := ℕ
 def table_ref.from_nat (r : ℕ) : table_ref := r
 def table_ref.to_nat (r : table_ref) : ℕ := r
@@ -47,9 +50,9 @@ meta def from_map_array {dim : ℕ} (x : array dim α) (f : α → β) : table �
 meta def from_array {dim : ℕ} (x : array dim α) : table α :=
   from_map_array x $ λ a, a
 
-def is_full : bool := t.next_id.to_nat = t.buff_len
+@[inline] def is_full : bool := t.next_id.to_nat = t.buff_len
 
-private def try_fin (r : table_ref) : option (fin t.buff_len) :=
+@[inline] private def try_fin (r : table_ref) : option (fin t.buff_len) :=
 begin
   let r := r.to_nat,
   by_cases h : r < t.buff_len,
@@ -57,53 +60,53 @@ begin
   exact none
 end
 
-meta def grow : table α :=
+@[inline] meta def grow : table α :=
   let new_len := t.buff_len * 2 in
   let new_buff : array new_len (option α) := mk_array new_len none in
   {t with buff_len := new_len, entries := array.copy t.entries new_buff}
 
-def at_ref (r : table_ref) : option α :=
+@[inline] def at_ref (r : table_ref) : option α :=
   match try_fin t r with
   | none := none
   | some r := t.entries.read r
   end
 
-def present (r : table_ref) : bool := (t.at_ref r).is_some
+@[inline] def present (r : table_ref) : bool := (t.at_ref r).is_some
 
-meta def get (r : table_ref) : tactic α := t.at_ref r
+@[inline] meta def get (r : table_ref) : tactic α := t.at_ref r
 
-def iget [inhabited α] (r : table_ref) : α :=
+@[inline] def iget [inhabited α] (r : table_ref) : α :=
   match t.at_ref r with
   | none := default α
   | some a := a
   end
 
-def set (r : table_ref) (a : α) : table α :=
+@[inline] def set (r : table_ref) (a : α) : table α :=
   match try_fin t r with
   | none := t
   | some r := {t with entries := t.entries.write r a}
   end
 
-meta def alloc (a : α) : table α :=
+@[inline] meta def alloc (a : α) : table α :=
   let t : table α := if t.is_full then t.grow else t in
   let t := t.set t.next_id a in
   { t with next_id := t.next_id.next }
 
-meta def alloc_list : table α → list α → table α
+@[inline] meta def alloc_list : table α → list α → table α
 | t [] := t
 | t (a :: rest) := alloc_list (t.alloc a) rest
 
-def update [indexed α] (a : α) : table α := t.set (indexed.index a) a
+@[inline] def update [indexed α] (a : α) : table α := t.set (indexed.index a) a
 
-def length : ℕ := t.next_id.to_nat
+@[inline] def length : ℕ := t.next_id.to_nat
 
 meta def find_from (p : α → Prop) [decidable_pred p] : table_ref → option α
 | ref := match t.at_ref ref with
   | none := none
   | some a := if p a then some a else find_from ref.next
   end
-meta def find (p : α → Prop) [decidable_pred p] : option α := t.find_from p table_ref.first
-meta def find_key [decidable_eq κ] [keyed α κ] (key : κ) : option α := t.find (λ a, key = @keyed.key _ _ _ _ a)
+@[inline] meta def find (p : α → Prop) [decidable_pred p] : option α := t.find_from p table_ref.first
+@[inline] meta def find_key [decidable_eq κ] [keyed α κ] (key : κ) : option α := t.find (λ a, key = @keyed.key _ _ _ _ a)
 
 meta def foldl (f : β → α → β) (b : β) (t : table α) : β :=
   t.entries.foldl b (λ a : option α, λ b : β, match a with

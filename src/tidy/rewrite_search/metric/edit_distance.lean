@@ -15,7 +15,7 @@ structure ed_partial :=
   (suffix    : list table_ref)
   (distances : list dnum) -- distances from the prefix of l₁ to each non-empty prefix of l₂
 
-def get_weight (weights : table dnum) (r : table_ref) : dnum := weights.iget r
+@[inline] def get_weight (weights : table dnum) (r : table_ref) : dnum := weights.iget r
 
 def compute_initial_distances_aux (weights : table dnum) : dnum → list table_ref → list dnum
 | _ [] := []
@@ -23,33 +23,28 @@ def compute_initial_distances_aux (weights : table dnum) : dnum → list table_r
   let so_far := so_far + (get_weight weights a) in
   list.cons so_far (compute_initial_distances_aux so_far rest)
 
-def compute_initial_distances (weights : table dnum) (l : list table_ref) : list dnum :=
+@[inline] def compute_initial_distances (weights : table dnum) (l : list table_ref) : list dnum :=
   compute_initial_distances_aux weights 0 l
 
-def empty_partial_edit_distance_data (weights : table dnum) (l₁ l₂ : list table_ref) : ed_partial :=
+@[inline] def empty_partial_edit_distance_data (weights : table dnum) (l₁ l₂ : list table_ref) : ed_partial :=
   ⟨ 0, l₁, compute_initial_distances weights l₂ ⟩
 
-def triples {α : Type} (p : ed_partial) (l₂ : list α): list (dnum × dnum × α) :=
+@[inline] def triples {α : Type} (p : ed_partial) (l₂ : list α): list (dnum × dnum × α) :=
 p.distances.zip ((list.cons p.prefix_length p.distances).zip l₂)
 
 universe u
 
-def minl {α : Type u} [inhabited α] [decidable_linear_order α] : list α → α
-| [] := default α
-| [a] := a
-| (n :: rest) := min n (minl rest)
-
 --TODO explain me
 meta def fold_fn (weights : table dnum) (h : table_ref) (n : dnum × list dnum) : dnum × dnum × table_ref → dnum × list dnum
 | (a, b, r) :=
-  let m := if h = r then b else minl [
+  let m := if h = r then b else dnum.minl [
     /- deletion     -/ a + (get_weight weights r),
-    /- substitution -/ b + max (get_weight weights r) (get_weight weights h),
+    /- substitution -/ b + dnum.max (get_weight weights r) (get_weight weights h),
     /- insertion    -/ n.2.head + (get_weight weights h)
-  ] in (min m n.1, list.cons m n.2)
+  ] in (dnum.min m n.1, list.cons m n.2)
 
 --TODO explain me
-meta def improve_bound_once (weights : table dnum) (l r : list table_ref) (cur : dnum) (p : ed_partial) : bound_progress ed_partial :=
+@[inline] meta def improve_bound_once (weights : table dnum) (l r : list table_ref) (cur : dnum) (p : ed_partial) : bound_progress ed_partial :=
   match p.suffix with
     | [] := exactly p.distances.ilast p
     | (h :: t) :=

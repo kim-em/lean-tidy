@@ -10,20 +10,36 @@ universe u
 
 namespace tidy.rewrite_search
 
-def dnum : Type := ℤ
+def dnum : Type := ℕ
 namespace dnum
 
-def of_nat (n : ℕ) : dnum := int.of_nat n
+@[inline] instance : has_zero dnum := nat.has_zero
+@[inline] instance : has_one dnum := nat.has_one
+@[inline] instance : has_add dnum := nat.has_add
+@[inline] instance : has_sub dnum := nat.has_sub
+@[inline] instance : has_mul dnum := nat.has_mul
+@[inline] instance : has_lt dnum := nat.has_lt
+@[inline] instance : has_le dnum := nat.has_le
+@[inline] instance : inhabited dnum := ⟨0⟩
 
-instance : decidable_linear_ordered_comm_group dnum := by dunfold dnum; apply_instance
-instance : has_zero dnum := int.has_zero
-instance : has_one dnum := int.has_one
-instance : has_add dnum := int.has_add
-instance : has_mul dnum := int.has_mul
-instance : inhabited dnum := int.inhabited
+@[inline] def of_nat (n : ℕ) : dnum := n
+@[inline] def of_int : ℤ → dnum
+| (int.of_nat n)          := n
+| (int.neg_succ_of_nat n) := 0
 
-instance : has_to_string dnum := int.has_to_string
-meta instance : has_to_format dnum := int.has_to_format
+@[inline] def max (n m : dnum) : dnum := if n > m then n else m
+@[inline] def min (n m : dnum) : dnum := if n < m then n else m
+
+@[inline]
+def minl : list dnum → dnum
+| [] := 0
+| [a] := a
+| (n :: rest) := min n (minl rest)
+
+@[inline] def diff (n m : dnum) : dnum := if n > m then n - m else m - n
+
+instance : has_to_string dnum := nat.has_to_string
+meta instance : has_to_format dnum := nat.has_to_format
 
 end dnum
 

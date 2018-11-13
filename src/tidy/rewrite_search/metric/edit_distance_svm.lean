@@ -48,7 +48,7 @@ meta def calculate_weights : tactic (table dnum) := do
   let dim := g.tokens.length,
   let ⟨lvs, rvs⟩ := build_vector_lists dim g.vertices,
   let (n, b) := k.find_separating_hyperplane lvs rvs,
-  return $ table.from_map_array n $ λ c, ((1000 + abs c) : ℤ)
+  return $ table.from_map_array n $ λ c, dnum.of_int $ 1000 + abs c
 
 end tidy.rewrite_search.metric.edit_distance.weight.svm
 

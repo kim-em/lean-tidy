@@ -23,8 +23,8 @@ by rewrite_search {explain := tt, trace_summary := tt, view := no visualiser, me
 lemma test5_ring : (a * (b + c + 1) / e) * d = a * (b / e * d) + a * (1 / e * d) + a * (c / e * d) :=
 by ring
 
-lemma test5 : (a * (b + c + 1) / e) * d = a * (b / e * d) + a * (1 / e * d) + a * (c / e * d) :=
-by rewrite_search {explain := tt, trace_summary := tt, view := no visualiser}
+-- lemma test5 : (a * (b + c + 1) / e) * d = a * (b / e * d) + a * (1 / e * d) + a * (c / e * d) :=
+-- by rewrite_search {explain := tt, trace_summary := tt, view := visualiser}
 
 -- lemma test5_2 : (a * (b + c + 1) / e) * d = a * (b / e * d) + a * (1 / e * d) + a * (c / e * d) :=
 -- by rewrite_search [add_comm, add_assoc, mul_one, mul_assoc, /-mul_comm,-/ left_distrib, right_distrib] {explain := tt, trace_summary := tt, view := no visualiser, metric := edit_distance {refresh_freq := 10} weight.cm, strategy := pexplore {pop_size := 5}, max_iterations := 500}
