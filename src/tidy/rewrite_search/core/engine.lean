@@ -18,7 +18,7 @@ private meta def chop : list char → list string → list string
 
 meta def tokenise_expr (e : expr) : tactic (string × list string) := do
   pp ← pretty_print e,
-  pure (pp, chop [' ', '(', ')'] [pp])
+  pure (pp, chop [' '/-, '(', ')'-/] [pp])
 
 namespace search_state
 
