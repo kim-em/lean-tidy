@@ -1,8 +1,5 @@
 import tidy.rewrite_search
 
-open tidy.rewrite_search.metric
-open tidy.rewrite_search.strategy
-open tidy.rewrite_search.tracer
 open tidy.rewrite_search.discovery
 
 namespace tidy.rewrite_search.testing
@@ -17,11 +14,11 @@ private axiom bar3 : [3] = [4]
 private def my_example (a : unit) : [[0],[0]] = [[4],[4]] :=
 begin
   -- These don't work (because they don't know about the lemmas):
-  success_if_fail { rewrite_search },
-  success_if_fail { rewrite_search_using [`search] },
+  success_if_fail { rewrite_search {} },
+  success_if_fail { rewrite_search_using [`search] {} },
 
   -- But manually specifying them does:
-  rewrite_search_with [foo, bar1, ← bar2, bar2, ← bar3],
+  rewrite_search_with [foo, bar1, ← bar2, bar2, ← bar3] {},
 end
 
 -- Let's add them to the `algebraic_geometry` bundle:
@@ -32,7 +29,7 @@ attribute [search algebraic_geometry] foo bar1 bar2 bar3
 
 private example : [[0],[0]] = [[4],[4]] :=
 begin
-  rewrite_search_using [`search],
+  rewrite_search_using [`search] {},
 end
 
 -- And manually suggesting the `algebraic_geometry` bundle

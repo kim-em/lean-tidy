@@ -2,8 +2,6 @@ import tidy.rewrite_search
 
 open tidy.rewrite_search.discovery
 
-open tidy.rewrite_search.tracer
-
 
 
 
@@ -12,7 +10,7 @@ namespace tidy.rewrite_search.testing
 local attribute [instance] classical.prop_decidable
 
 example {A B C : Prop} : ((B → C) → (¬(A → C) ∧ ¬(A ∨ B))) = (B ∧ ¬C) :=
-  by rewrite_search_using! [] {suggest := []}
+  by rewrite_search_using! [] {}
 
 end tidy.rewrite_search.testing
 
@@ -26,7 +24,7 @@ axiom bar' : [[5],[5]] = [[6],[6]]
 
 example : [[7],[6]] = [[5],[5]] :=
 begin
- rewrite_search_with [←foo', bar'],
+ rewrite_search_with [←foo', bar'] {},
 end
 
 axiom foo''  : [7] = [8]

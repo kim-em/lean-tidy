@@ -115,7 +115,7 @@ meta def commit_rewrite (f : vertex) (r : rewrite) : tactic (search_state α β 
   return (g, f, (v, e))
 
 meta def reveal_more_rewrites (v : vertex) : tactic (search_state α β γ δ × vertex × option rewrite) := do
-  (rw_prog, new_rws) ← discover_more_rewrites g.conf.rs v.exp g.conf.to_rewrite_all_cfg v.s v.rw_prog,
+  (rw_prog, new_rws) ← discover_more_rewrites g.rs v.exp g.rwall_conf v.s v.rw_prog,
   (g, v) ← pure $ g.set_vertex {v with rw_prog := rw_prog, rws := v.rws.alloc_list new_rws},
   return (g, v, new_rws.nth 0)
 
@@ -176,8 +176,8 @@ meta def be_desperate (goals : list pair) : tactic (search_state α β γ δ × 
     let g := g.mutate_stats {g.stats with num_discovers := g.stats.num_discovers + 1},
     let verts := (goals.map sided_pair.to_list).join,
     exprs ← list.erase_duplicates <$> (verts.mmap $ λ v, vertex.exp <$> g.vertices.get v),
-    (prog, new_cands) ← discovery.collect_more g.conf g.prog exprs,
-    let g := {g with prog := prog, conf := {g.conf with rs := g.conf.rs.append new_cands}},
+    (prog, new_cands) ← discovery.collect_more g.conf g.rs g.prog exprs,
+    let g := {g with prog := prog, rs := g.rs.append new_cands},
     g ← if new_cands.length = 0 then pure g else g.unmark_all_visited,
     return (g, new_cands.length > 0)
 
@@ -292,13 +292,13 @@ meta def search_until_solved_aux : inst α β γ δ → ℕ → tactic (inst α 
 
 meta def search_until_solved : tactic (inst α β γ δ × search_result) := do
   if i.g.conf.trace_rules then (do
-    rs ← i.g.conf.rs.mmap pp_rule,
+    rs ← i.g.rs.mmap pp_rule,
     tactic.trace $ "rewrite_search using:\n---\n" ++ (string.intercalate "\n" rs) ++ "\n---"
   ) else tactic.skip,
   i.search_until_solved_aux 0
 
 meta def explain (proof : expr) (steps : list proof_unit) : tactic string :=
-  explain_search_result i.g.conf proof steps
+  explain_search_result i.g.conf i.g.rs proof steps
 
 end inst
 

@@ -1,4 +1,6 @@
+import tactic.iconfig
 import tidy.rewrite_search.core
+import tidy.rewrite_search.module
 
 open tidy.rewrite_search
 open tidy.rewrite_search.bound_progress
@@ -28,11 +30,12 @@ def ipair.to_string : ipair → string
 instance has_to_string : has_to_string ipair := ⟨ipair.to_string⟩
 
 structure pexplore_state :=
+(conf              : pexplore_config)
 (initial           : ipair)
 (interesting_pairs : list ipair)
 (done_pairs        : list pair)
 
-variables {β γ δ : Type} (conf : pexplore_config) (m : metric pexplore_state β γ δ) (g : search_state pexplore_state β γ δ)
+variables {β γ δ : Type} (m : metric pexplore_state β γ δ) (g : search_state pexplore_state β γ δ)
 
 namespace pair_stream
 
@@ -57,8 +60,8 @@ meta def read_side (ps : pair_stream) (g : search_state pexplore_state β γ δ)
   (vl, vr) ← g.lookup_pair p,
   return (g, {ps with last_side := s, its := ps.its.set s it}, newp)
 
-meta def read (ps : pair_stream) (g : search_state pexplore_state β γ δ) (conf : pexplore_config) (p : pair) : tactic (search_state pexplore_state β γ δ × pair_stream × option pair) := do
-  let next_side := if conf.pop_alternate then ps.last_side.other else ps.last_side,
+meta def read (ps : pair_stream) (g : search_state pexplore_state β γ δ) (p : pair) : tactic (search_state pexplore_state β γ δ × pair_stream × option pair) := do
+  let next_side := if g.strat_state.conf.pop_alternate then ps.last_side.other else ps.last_side,
   (g, ps, ret) ← ps.read_side g p next_side,
   match ret with
   | some _ := return (g, ps, ret)
@@ -67,7 +70,7 @@ meta def read (ps : pair_stream) (g : search_state pexplore_state β γ δ) (con
 
 end pair_stream
 
--- updates rival's estimate tryg to beat candidate's estimate, stoppg if we do or we can't
+-- updates rival's estimate tryg to beat candidate's estimate, stoppg if we do or we can'tbfs
 -- go any further. We return true if we were able to beat candidate.
 private meta def try_to_beat (candidate rival : dist_estimate γ) : tactic (search_state pexplore_state β γ δ × dist_estimate γ × bool) :=
 let cbnd := candidate.bnd.bound in
@@ -124,7 +127,7 @@ meta def pop_ipairs_aux : search_state pexplore_state β γ δ → metric pexplo
   (g, ip) ← resolve_ipair g (ipair.unresolved p ref),
   pop_ipairs_aux g m pop_size ip
 | g m pop_size (ipair.resolved p ref ps) := do
-  (g, ps, nxt) ← ps.read g conf p,
+  (g, ps, nxt) ← ps.read g p,
   let ip := ipair.resolved p ref ps,
   match nxt with
   | none := return (g.mutate_strat {g.strat_state with done_pairs := (p :: g.strat_state.done_pairs)}, ip, [])
@@ -140,17 +143,21 @@ meta def pop_ipairs_aux : search_state pexplore_state β γ δ → metric pexplo
   end
 
 meta def pop_ipairs (pop_size : ℕ) (ip : ipair) : tactic (search_state pexplore_state β γ δ × ipair × list ipair) := do
-  (g, ip, new) ← pop_ipairs_aux conf g m pop_size ip,
+  (g, ip, new) ← pop_ipairs_aux g m pop_size ip,
   return (g, ip, new)
 
 meta def pexplore_init : tactic (init_result pexplore_state) :=
-  init_result.pure ⟨ipair.unresolved pair.null table_ref.null, [], []⟩
+  init_result.pure ⟨{}, ipair.unresolved pair.null table_ref.null, [], []⟩
 
-meta def pexplore_startup (m : metric pexplore_state β γ δ) (l r : vertex) : tactic (search_state pexplore_state β γ δ) := do
+meta def pexplore_startup (conf : pexplore_config) (m : metric pexplore_state β γ δ) (l r : vertex) : tactic (search_state pexplore_state β γ δ) := do
   let p : pair := ⟨l.id, r.id⟩,
   (g, ref) ← g.alloc_estimate m p,
   let initial := ipair.unresolved p ref,
-  return $ g.mutate_strat ⟨initial, [initial], []⟩
+  return $ g.mutate_strat ⟨{}, initial, [initial], []⟩
+
+meta def pexplore_startup_conf (res : iconfig.result) (g : search_state pexplore_state β γ δ) (m : metric pexplore_state β γ δ) (l r : vertex) : tactic (search_state pexplore_state β γ δ) := do
+  conf ← res.struct `tidy.rewrite_search.strategy.pexplore.pexplore_config pexplore_config,
+  pexplore_startup g conf m l r
 
 -- TODO find our "best" pairs, corresponding to seen distance estimates within a certain
 -- threshold of the absolute best, and return them.
@@ -178,11 +185,11 @@ meta def pexplore_step : search_state pexplore_state β γ δ → metric pexplor
       vl ← clear_vertex <$> g.vertices.get table_ref.first,
       vr ← clear_vertex <$> g.vertices.get table_ref.first.next,
       let g := {g with vertices := table.from_list [vl, vr], estimates := table.create},
-      g ← pexplore_startup g m vl vr,
+      g ← pexplore_startup g g.strat_state.conf m vl vr,
       return (g, status.repeat)
   | (none, _) := pexplore_step g m itr
   | (some best, others) := do
-    (g, best, new) ← pop_ipairs conf m g conf.pop_size best,
+    (g, best, new) ← pop_ipairs m g g.strat_state.conf.pop_size best,
     (new_head, s) ← pure $ match new with
     | [] := ([], status.repeat)
     | l  := (l.concat best, status.continue)
@@ -196,7 +203,24 @@ namespace tidy.rewrite_search.strategy
 
 open tidy.rewrite_search.strategy.pexplore
 
-meta def pexplore (conf : pexplore_config := {}) : strategy_constructor pexplore_state :=
-λ β γ δ, strategy.mk pexplore_init (@pexplore_startup β γ δ) (@pexplore_step β γ δ conf)
+meta def pexplore_cnst (conf : iconfig.result) :=
+λ β γ δ, strategy.mk pexplore_init (@pexplore_startup_conf β γ δ conf) (@pexplore_step β γ δ)
+
+meta def pexplore (conf : iconfig.result := iconfig.empty_result) : tactic expr :=
+  generic_arg `tidy.rewrite_search.strategy.pexplore_cnst `(conf)
+
+section
+
+iconfig_mk pexplore
+iconfig_add_struct pexplore tidy.rewrite_search.strategy.pexplore.pexplore_config
+
+meta def pexplore_cfg (_ : name) (cfg : iconfig pexplore) : cfgtactic unit := do
+  cfg ← iconfig.read cfg,
+  e ← tactic.to_expr $ ``(pexplore) $ pexpr.of_expr `(cfg),
+  iconfig.publish `strategy $ cfgopt.value.pexpr $ pexpr.of_expr e
+
+iconfig_add rewrite_search [ strategy.pexplore : custom pexplore_cfg ]
+
+end
 
 end tidy.rewrite_search.strategy

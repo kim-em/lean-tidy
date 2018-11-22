@@ -5,6 +5,7 @@ import tidy.lib.expr
 -- the hooks into non-core pieces, i.e. providing defaults, and also
 -- the external interface it exports is enough to keep it out here.
 import .core
+import .module
 
 -- Default strategy, metric, and tracer used as a fallback by the engine
 -- (so must be present)
@@ -12,96 +13,59 @@ import .strategy.pexplore
 import .metric.edit_distance
 import .tracer.unit
 
+import tactic.iconfig
+
 open tactic
 
 variables {α β γ δ : Type}
 
 namespace tidy.rewrite_search
 
-meta def pick_default_strategy : tactic unit := `[exact tidy.rewrite_search.strategy.pexplore]
-meta def pick_default_metric   : tactic unit := `[exact tidy.rewrite_search.metric.edit_distance]
-meta def pick_default_tracer   : tactic unit := `[exact tidy.rewrite_search.tracer.unit_tracer]
+meta def default_strategy : expr ff := expr.const `pexplore []
+meta def default_metric   : expr ff := expr.const `edit_distance []
+meta def default_tracer   : expr ff := expr.const `unit []
 
--- This is the "public" config structure which has convenient tactic-mode
--- invocation synatx. The data in this structure is extracted and transformed
--- into the internal representation of the settings and modules by
--- `try_mk_search_instance`.
-meta structure rewrite_search_config (α β γ δ : Type) extends rewrite_all_cfg :=
-(max_iterations  : ℕ := 500)
-(max_discovers   : ℕ := 0)
-(suggest         : list name := [])
-(optimal         : bool := tt)
-(exhaustive      : bool := ff)
-(inflate_rws     : bool := ff)
-(trace           : bool := ff)
-(trace_summary   : bool := ff)
-(trace_rules     : bool := ff)
-(trace_discovery : bool := tt)
-(explain         : bool := ff)
-(explain_using_conv : bool := tt)
-(help_me         : bool := ff)
-(metric          : metric_constructor β γ . pick_default_metric)
-(strategy        : strategy_constructor α . pick_default_strategy)
-(view            : tracer_constructor δ   . pick_default_tracer)
+-- Another thing is that we can use our super great config system
+-- when invoking `iconfig_xxx` commands, by just setting up the original
+-- ennvironment.
 
-open tidy.rewrite_search.edit_distance
-open tidy.rewrite_search.metric.edit_distance
-open tidy.rewrite_search.strategy.pexplore
+-- Then, we will finally be able to do the fail-one-at-a-time
+-- thing too.
+
 open discovery.persistence
 
-meta def default_config : rewrite_search_config pexplore_state ed_state ed_partial unit := {}
-meta def pick_default_config : tactic unit := `[exact tidy.rewrite_search.default_config]
+meta def mk_initial_search_state (conf : config) (try_simp : bool) (rs : list (expr × bool)) (s : strategy α β γ δ) (m : metric α β γ δ) (tr : tracer α β γ δ) (strat_state : α) (metric_state : β) (tr_state : δ) (prog : discovery.progress) : search_state α β γ δ :=
+⟨tr, conf, {try_simp := try_simp}, rs, strat_state, metric_state, table.create, table.create, table.create, none, tr_state, prog, statistics.init⟩
 
-meta def mk_fallback_config (orig : rewrite_search_config α β γ δ) : rewrite_search_config pexplore_state ed_state ed_partial unit :=
-  {orig with view := begin pick_default_tracer end,
-             metric := begin pick_default_metric end,
-             strategy := begin pick_default_strategy end}
+meta def mk_instance (conf : config) (try_simp : bool) (rs : list (expr × bool)) (s : strategy α β γ δ) (m : metric α β γ δ) (tr : tracer α β γ δ) (s_state : α) (m_state : β) (tr_state : δ) (prog : discovery.progress) (eqn : sided_pair expr) : tactic (packet inst) := do
+  i ← tactic.up (do
+    let g := mk_initial_search_state conf try_simp rs s m tr s_state m_state tr_state prog,
+    (g, vl) ← g.add_root_vertex eqn.l side.L,
+    (g, vr) ← g.add_root_vertex eqn.r side.R,
+    g ← s.startup g m vl vr,
+    pure (⟨m, s, g⟩ : inst α β γ δ)
+  ),
+  return ⟨⟨α, β, γ, δ⟩, i.down⟩
 
-meta def mk_initial_search_state (conf : config) (s : strategy α β γ δ) (m : metric α β γ δ) (tr : tracer α β γ δ) (strat_state : α) (metric_state : β) (tr_state : δ) (prog : discovery.progress) : search_state α β γ δ :=
-⟨tr, conf, strat_state, metric_state, table.create, table.create, table.create, none, tr_state, prog, statistics.init⟩
+meta def try_mk_search_instance (cfg : iconfig.result) (prog : discovery.progress) (rs : list (expr × bool)) (eqn : sided_pair expr) : tactic (option (packet inst)) := do
+  ulift.up conf ← tactic.up $ cfg.struct `tidy.rewrite_search.config tidy.rewrite_search.config,
+  stack ← instantiate_modules
+    (cfg.ipexpr `strategy default_strategy)
+    (cfg.ipexpr `metric   default_metric)
+    (cfg.ipexpr `tracer   default_tracer),
 
-meta def setup_instance (conf : config) (s : strategy α β γ δ) (m : metric α β γ δ) (tr : tracer α β γ δ) (s_state : α) (m_state : β) (tr_state : δ) (prog : discovery.progress) (eqn : sided_pair expr) : tactic (inst α β γ δ) := do
-  let g := mk_initial_search_state conf s m tr s_state m_state tr_state prog,
-  (g, vl) ← g.add_root_vertex eqn.l side.L,
-  (g, vr) ← g.add_root_vertex eqn.r side.R,
-  g ← s.startup g m vl vr,
-  return ⟨m, s, g⟩
-
-meta def instantiate_modules (cfg : rewrite_search_config α β γ δ) : strategy α β γ δ × metric α β γ δ × tracer α β γ δ :=
-(cfg.strategy β γ δ, cfg.metric α δ, cfg.view α β γ)
-
-meta def try_mk_search_instance (cfg : rewrite_search_config α β γ δ) (prog : discovery.progress) (rs : list (expr × bool)) (eqn : sided_pair expr) : tactic (option (inst α β γ δ)) :=
-do
-  let (strat, m, tr) := instantiate_modules cfg,
-  init_result.try "tracer"   tr.init    $ λ tracer_state,
-  init_result.try "metric"   m.init     $ λ metric_state,
-  init_result.try "strategy" strat.init $ λ strat_state,
-  do
-  let conf : config := {
-    rs := rs,
-    max_iterations := cfg.max_iterations,
-    max_discovers := cfg.max_discovers,
-    optimal := cfg.optimal,
-    exhaustive := cfg.exhaustive,
-    trace := cfg.trace,
-    trace_summary := cfg.trace_summary,
-    trace_rules := cfg.trace_rules,
-    trace_discovery := cfg.trace_discovery,
-    explain := cfg.explain,
-    explain_using_conv := cfg.explain_using_conv,
-    discharger := cfg.discharger,
-    simplifier := cfg.simplifier,
-    try_simp := cfg.try_simp,
-  },
+  init_result.try "strategy" stack.st.init $ λ strat_state,
+  init_result.try "metric"   stack.mt.init $ λ metric_state,
+  init_result.try "tracer"   stack.tr.init $ λ tracer_state, do
   option.some <$>
-    setup_instance conf strat m tr strat_state metric_state tracer_state prog eqn
+    mk_instance conf (cfg.ibool `try_simp ff) rs stack.st stack.mt stack.tr strat_state metric_state tracer_state prog eqn
 
-meta def try_search (cfg : rewrite_search_config α β γ δ) (prog : discovery.progress) (rs : list (expr × bool)) (eqn : sided_pair expr) : tactic (option string) := do
+meta def try_search (cfg : iconfig.result) (prog : discovery.progress) (rs : list (expr × bool)) (eqn : sided_pair expr) : tactic (option string) := tactic.down $ do
   i ← try_mk_search_instance cfg prog rs eqn,
-  match i with
+  tactic.up $ match i with
   | none := return none
   | some i := do
-    (i, result) ← i.search_until_solved,
+    (i, result) ← i.v.search_until_solved,
     match result with
     | search_result.failure reason := fail reason
     | search_result.success proof steps := do
@@ -115,7 +79,13 @@ meta def try_search (cfg : rewrite_search_config α β γ δ) (prog : discovery.
 -- of these. Instead we could be more thoughtful, and try again only replacing
 -- the failing one of these with its respective fallback module version.
 
-meta def rewrite_search_pair (cfg : rewrite_search_config α β γ δ) (prog : discovery.progress) (rs : list (expr × bool)) (eqn : sided_pair expr) : tactic string := do
+meta def mk_fallback_config (cfg : iconfig.result) : iconfig.result :=
+  let cfg := cfg.clear `strategy in
+  let cfg := cfg.clear `metric in
+  let cfg := cfg.clear `tracer in
+  cfg
+
+meta def rewrite_search_pair (cfg : iconfig.result) (prog : discovery.progress) (rs : list (expr × bool)) (eqn : sided_pair expr) : tactic string := do
   result ← try_search cfg prog rs eqn,
   match result with
   | some str := return str
@@ -133,26 +103,31 @@ meta def rewrite_search_pair (cfg : rewrite_search_config α β γ δ) (prog : d
 -- the ideal thing would be to look for lemmas that have a metavariable
 -- for their LHS, and try substituting in hypotheses to these.
 
-meta def collect_rw_lemmas (cfg : rewrite_search_config α β γ δ) (use_suggest_annotations : bool) (per : discovery.persistence) (extra_names : list name) (extra_rws : list (expr × bool)) : tactic (discovery.progress × list (expr × bool)) := do
+meta def collect_rw_lemmas (cfg : collect_config) (use_suggest_annotations : bool) (per : discovery.persistence) (extra_names : list name) (extra_rws : list (expr × bool)) : tactic (discovery.progress × list (expr × bool)) := do
   let per := if cfg.help_me then discovery.persistence.try_everything else per,
   (prog, rws) ← discovery.collect use_suggest_annotations per cfg.suggest extra_names,
   hyp_rws ← discovery.rewrite_list_from_hyps,
   let rws := rws ++ extra_rws ++ hyp_rws,
 
   locs ← local_context,
-  rws ← if cfg.inflate_rws then list.join <$> (rws.mmap $ discovery.inflate_rw locs) else pure rws,
+  rws ← if cfg.inflate_rws then list.join <$> (rws.mmap $ discovery.inflate_rw locs)
+        else pure rws,
   return (prog, rws)
 
-meta def rewrite_search_target (cfg : rewrite_search_config α β γ δ) (try_harder : bool) (use_suggest_annotations : bool) (per : discovery.persistence) (extra_names : list name) (extra_rws : list (expr × bool)) : tactic string := do
-  let cfg := if ¬try_harder then cfg else
-    {cfg with max_discovers := max cfg.max_discovers 3, try_simp := tt},
-
+meta def rewrite_search_target (cfg : iconfig rewrite_search) (try_harder : bool) (use_suggest_annotations : bool) (per : discovery.persistence) (extra_names : list name) (extra_rws : list (expr × bool)) : tactic string := do
+  cfg ← iconfig.read cfg,
+  let cfg := if ¬try_harder then cfg
+             else cfg.setl [
+               (`try_simp, cfgopt.value.bool tt),
+               (`max_discovers, cfgopt.value.nat $ max 3 $ cfg.inat `max_discovers 3)
+             ],
   t ← target,
   if t.has_meta_var then
     fail "rewrite_search is not suitable for goals containing metavariables"
   else skip,
 
-  (prog, rws) ← collect_rw_lemmas cfg use_suggest_annotations per extra_names extra_rws,
+  collect_cfg ← cfg.struct `tidy.rewrite_search.collect_config tidy.rewrite_search.collect_config,
+  (prog, rws) ← collect_rw_lemmas collect_cfg use_suggest_annotations per extra_names extra_rws,
 
   (lhs, rhs) ← rw_equation.split t,
   rewrite_search_pair cfg prog rws ⟨lhs, rhs⟩
@@ -179,12 +154,14 @@ do
     fail e
   end
 
-meta def simp_search_target (cfg : rewrite_search_config α β γ δ) (use_suggest_annotations : bool) (per : discovery.persistence) (extra_names : list name) (extra_rws : list (expr × bool)) : tactic unit := do
+meta def simp_search_target (cfg : iconfig rewrite_search) (use_suggest_annotations : bool) (per : discovery.persistence) (extra_names : list name) (extra_rws : list (expr × bool)) : tactic unit := do
   t ← target,
+  cfg ← iconfig.read cfg,
 
-  (prog, rws) ← collect_rw_lemmas cfg use_suggest_annotations per extra_names extra_rws,
+  collect_cfg ← cfg.struct `collect_config collect_config,
+  (prog, rws) ← collect_rw_lemmas collect_cfg use_suggest_annotations per extra_names extra_rws,
 
-  if cfg.trace_rules then do
+  if cfg.ibool `trace_rules ff then do
     rs_strings ← rws.mmap pp_rule,
     trace ("simp_search using:\n---\n" ++ (string.intercalate "\n" rs_strings) ++ "\n---")
   else skip,
@@ -200,21 +177,21 @@ namespace tactic
 open tidy.rewrite_search
 open tidy.rewrite_search.discovery.persistence
 
-meta def rewrite_search (cfg : rewrite_search_config α β γ δ . pick_default_config) (try_harder : bool := ff) : tactic string :=
+meta def rewrite_search (cfg : iconfig rewrite_search) (try_harder : bool := ff) : tactic string :=
   rewrite_search_target cfg try_harder tt try_everything [] []
 
-meta def rewrite_search_with (rs : list interactive.rw_rule) (cfg : rewrite_search_config α β γ δ . pick_default_config) (try_harder : bool := ff) : tactic string := do
+meta def rewrite_search_with (rs : list interactive.rw_rule) (cfg : iconfig rewrite_search) (try_harder : bool := ff) : tactic string := do
   extra_rws ← discovery.rewrite_list_from_rw_rules rs,
   rewrite_search_target cfg try_harder tt speedy [] extra_rws
 
-meta def rewrite_search_using (as : list name) (cfg : rewrite_search_config α β γ δ . pick_default_config) (try_harder : bool := ff) : tactic string := do
+meta def rewrite_search_using (as : list name) (cfg : iconfig rewrite_search) (try_harder : bool := ff) : tactic string := do
   extra_names ← discovery.load_attr_list as,
   rewrite_search_target cfg try_harder ff try_bundles extra_names []
 
-meta def simp_search (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic unit := do
+meta def simp_search (cfg : iconfig rewrite_search) : tactic unit := do
   simp_search_target cfg tt try_everything [] []
 
-meta def simp_search_with (rs : list interactive.rw_rule) (cfg : rewrite_search_config α β γ δ . pick_default_config) : tactic unit := do
+meta def simp_search_with (rs : list interactive.rw_rule) (cfg : iconfig rewrite_search) : tactic unit := do
   extra_rws ← discovery.rewrite_list_from_rw_rules rs,
   simp_search_target cfg tt try_everything [] extra_rws
 

@@ -2,7 +2,7 @@ import libk
 import tidy.lib.num
 
 import tidy.rewrite_search.core
-import tidy.rewrite_search.metric.edit_distance
+import tidy.rewrite_search.metric.edit_distance.core
 
 open tidy.rewrite_search
 open tidy.rewrite_search.edit_distance
@@ -56,6 +56,6 @@ namespace tidy.rewrite_search.metric
 open tidy.rewrite_search.metric.edit_distance.weight.svm
 
 meta def weight.svm : ed_weight_constructor :=
-  λ α δ, ⟨tidy.rewrite_search.metric.edit_distance.weight.svm.init, λ conf g, calculate_weights g⟩
+  λ α δ, ⟨tidy.rewrite_search.metric.edit_distance.weight.svm.init, λ g, calculate_weights g⟩
 
 end tidy.rewrite_search.metric

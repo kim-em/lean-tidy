@@ -92,7 +92,7 @@ open isotopy
 open tactic
 
 meta def isotopy := `[rewrite_search_using [`search] { discharger := `[norm_num], simplifier := norm_num.derive, explain := tt }]
-meta def isotopy' := `[rewrite_search_using [`search] { discharger := `[norm_num], simplifier := norm_num.derive, trace := tt, view := visualiser, explain := tt }]
+meta def isotopy' := `[rewrite_search_using [`search] { discharger := `[norm_num], simplifier := norm_num.derive, trace := tt, no visualiser, explain := tt }]
 
 lemma commute_1 : t[pos 0, neg 2, pos 4] = t[pos 4, neg 2, pos 0] := by isotopy
 lemma commute_2 : t[cup 0, pos 2] = t[pos 0, cup 0] := by isotopy

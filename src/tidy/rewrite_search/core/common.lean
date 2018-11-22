@@ -20,18 +20,21 @@ meta structure rewrite :=
 (prf : tactic expr) -- we defer constructing the proofs until they are needed
 (how : how)
 
-meta structure config extends rewrite_all_cfg :=
-(rs              : list (expr × bool))
-(max_iterations  : ℕ)
-(max_discovers   : ℕ)
-(optimal         : bool)
-(exhaustive      : bool)
-(trace           : bool)
-(trace_summary   : bool)
-(trace_rules     : bool)
-(trace_discovery : bool)
-(explain         : bool)
-(explain_using_conv : bool)
+namespace tidy.rewrite_search
+
+structure config :=
+(max_iterations  : ℕ := 500)
+(max_discovers   : ℕ := 0)
+(optimal         : bool := tt)
+(exhaustive      : bool := ff)
+(trace           : bool := ff)
+(trace_summary   : bool := ff)
+(trace_rules     : bool := ff)
+(trace_discovery : bool := tt)
+(explain         : bool := ff)
+(explain_using_conv : bool := tt)
+
+end tidy.rewrite_search
 
 open tactic
 

@@ -1,5 +1,5 @@
 import tidy.rewrite_search.core
-import tidy.rewrite_search.metric.edit_distance
+import tidy.rewrite_search.metric.edit_distance.core
 
 open tidy.rewrite_search
 open tidy.rewrite_search.edit_distance
@@ -29,6 +29,6 @@ namespace tidy.rewrite_search.metric
 open tidy.rewrite_search.metric.edit_distance.weight.cm
 
 meta def weight.cm : ed_weight_constructor :=
-  λ α δ, ⟨init_result.pure (), λ conf g, calculate_weights g⟩
+  λ α δ, ⟨init_result.pure (), λ g, calculate_weights g⟩
 
 end tidy.rewrite_search.metric

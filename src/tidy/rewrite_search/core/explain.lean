@@ -12,23 +12,23 @@ namespace tidy.rewrite_search
 
 private meta def hand : sided_pair string := ⟨"lhs", "rhs"⟩
 
-meta def nth_rule (cfg : config) (i : ℕ) : expr × bool := (cfg.rs.nth i).iget
+meta def nth_rule (rs : list (expr × bool)) (i : ℕ) : expr × bool := (rs.nth i).iget
 
 meta def pp_rule (r : expr × bool) : tactic string :=
   do pp ← pretty_print r.1, return $ (if r.2 then "←" else "") ++ pp
 
-meta def how.to_rewrite (cfg : config) : how → option (expr × bool)
-| (how.rewrite index _ _) := nth_rule cfg index
+meta def how.to_rewrite (rs : list (expr × bool)) : how → option (expr × bool)
+| (how.rewrite index _ _) := nth_rule rs index
 | _ := none
 
-meta def explain_using_location (cfg : config) (s : side) : how → tactic (option string)
+meta def explain_using_location (rs : list (expr × bool)) (s : side) : how → tactic (option string)
 | (how.rewrite index location _) := do
-  rule ← pp_rule $ nth_rule cfg index,
+  rule ← pp_rule $ nth_rule rs index,
   return $ some ("nth_rewrite_" ++ hand.get s ++ " " ++ to_string location ++ " " ++ rule)
 | _ := return none
 
-meta def using_location.explain_rewrites (cfg : config) (s : side) (steps : list how) : tactic string := do
-  rules ← steps.mmap $ λ h : how, option.to_list <$> explain_using_location cfg s h,
+meta def using_location.explain_rewrites (rs : list (expr × bool)) (s : side) (steps : list how) : tactic string := do
+  rules ← steps.mmap $ λ h : how, option.to_list <$> explain_using_location rs s h,
   return $ string.intercalate ",\n" rules.join
 
 namespace using_conv
@@ -80,12 +80,12 @@ private meta def to_congr_form : list side → tactic (list side)
 meta def splice_in (a : option app_addr) (rws : list ℕ) (s : list side) : tactic splice_result :=
   splice_in_aux rws a <$> to_congr_form s
 
-meta def build_rw_tactic (cfg : config) (hs : list ℕ) : tactic string := do
-  rws ← (hs.map $ nth_rule cfg).mmap pp_rule,
+meta def build_rw_tactic (rs : list (expr × bool)) (hs : list ℕ) : tactic string := do
+  rws ← (hs.map $ nth_rule rs).mmap pp_rule,
   return $ "erw [" ++ (string.intercalate ", " rws) ++ "]"
 
-meta def explain_tree_aux (cfg : config) : app_addr → tactic (option (list string))
-| (app_addr.rw rws) := some <$> list.singleton <$> build_rw_tactic cfg rws
+meta def explain_tree_aux (rs : list (expr × bool)) : app_addr → tactic (option (list string))
+| (app_addr.rw rws) := some <$> list.singleton <$> build_rw_tactic rs rws
 | (app_addr.node ⟨func, arg⟩) := do
   sf ← match func with | none := pure none | some func := explain_tree_aux func end,
   sa ← match arg  with | none := pure none | some arg  := explain_tree_aux arg  end,
@@ -97,13 +97,13 @@ meta def explain_tree_aux (cfg : config) : app_addr → tactic (option (list str
   end
 
 -- TODO break the tree into pieces when the gaps are too big
-meta def explain_tree (cfg : config) (tree : app_addr) : tactic (list string) :=
-  list.join <$> option.to_list <$> explain_tree_aux cfg tree
+meta def explain_tree (rs : list (expr × bool)) (tree : app_addr) : tactic (list string) :=
+  list.join <$> option.to_list <$> explain_tree_aux rs tree
 
-meta def compile_rewrites_aux (cfg : config) (s : side) : option app_addr → list how → tactic (list string)
+meta def compile_rewrites_aux (rs : list (expr × bool)) (s : side) : option app_addr → list how → tactic (list string)
 | none [] := return []
 | (some tree) [] := do
-  tacs ← explain_tree cfg tree,
+  tacs ← explain_tree rs tree,
   return $ if tacs.length = 0 then []
   else ["conv_" ++ hand.get s ++ " { " ++ string.intercalate ", " tacs ++ " }"]
 | tree (h :: rest) := do
@@ -125,11 +125,11 @@ meta def compile_rewrites_aux (cfg : config) (s : side) : option app_addr → li
     return $ line ++ lines
   end
 
-meta def compile_rewrites (cfg : config) (s : side) : list how → tactic (list string) :=
-  compile_rewrites_aux cfg s none
+meta def compile_rewrites (rs : list (expr × bool)) (s : side) : list how → tactic (list string) :=
+  compile_rewrites_aux rs s none
 
-meta def explain_rewrites (cfg : config) (s : side) (hows : list how) : tactic string :=
-  string.intercalate ",\n" <$> compile_rewrites cfg s hows
+meta def explain_rewrites (rs : list (expr × bool)) (s : side) (hows : list how) : tactic string :=
+  string.intercalate ",\n" <$> compile_rewrites rs s hows
 
 end using_conv
 
@@ -146,11 +146,11 @@ lock_tactic_state $ do
   rewrites.mmap' $ λ q, rewrite_target q.1 {symm := q.2, md := semireducible},
   (reflexivity reducible >> return ff) <|> (reflexivity >> return tt)
 
-meta def proof_unit.rewrites (u : proof_unit) (cfg : config) : list (expr × bool) :=
-  u.steps.filter_map $ how.to_rewrite cfg
+meta def proof_unit.rewrites (u : proof_unit) (rs : list (expr × bool)) : list (expr × bool) :=
+  u.steps.filter_map $ how.to_rewrite rs
 
 -- TODO rewrite this to use conv!
-meta def proof_unit.explain (u : proof_unit) (cfg : config) : tactic string := do
+meta def proof_unit.explain (u : proof_unit) (rs : list (expr × bool)) (explain_using_conv : bool) : tactic string := do
   -- TODO We could try to merge adjacent proof units or something more complicated.
 
   -- FIXME using explain_rewrites_concisely:
@@ -180,12 +180,12 @@ meta def proof_unit.explain (u : proof_unit) (cfg : config) : tactic string := d
   --   explain_rewrites_concisely rewrites needs_refl
   -- ) <|>
 
-  if cfg.explain_using_conv then
-    using_conv.explain_rewrites cfg u.side u.steps
+  if explain_using_conv then
+    using_conv.explain_rewrites rs u.side u.steps
   else
-    using_location.explain_rewrites cfg u.side u.steps
+    using_location.explain_rewrites rs u.side u.steps
 
-meta def explain_proof_full (cfg : config) : list proof_unit → tactic string
+meta def explain_proof_full (rs : list (expr × bool)) (explain_using_conv : bool) : list proof_unit → tactic string
 | [] := return ""
 | (u :: rest) := do
   -- This is an optimisation: don't use transitivity for the last unit, since
@@ -195,27 +195,27 @@ meta def explain_proof_full (cfg : config) : list proof_unit → tactic string
     pure $ ["transitivity " ++ n]
   ),
 
-  unit_expl ← u.explain cfg,
+  unit_expl ← u.explain rs explain_using_conv,
   rest_expl ← explain_proof_full rest,
   let expls := (head ++ [unit_expl, rest_expl]).filter $ λ t, ¬(t.length = 0),
   return $ string.intercalate ",\n" expls
 
-meta def explain_proof_concisely (cfg : config) (proof : expr) (l : list proof_unit) : tactic string := do
+meta def explain_proof_concisely (rs : list (expr × bool)) (proof : expr) (l : list proof_unit) : tactic string := do
   let rws : list (expr × bool) := list.join $ l.map (λ u, do
-    (r, s) ← u.rewrites cfg,
+    (r, s) ← u.rewrites rs,
     return (r, if u.side = side.L then s else ¬s)
   ),
   goal ← infer_type proof,
   needs_refl ← check_if_simple_rewrite_succeeds rws goal,
   explain_rewrites_concisely rws needs_refl
 
-meta def explain_search_result (cfg : config) (proof : expr) (units : list proof_unit) : tactic string := do
+meta def explain_search_result (cfg : config) (rs : list (expr × bool)) (proof : expr) (units : list proof_unit) : tactic string := do
   if cfg.trace then do
     pp ← pretty_print proof,
     trace format!"rewrite_search found proof:\n{pp}"
   else skip,
 
-  explanation ← explain_proof_concisely cfg proof units <|> explain_proof_full cfg units,
+  explanation ← explain_proof_concisely rs proof units <|> explain_proof_full rs cfg.explain_using_conv units,
   if cfg.explain then trace $ "/- `rewrite_search` says -/\n" ++ explanation
   else skip,
   return explanation

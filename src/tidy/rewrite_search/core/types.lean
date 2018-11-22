@@ -6,7 +6,7 @@ import tidy.rewrite_search.discovery.common
 import .common
 import .hook
 
-universe u
+universes u v
 
 namespace tidy.rewrite_search
 
@@ -156,31 +156,32 @@ meta inductive status
 | done : edge → status
 | abort : string → status
 
-inductive init_result (ε : Type)
+@[derive has_reflect]
+inductive init_result (ε : Type u)
 | success : ε → init_result
 | failure : string → init_result
 
-meta def init_fn (ε : Type) := tactic (init_result ε)
+meta def init_fn (ε : Type u) := tactic (init_result ε)
 
 namespace init_result
-meta def pure {ε : Type} (v : ε) : tactic (init_result ε) := return $ success v
-meta def fail {ε : Type} (reason : string) : tactic (init_result ε) := return $ init_result.failure ε reason
+meta def pure {ε : Type u} (v : ε) : tactic (init_result ε) := return $ success v
+meta def fail {ε : Type u} (reason : string) : tactic (init_result ε) := return $ init_result.failure ε reason
 
-meta def cases {ε η : Type} (name : string) (fn : init_fn ε) (next_step : ε → tactic η) (fallback : string → tactic η) : tactic η := do
-  val ← fn,
-  match val with
+meta def cases {ε : Type u} {η : Type v} (name : string) (fn : init_fn ε) (next_step : ε → tactic η) (fallback : string → tactic η) : tactic η := tactic.down.{max u v} $ do
+  val ← tactic.up fn,
+  tactic.up $ match val.down with
   | failure _ reason := do
     fallback reason
   | success val := do
     next_step val
   end
 
-meta def chain {ε η : Type} (name : string) (fn : init_fn ε) (next_step : ε → init_fn η) : tactic (init_result η) :=
+meta def chain {ε : Type u} {η : Type v} (name : string) (fn : init_fn ε) (next_step : ε → init_fn η) : tactic (init_result η) :=
   cases name fn next_step $ λ reason, return $ failure _ ("An error occurred while initialising " ++ name ++ ": " ++ reason)
 
-meta def try {ε η : Type} (name : string) (fn : init_fn ε) (next_step : ε → tactic (option η)) : tactic (option η) :=
+meta def try {ε : Type u} {η : Type v} (name : string) (fn : init_fn ε) (next_step : ε → tactic (option η)) : tactic (option η) :=
   cases name fn next_step $ λ reason, do
-    tactic.trace ("\nWarning: failed to initialise " ++ name ++ "! Reason:\n\n" ++ reason),
+    tactic.up $ tactic.trace ("\nWarning: failed to initialise " ++ name ++ "! Reason:\n\n" ++ reason),
     return none
 end init_result
 
@@ -200,6 +201,8 @@ def statistics.init : statistics := ⟨0⟩
 meta structure search_state (α β γ δ : Type) :=
 (tr           : tracer α β γ δ)
 (conf         : config)
+(rwall_conf   : rewrite_all_cfg)
+(rs           : list (expr × bool))
 (strat_state  : α)
 (metric_state : β)
 (tokens       : table token)
@@ -235,10 +238,6 @@ meta structure inst (α β γ δ : Type) :=
 (metric : metric α β γ δ)
 (strategy : strategy α β γ δ)
 (g : search_state α β γ δ)
-
-meta def strategy_constructor (α : Type) := Π (β γ δ : Type), strategy α β γ δ
-meta def metric_constructor (β γ : Type) := Π (α δ : Type), metric α β γ δ
-meta def tracer_constructor (δ : Type) := Π (α β γ : Type), tracer α β γ δ
 
 namespace search_state
 variables {α β γ δ : Type} (g : search_state α β γ δ)

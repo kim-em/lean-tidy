@@ -1,4 +1,5 @@
 import tidy.rewrite_search.core
+import tidy.rewrite_search.module
 
 -- The trivial metric: I just report that every vertex is distance zero from every other.
 
@@ -19,7 +20,14 @@ namespace tidy.rewrite_search.metric
 
 open tidy.rewrite_search.metric.trivial
 
-meta def trivial : metric_constructor unit unit :=
-  λ α δ, ⟨ trivial_init, trivial_update, trivial_init_bound, trivial_improve_estimate_over ⟩
+meta def trivial_cnst := λ α δ, @metric.mk α unit unit δ trivial_init trivial_update trivial_init_bound trivial_improve_estimate_over
+
+meta def trivial : tactic expr :=
+  generic ``tidy.rewrite_search.metric.trivial_cnst
+
+meta def trivial_cfg (_ : name) : cfgtactic unit :=
+  iconfig.publish `metric $ cfgopt.value.pexpr $ expr.const `trivial []
+
+iconfig_add rewrite_search [ metric.trivial : custom trivial_cfg ]
 
 end tidy.rewrite_search.metric

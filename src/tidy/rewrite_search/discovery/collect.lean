@@ -14,6 +14,8 @@ universe u
 
 namespace tidy.rewrite_search.discovery
 
+open tidy.rewrite_search
+
 -- TODO trace only when we have success.
 -- TODO add configurable "persistence"
 
@@ -31,23 +33,23 @@ meta def collect (use_suggest_annotations : bool) (p : persistence) (suggested_b
 
 -- Currently, we guarentee that each rewrite we return gives some expression the environment
 -- hasn't seen before.
-meta def collect_more_using : list collector → config → progress → list expr → tactic (progress × list (expr × bool))
-| [] conf p _ := do
+meta def collect_more_using : list collector → config → list (expr × bool) → progress → list expr → tactic (progress × list (expr × bool))
+| [] conf rs p _ := do
   if conf.trace_discovery ∧ ¬(p.persistence = persistence.speedy) then
     discovery_trace "Giving up." ff
   else skip,
   return (p, [])
-| (fn :: rest) conf p sample := do
-  (p, rws) ← fn conf p sample,
+| (fn :: rest) conf rs p sample := do
+  (p, rws) ← fn conf rs p sample,
   if rws.length = 0 then
-    collect_more_using rest conf p sample
+    collect_more_using rest conf rs p sample
   else
     return (p, rws)
 
-meta def collect_more (conf : config) (prog : progress) (sample : list expr) : tactic (progress × list (expr × bool)) := do
+meta def collect_more (conf : config) (rs : list (expr × bool)) (prog : progress) (sample : list expr) : tactic (progress × list (expr × bool)) := do
   if conf.trace_discovery ∧ ¬(prog.persistence = persistence.speedy) then
     tactic.trace "rewrite_search is getting desperate...\n"
   else skip,
-  collect_more_using default_collectors conf prog sample
+  collect_more_using default_collectors conf rs prog sample
 
 end tidy.rewrite_search.discovery

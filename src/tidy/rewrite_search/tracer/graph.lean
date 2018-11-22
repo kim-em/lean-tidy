@@ -1,4 +1,6 @@
+import tactic.iconfig
 import tidy.rewrite_search.core
+import tidy.rewrite_search.module
 import tidy.lib.utf8
 
 import system.io
@@ -129,10 +131,18 @@ namespace tidy.rewrite_search.tracer
 
 open tidy.rewrite_search.tracer.graph
 
-meta def graph_tracer : tracer_constructor visualiser := λ α β γ,
+meta def graph_cnst := λ α β γ,
   tracer.mk α β γ graph_tracer_init graph_tracer_publish_vertex graph_tracer_publish_edge
     graph_tracer_publish_visited graph_tracer_publish_finished graph_tracer_dump graph_tracer_pause
 
-meta def visualiser := graph_tracer
+meta def graph : tactic expr := generic `tidy.rewrite_search.tracer.graph_cnst
+
+meta def visualiser_cfg (_ : name) : cfgtactic unit :=
+  iconfig.publish `tracer $ cfgopt.value.pexpr $ expr.const `graph []
+
+iconfig_add rewrite_search [
+  tracer.graph : custom visualiser_cfg
+  visualiser   : custom visualiser_cfg
+]
 
 end tidy.rewrite_search.tracer

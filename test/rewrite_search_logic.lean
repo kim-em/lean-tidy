@@ -1,8 +1,6 @@
 import logic.basic
 import tidy.tidy
 import tidy.rewrite_search.discovery
-open tidy.rewrite_search.tracer
-open tidy.rewrite_search.metric
 
 local attribute [instance] classical.prop_decidable
 
@@ -33,7 +31,7 @@ calc
 
 -- Seems like SVM is good at these logic problems
 
-example {A B C : Prop} : ((B → C) → (¬(A → C) ∧ ¬(A ∨ B))) = (B ∧ ¬C) := by rewrite_search!
+example {A B C : Prop} : ((B → C) → (¬(A → C) ∧ ¬(A ∨ B))) = (B ∧ ¬C) := by rewrite_search! {}
 
 example {A B C : Prop} : ((B → C) → (¬(A → C) ∧ ¬(A ∨ B))) = (B ∧ ¬C) :=
   by rewrite_search! {suggest := [`logic]}
@@ -41,37 +39,37 @@ example {A B C : Prop} : ((B → C) → (¬(A → C) ∧ ¬(A ∨ B))) = (B ∧ 
 -- Vanilla
 example {A B C : Prop} : ((B → C) → (¬(A → C) ∧ ¬(A ∨ B))) = (B ∧ ¬C) :=
 by
-  rewrite_search! {view := no visualiser, trace_summary := tt}
+  rewrite_search! {no visualiser, trace_summary := tt}
 
 -- CM
 example {A B C : Prop} : ((B → C) → (¬(A → C) ∧ ¬(A ∨ B))) = (B ∧ ¬C) :=
 by
-  rewrite_search! {view := no visualiser, trace_summary := tt, metric := edit_distance {refresh_freq := 10} weight.cm}
+  rewrite_search! {no visualiser, trace_summary := tt, metric.edit_distance {refresh_freq := 10} cm}
 
 -- libSVM refresh every 20
 example {A B C : Prop} : ((B → C) → (¬(A → C) ∧ ¬(A ∨ B))) = (B ∧ ¬C) :=
 by
-  rewrite_search! {view := no visualiser, trace_summary := tt, metric := edit_distance {refresh_freq := 20} weight.svm}
+  rewrite_search! {no visualiser, trace_summary := tt, metric.edit_distance {refresh_freq := 20} svm}
 
 -- libSVM refresh every 15
 example {A B C : Prop} : ((B → C) → (¬(A → C) ∧ ¬(A ∨ B))) = (B ∧ ¬C) :=
 by
-  rewrite_search! {view := no visualiser, trace_summary := tt, metric := edit_distance {refresh_freq := 15} weight.svm}
+  rewrite_search! {no visualiser, trace_summary := tt, metric.edit_distance {refresh_freq := 15} svm}
 
 -- libSVM refresh every 10
 example {A B C : Prop} : ((B → C) → (¬(A → C) ∧ ¬(A ∨ B))) = (B ∧ ¬C) :=
 by
-  rewrite_search! {view := no visualiser, trace_summary := tt, metric := edit_distance {refresh_freq := 10} weight.svm}
+  rewrite_search! {no visualiser, trace_summary := tt, metric.edit_distance {refresh_freq := 10} svm}
 
 -- libSVM refresh every 5
 example {A B C : Prop} : ((B → C) → (¬(A → C) ∧ ¬(A ∨ B))) = (B ∧ ¬C) :=
 by
-  rewrite_search! {view := no visualiser, trace_summary := tt, metric := edit_distance {refresh_freq := 5} weight.svm}
+  rewrite_search! {no visualiser, trace_summary := tt, metric.edit_distance {refresh_freq := 5} svm}
 
 -- libSVM refresh every 1
 example {A B C : Prop} : ((B → C) → (¬(A → C) ∧ ¬(A ∨ B))) = (B ∧ ¬C) :=
 by
-  rewrite_search! {view := no visualiser, strategy := tidy.rewrite_search.strategy.pexplore {pop_size := 1}, trace_summary := tt, metric := edit_distance {refresh_freq := 1} weight.svm}
+  rewrite_search! {no visualiser, strategy.pexplore {pop_size := 1}, trace_summary := tt, metric.edit_distance {refresh_freq := 1} svm}
 
 -- Theorem Proving in Lean
 

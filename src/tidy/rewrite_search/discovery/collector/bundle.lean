@@ -11,6 +11,8 @@ open tactic
 
 namespace tidy.rewrite_search.discovery
 
+open tidy.rewrite_search
+
 def BUNDLE_CHUNK_SIZE := 1
 
 -- TODO Be smarter about calculating this.
@@ -29,7 +31,7 @@ meta def score_bundle (b : bundle_ref) (sample : list expr) : tactic ℕ := do
 -- (bundles added, random lemmas found and used) so that they can be addressed
 -- more easily/conveniently.
 
-meta def try_bundles (conf : config) (p : progress) (sample : list expr) : tactic (progress × list (expr × bool)) :=
+meta def try_bundles (conf : config) (rs : list (expr × bool)) (p : progress) (sample : list expr) : tactic (progress × list (expr × bool)) :=
   if p.persistence < persistence.try_bundles then
     return (p, [])
   else do

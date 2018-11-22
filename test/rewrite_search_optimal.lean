@@ -1,5 +1,4 @@
 import tidy.rewrite_search
-open tidy.rewrite_search.tracer
 
 axiom foo : [0] = [1]
 axiom bar1 : [1] = [2]
@@ -15,7 +14,7 @@ example : [0] = [7] :=
 begin
   -- erw [foo, bar1, bar2, bar3, bar4, bar5, bar6],
   rewrite_search_with [foo, bar1, bar2, bar3, bar4, bar5, bar6, baz]
-    { optimal := ff, view := no visualiser, explain := tt },
+    { optimal := ff, no visualiser, explain := tt },
 end
 
 example : [0] = [7] :=
@@ -28,7 +27,7 @@ end
 example : [0] = [7] :=
 begin
   rewrite_search_with [foo, bar1, bar2, bar3, bar4, bar5, bar6, baz]
-    { optimal := tt, view := no visualiser, explain := tt },
+    { optimal := tt, no visualiser, explain := tt },
 end
 
 example : [0] = [7] :=

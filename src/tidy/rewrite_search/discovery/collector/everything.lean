@@ -7,11 +7,13 @@ open tactic
 
 namespace tidy.rewrite_search.discovery
 
+open tidy.rewrite_search
+
 -- TODO print the lemmas which were being added
 -- TODO use the metric to score the rewrites and pick the top few which are high-scoring
 -- TODO only try some of of the "found rewrites" at a time and store the ones we've done in the progress
 
-meta def try_everything (conf : config) (p : progress) (sample : list expr) : tactic (progress × list (expr × bool)) := do
+meta def try_everything (conf : config) (rs : list (expr × bool)) (p : progress) (sample : list expr) : tactic (progress × list (expr × bool)) := do
   if p.persistence < persistence.try_everything then
     return (p, [])
   else do
@@ -24,7 +26,7 @@ meta def try_everything (conf : config) (p : progress) (sample : list expr) : ta
       else
         none) <$> find_all_rewrites,
     lems ← load_names lems,
-    let rws := (rewrite_list_from_lemmas lems).filter $ λ rw, ¬conf.rs.contains rw,
+    let rws := (rewrite_list_from_lemmas lems).filter $ λ rw, ¬rs.contains rw,
     rws ← rws.mfilter $ λ rw, is_promising_rewrite rw sample,
     if conf.trace_discovery then do
       let n := rws.length,
