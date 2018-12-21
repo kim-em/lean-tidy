@@ -4,9 +4,9 @@
 
 import tactic.basic
 import tactic.tidy
+import tactic.rewrite_search
 import .backwards_reasoning
 import .forwards_reasoning
-import .rewrite_search
 import .luxembourg_chain
 import category_theory.category
 

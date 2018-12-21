@@ -1,7 +1,7 @@
-import tidy.lib.pretty_print
-import tidy.lib.name
-import tidy.lib.expr
-import tidy.lib.parser
+import lib.pretty_print
+import lib.name
+import lib.expr
+import lib.parser
 
 open lean.parser
 open interactive
