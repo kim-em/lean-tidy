@@ -1,7 +1,6 @@
 import lib.pretty_print
 import lib.name
 import lib.expr
-import lib.parser
 
 open lean.parser
 open interactive
