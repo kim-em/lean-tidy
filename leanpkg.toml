@@ -7,4 +7,4 @@ path = "src"
 [dependencies]
 mathlib = {git = "https://github.com/leanprover/mathlib", branch = "master", rev = "f529870e34eb5370ae8ac1f49f728547e4f6bbe5"}
 libk = {git = "https://github.com/khoek/libk", branch = "master", rev = "461caf0b2915dd612a5e9f4ad7f6b627506d4ec0"}
-lean-rewrite-search = {git = "https://github.com/khoek/lean-rewrite-search", branch = "master", rev = "bdb7ee83ccfb73e34cccf9a1bf754c9b9e3d8c58"}
+lean-rewrite-search = {git = "https://github.com/khoek/lean-rewrite-search", branch = "master", rev = "af91bdf127697801feab5b3b203451b711832d16"}
