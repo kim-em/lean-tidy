@@ -1,1 +1,0 @@
-* Start thinking either about "lemma selection" (see attached article?) or even better "generating approximate intermediate goals" after determining based on classification that a certain lemma is "the essential step".

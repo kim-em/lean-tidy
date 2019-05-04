@@ -1,9 +1,10 @@
 [package]
 name = "lean-tidy"
 version = "0.1"
-lean_version = "khoek/klean:3.4.4"
+lean_version = "3.4.2"
 path = "src"
 
 [dependencies]
-mathlib = {git = "https://github.com/leanprover/mathlib", rev = "891dfbbebba8a0269072460785172c294935af22"}
-libk = {git = "https://github.com/khoek/libk", rev = "461caf0b2915dd612a5e9f4ad7f6b627506d4ec0"}
+mathlib = {git = "https://github.com/leanprover/mathlib", branch = "master", rev = "f529870e34eb5370ae8ac1f49f728547e4f6bbe5"}
+libk = {git = "https://github.com/khoek/libk", branch = "master", rev = "461caf0b2915dd612a5e9f4ad7f6b627506d4ec0"}
+lean-rewrite-search = {git = "https://github.com/khoek/lean-rewrite-search", branch = "master", rev = "af91bdf127697801feab5b3b203451b711832d16"}

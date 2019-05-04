@@ -4,9 +4,9 @@
 
 import tactic.basic
 import tactic.tidy
+import tactic.rewrite_search
 import .backwards_reasoning
 import .forwards_reasoning
-import .rewrite_search
 import .luxembourg_chain
 import category_theory.category
 
@@ -29,7 +29,7 @@ meta def extended_tidy_tactics : list (tactic string) :=
   forwards_reasoning,
   propositional_goal >> forwards_library_reasoning,
   `[unfold_aux]                               >> pure "unfold_aux",
-  rewrite_search,
+  rewrite_search {},
   tidy.run_tactics ]
 
 @[obviously] meta def obviously_1 := tidy { tactics := extended_tidy_tactics }
