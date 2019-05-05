@@ -5,6 +5,6 @@ lean_version = "3.4.2"
 path = "src"
 
 [dependencies]
-mathlib = {git = "https://github.com/leanprover/mathlib", rev = "f98ffdefc77ce0f40199280cea68ff13afb0206c"}
+mathlib = {git = "https://github.com/leanprover/mathlib", rev = "fbce6e4d46fb22ff4145c0e854d3966ef69a983d"}
 libk = {git = "https://github.com/khoek/libk", branch = "master", rev = "461caf0b2915dd612a5e9f4ad7f6b627506d4ec0"}
 lean-rewrite-search = {git = "https://github.com/khoek/lean-rewrite-search", branch = "master", rev = "402b6eae441861aad908e46a1adebc26c23387ad"}
