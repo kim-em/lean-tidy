@@ -4,7 +4,6 @@
 
 import tactic.basic
 import tactic.ext
-import .recover
 
 open tactic
 
