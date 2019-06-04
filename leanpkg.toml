@@ -6,4 +6,4 @@ path = "src"
 
 [dependencies]
 mathlib = {git = "https://github.com/leanprover-community/mathlib", rev = "4263b2be91c453051aa5790d10fb454a9785fe35"}
-lean-rewrite-search = {git = "https://github.com/semorrison/lean-rewrite-search", branch = "not-based-on-PR", rev = "46930ee9dc1bf1491a897ed42c96f48c99fcdcf8"}
+lean-rewrite-search = {git = "https://github.com/semorrison/lean-rewrite-search", branch = "old-working-version", rev = "4221c65ed7cc2d96cb9fd7278b9f8746a8843aac"}
